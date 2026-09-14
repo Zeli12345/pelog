@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Siswa">
+<x-dashboard-layout title="Siswa" subtitle="Master data siswa & status PIN">
     <x-slot:actions>
         <div class="flex items-center gap-2">
             <a href="{{ route('students.import.form') }}" class="btn-secondary !py-1.5 text-xs">
@@ -47,7 +47,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">NISN</th>
                                 <th class="px-4 py-2.5 font-semibold">Nama</th>
                                 <th class="px-4 py-2.5 font-semibold">Kelas</th>
@@ -58,7 +58,7 @@
                         </thead>
                         <tbody class="divide-y divide-line/70">
                             @foreach ($students as $student)
-                                <tr class="hover:bg-paper/60 {{ ! $student->is_active ? 'opacity-60' : '' }}">
+                                <tr class="table-row {{ ! $student->is_active ? 'opacity-60' : '' }}">
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $student->nisn }}</td>
                                     <td class="px-4 py-2.5 font-medium text-ink">{{ $student->name }}</td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $student->class }}</td>

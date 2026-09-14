@@ -90,7 +90,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">Waktu</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna</th>
                                 <th class="px-4 py-2.5 font-semibold">Tujuan</th>
@@ -101,7 +101,7 @@
                         </thead>
                         <tbody class="divide-y divide-line/70">
                             @foreach ($history as $session)
-                                <tr class="hover:bg-paper/60 {{ $session->isActive() ? 'bg-moss-50/40' : '' }}">
+                                <tr class="table-row {{ $session->isActive() ? 'bg-moss-50/40' : '' }}">
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">
                                         {{ ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('d/m H:i') ?? '—' }}
                                         @if ($session->isActive())

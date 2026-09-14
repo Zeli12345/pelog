@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Guru & Pegawai">
+<x-dashboard-layout title="Guru & Pegawai" subtitle="Master data guru & pegawai">
     <x-slot:actions>
         <div class="flex items-center gap-2">
             <a href="{{ route('staff.import.form') }}" class="btn-secondary !py-1.5 text-xs">
@@ -36,7 +36,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">NIP / NUPTK</th>
                                 <th class="px-4 py-2.5 font-semibold">Nama</th>
                                 <th class="px-4 py-2.5 font-semibold">Peran</th>
@@ -46,7 +46,7 @@
                         </thead>
                         <tbody class="divide-y divide-line/70">
                             @foreach ($staff as $member)
-                                <tr class="hover:bg-paper/60 {{ ! $member->is_active ? 'opacity-60' : '' }}">
+                                <tr class="table-row {{ ! $member->is_active ? 'opacity-60' : '' }}">
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $member->nip_id }}</td>
                                     <td class="px-4 py-2.5 font-medium text-ink">{{ $member->name }}</td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $member->role->label() }}</td>

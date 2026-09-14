@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Pengaturan">
+<x-dashboard-layout title="Pengaturan" subtitle="Konfigurasi sistem & kebijakan">
     <div class="grid gap-4 lg:grid-cols-3">
         <div class="space-y-4 lg:col-span-2">
             <form method="POST" action="{{ route('settings.update') }}" class="space-y-4">

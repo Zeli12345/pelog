@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Mata Pelajaran">
+<x-dashboard-layout title="Mata Pelajaran" subtitle="Daftar mata pelajaran aktif">
     <div class="space-y-4">
         @if ($editing)
             <section class="card border-navy-200 p-5">
@@ -67,7 +67,7 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-line text-sm">
                     <thead>
-                        <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                        <tr class="table-head">
                             <th class="px-4 py-2.5 font-semibold">Kode</th>
                             <th class="px-4 py-2.5 font-semibold">Nama</th>
                             <th class="px-4 py-2.5 font-semibold">Dipakai</th>
@@ -77,7 +77,7 @@
                     </thead>
                     <tbody class="divide-y divide-line/70">
                         @forelse ($subjects as $subject)
-                            <tr class="hover:bg-paper/60 {{ ! $subject->is_active ? 'opacity-60' : '' }}">
+                            <tr class="table-row {{ ! $subject->is_active ? 'opacity-60' : '' }}">
                                 <td class="px-4 py-2.5 font-mono text-xs font-semibold text-navy-800">{{ $subject->code }}</td>
                                 <td class="px-4 py-2.5 text-ink">{{ $subject->name }}</td>
                                 <td class="px-4 py-2.5 font-mono text-xs text-ink-faint">{{ $subject->sessions_count }} sesi</td>

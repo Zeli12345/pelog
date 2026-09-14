@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Perangkat">
+<x-dashboard-layout title="Perangkat" subtitle="Status & riwayat seluruh perangkat">
     <x-slot:actions>
         <form method="GET" action="{{ route('devices.index') }}" class="flex items-center gap-2">
             <div class="relative">
@@ -36,7 +36,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">Perangkat</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna Aktif</th>
@@ -55,7 +55,7 @@
                                         ? min(100, (int) round($device->storage_used_gb / $device->storage_total_gb * 100))
                                         : 0;
                                 @endphp
-                                <tr class="hover:bg-paper/60">
+                                <tr class="table-row">
                                     <td class="px-4 py-3">
                                         <p class="font-semibold text-navy-900">{{ $device->label ?? $device->hostname }}</p>
                                         <p class="font-mono text-[11px] text-ink-faint">{{ $device->hostname }}{{ $device->location_label ? ' · '.$device->location_label : '' }}</p>

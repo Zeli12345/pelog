@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Laporan">
+<x-dashboard-layout title="Laporan" subtitle="Rekapitulasi penggunaan & refleksi belajar">
     <x-slot:actions>
         <div class="flex items-center gap-2">
             <a href="{{ route('reports.export', array_merge(request()->query(), ['format' => 'csv'])) }}" class="btn-secondary !py-1.5 text-xs">
@@ -118,7 +118,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">Tanggal</th>
                                 <th class="px-4 py-2.5 font-semibold">Perangkat</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna</th>
@@ -129,7 +129,7 @@
                         </thead>
                         <tbody class="divide-y divide-line/70">
                             @foreach ($sessions as $session)
-                                <tr class="hover:bg-paper/60">
+                                <tr class="table-row">
                                     <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-ink-soft">
                                         {{ ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('d/m H:i') ?? '—' }}
                                     </td>

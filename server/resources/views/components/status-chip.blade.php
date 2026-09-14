@@ -12,6 +12,14 @@
 @endphp
 
 <span {{ $attributes->merge(['class' => 'badge '.$item['class']]) }}>
-    <span class="h-1.5 w-1.5 rounded-full {{ $item['dot'] }}"></span>
+    @if ($status === 'in_use')
+        <span class="relative flex h-1.5 w-1.5">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-moss-400 opacity-70"></span>
+            <span class="relative inline-flex h-1.5 w-1.5 rounded-full {{ $item['dot'] }}"></span>
+        </span>
+    @else
+        <span class="h-1.5 w-1.5 rounded-full {{ $item['dot'] }}"></span>
+    @endif
+
     {{ $item['label'] }}
 </span>

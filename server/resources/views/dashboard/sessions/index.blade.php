@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Sesi Penggunaan">
+<x-dashboard-layout title="Sesi Penggunaan" subtitle="Riwayat pemakaian perangkat & tujuan">
     <div class="space-y-4">
         {{-- Filter --}}
         <section class="card p-4">
@@ -55,7 +55,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">Mulai (WITA)</th>
                                 <th class="px-4 py-2.5 font-semibold">Perangkat</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna</th>
@@ -70,7 +70,7 @@
                                 @php
                                     $start = $session->started_at_server ?? $session->started_at_client;
                                 @endphp
-                                <tr class="hover:bg-paper/60 {{ $session->isActive() ? 'bg-moss-50/40' : '' }}">
+                                <tr class="table-row {{ $session->isActive() ? 'bg-moss-50/40' : '' }}">
                                     <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-ink-soft">
                                         {{ $start?->timezone('Asia/Makassar')->format('d/m/Y H:i') ?? '—' }}
                                     </td>

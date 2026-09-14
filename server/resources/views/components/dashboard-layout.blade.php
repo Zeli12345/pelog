@@ -1,4 +1,4 @@
-@props(['title' => null])
+@props(['title' => null, 'subtitle' => null])
 
 @php
     $user = auth()->user();
@@ -57,12 +57,12 @@
 
     {{-- Sidebar --}}
     <aside
-        class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col bg-navy-950 transition-transform duration-200 lg:translate-x-0"
+        class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col bg-gradient-to-b from-navy-950 via-navy-950 to-navy-900 shadow-[8px_0_32px_-20px_rgba(15,34,55,0.65)] transition-transform duration-200 lg:translate-x-0"
         x-bind:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
         {{-- Brand --}}
         <div class="flex items-center gap-3 border-b border-white/10 px-4 py-4">
-            <img src="{{ asset('images/logo_sekolah.png') }}" alt="Logo SMKN 1 Mas Ubud" class="h-10 w-10 rounded-full bg-white object-contain p-0.5">
+            <img src="{{ asset('images/logo_sekolah.png') }}" alt="Logo SMKN 1 Mas Ubud" class="h-10 w-10 rounded-full bg-white object-contain p-0.5 ring-1 ring-white/20">
             <div class="min-w-0">
                 <p class="text-sm font-extrabold tracking-wide text-white">BALI-LOG</p>
                 <p class="truncate text-[11px] text-navy-300">SMK Negeri 1 Mas Ubud</p>
@@ -73,13 +73,15 @@
         <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-4">
             @foreach ($groups as $group)
                 <div>
-                    <p class="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-navy-400">{{ $group['title'] }}</p>
-                    <div class="space-y-0.5">
+                    <p class="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-navy-400/80">{{ $group['title'] }}</p>
+                    <div class="space-y-1">
                         @foreach ($group['items'] as $item)
                             @php $active = $isActive($item['route']); @endphp
                             <a href="{{ route($item['route']) }}"
-                               class="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition
-                                      {{ $active ? 'bg-white/10 font-semibold text-white' : 'text-navy-200 hover:bg-white/5 hover:text-white' }}">
+                               class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition duration-150
+                                      {{ $active
+                                            ? 'bg-white/10 font-semibold text-white shadow-[inset_2px_0_0_0_#C9A227]'
+                                            : 'text-navy-200 hover:bg-white/5 hover:text-white' }}">
                                 <x-icon :name="$item['icon']" size="h-4 w-4" />
                                 {{ $item['label'] }}
                                 @if ($active)
@@ -95,7 +97,7 @@
         {{-- Pengguna --}}
         <div class="border-t border-white/10 px-4 py-4">
             <div class="flex items-center gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy-700 text-xs font-bold uppercase text-white">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy-700 text-xs font-bold uppercase text-white ring-2 ring-white/10">
                     {{ \Illuminate\Support\Str::of($user?->name ?? '?')->substr(0, 2) }}
                 </span>
                 <div class="min-w-0 flex-1">
@@ -104,7 +106,7 @@
                 </div>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button type="submit" class="rounded-md p-1.5 text-navy-300 transition hover:bg-white/10 hover:text-white" title="Keluar">
+                    <button type="submit" class="rounded-lg p-2 text-navy-300 transition hover:bg-white/10 hover:text-white" title="Keluar">
                         <x-icon name="logout" size="h-4 w-4" />
                     </button>
                 </form>
@@ -116,12 +118,17 @@
     {{-- Konten --}}
     <div class="flex min-h-full flex-col lg:pl-64">
         {{-- Topbar --}}
-        <header class="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-white/95 px-4 backdrop-blur lg:px-6">
-            <button class="rounded-md p-1.5 text-ink-soft hover:bg-paper lg:hidden" x-on:click="sidebarOpen = !sidebarOpen" title="Menu">
+        <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line/70 bg-white/80 px-4 backdrop-blur-md lg:px-6">
+            <button class="rounded-lg p-2 text-ink-soft transition hover:bg-paper lg:hidden" x-on:click="sidebarOpen = !sidebarOpen" title="Menu">
                 <x-icon name="menu" size="h-5 w-5" />
             </button>
 
-            <h1 class="truncate text-base font-semibold text-ink">{{ $title ?? 'Dashboard' }}</h1>
+            <div class="min-w-0">
+                <h1 class="truncate text-base font-semibold leading-tight text-ink">{{ $title ?? 'Dashboard' }}</h1>
+                @if ($subtitle)
+                    <p class="truncate text-[11px] leading-tight text-ink-faint">{{ $subtitle }}</p>
+                @endif
+            </div>
 
             <div class="ml-auto flex items-center gap-3">
                 @isset($actions)
@@ -134,16 +141,16 @@
         </header>
 
         {{-- Flash --}}
-        <main class="flex-1 px-4 py-6 lg:px-6">
+        <main class="animate-fade-in flex-1 px-4 py-6 lg:px-6">
             @if (session('status'))
-                <div class="mb-4 flex items-start gap-2 rounded-md border border-moss-200 bg-moss-50 px-4 py-3 text-sm text-moss-700">
+                <div class="mb-4 flex items-start gap-2 rounded-lg border border-moss-200 bg-moss-50 px-4 py-3 text-sm text-moss-700 shadow-sm">
                     <x-icon name="check" size="h-4 w-4 mt-0.5" />
                     <span>{{ session('status') }}</span>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="mb-4 flex items-start gap-2 rounded-md border border-brick-200 bg-brick-50 px-4 py-3 text-sm text-brick-700">
+                <div class="mb-4 flex items-start gap-2 rounded-lg border border-brick-200 bg-brick-50 px-4 py-3 text-sm text-brick-700 shadow-sm">
                     <x-icon name="alert-triangle" size="h-4 w-4 mt-0.5" />
                     <span>{{ session('error') }}</span>
                 </div>
@@ -152,7 +159,7 @@
             {{ $slot }}
         </main>
 
-        <footer class="border-t border-line px-4 py-3 text-center text-[11px] text-ink-faint lg:px-6">
+        <footer class="border-t border-line/70 px-4 py-3 text-center text-[11px] text-ink-faint lg:px-6">
             BALI-LOG v{{ config('balilog.version') }} — Buku Aktivitas Laptop &amp; Informasi Device Log · SMK Negeri 1 Mas Ubud
         </footer>
     </div>

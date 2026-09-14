@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Ringkasan">
+<x-dashboard-layout title="Ringkasan" subtitle="Pemantauan perangkat & sesi lab komputer">
     <div class="space-y-6">
 
         {{-- Statistik --}}
@@ -38,7 +38,7 @@
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
-                            <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                            <tr class="table-head">
                                 <th class="px-4 py-2.5 font-semibold">Perangkat</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna</th>
@@ -58,9 +58,9 @@
                                         ? min(100, (int) round($device->storage_used_gb / $device->storage_total_gb * 100))
                                         : 0;
                                 @endphp
-                                <tr class="hover:bg-paper/60">
+                                <tr class="table-row">
                                     <td class="px-4 py-3">
-                                        <a href="{{ route('devices.show', $device) }}" class="font-semibold text-navy-900 hover:underline">
+                                        <a href="{{ route('devices.show', $device) }}" class="whitespace-nowrap font-semibold text-navy-900 hover:underline">
                                             {{ $device->label ?? $device->hostname }}
                                         </a>
                                         <p class="font-mono text-[11px] text-ink-faint">{{ $device->hostname }}</p>

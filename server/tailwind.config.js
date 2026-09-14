@@ -83,8 +83,18 @@ export default {
                 },
             },
             boxShadow: {
-                card: '0 1px 2px rgba(25, 28, 32, 0.04), 0 1px 3px rgba(25, 28, 32, 0.06)',
-                overlay: '0 8px 24px rgba(25, 28, 32, 0.12)',
+                card: '0 1px 2px rgba(25, 28, 32, 0.03), 0 2px 8px rgba(25, 28, 32, 0.05)',
+                lift: '0 4px 16px rgba(25, 28, 32, 0.08)',
+                overlay: '0 12px 32px rgba(15, 34, 55, 0.16)',
+            },
+            keyframes: {
+                'fade-in': {
+                    '0%': { opacity: '0', transform: 'translateY(6px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+            },
+            animation: {
+                'fade-in': 'fade-in 0.25s ease-out both',
             },
         },
     },

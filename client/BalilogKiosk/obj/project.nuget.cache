@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "NIK56fIB/os=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Zerolysimin\\Downloads\\New folder (46)\\balilog\\client\\BalilogKiosk\\BalilogKiosk.csproj",
+  "expectedPackageFiles": [
+    "E:\\balilog-cache\\nuget\\microsoft.data.sqlite\\10.0.12\\microsoft.data.sqlite.10.0.12.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\microsoft.data.sqlite.core\\10.0.12\\microsoft.data.sqlite.core.10.0.12.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\skiasharp\\4.152.0\\skiasharp.4.152.0.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\skiasharp.nativeassets.macos\\4.152.0\\skiasharp.nativeassets.macos.4.152.0.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\skiasharp.nativeassets.win32\\4.152.0\\skiasharp.nativeassets.win32.4.152.0.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\sqlitepclraw.bundle_e_sqlite3\\2.1.12\\sqlitepclraw.bundle_e_sqlite3.2.1.12.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\sqlitepclraw.core\\2.1.12\\sqlitepclraw.core.2.1.12.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\sqlitepclraw.lib.e_sqlite3\\2.1.12\\sqlitepclraw.lib.e_sqlite3.2.1.12.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\sqlitepclraw.provider.e_sqlite3\\2.1.12\\sqlitepclraw.provider.e_sqlite3.2.1.12.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512",
+    "E:\\balilog-cache\\nuget\\system.security.cryptography.protecteddata\\10.0.12\\system.security.cryptography.protecteddata.10.0.12.nupkg.sha512"
+  ],
+  "logs": []
+}

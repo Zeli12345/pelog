@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Profil">
+<x-dashboard-layout title="Profil" subtitle="Akun & keamanan Anda">
     <div class="max-w-2xl space-y-4">
         <section class="card p-5">
             <div class="max-w-xl">

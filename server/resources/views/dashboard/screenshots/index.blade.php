@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Screenshot">
+<x-dashboard-layout title="Screenshot" subtitle="Bukti visual aktivitas sesi siswa">
     <div class="space-y-4">
         <section class="card p-4">
             <form method="GET" action="{{ route('screenshots.index') }}" class="flex flex-wrap items-end gap-3">

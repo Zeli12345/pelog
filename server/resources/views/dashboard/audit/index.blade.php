@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Audit">
+<x-dashboard-layout title="Audit" subtitle="Jejak aksi penting pada sistem">
     <div class="space-y-4">
         <section class="card p-4">
             <form method="GET" action="{{ route('audit.index') }}" class="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -31,7 +31,7 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-line text-sm">
                     <thead>
-                        <tr class="bg-paper/70 text-left text-[11px] uppercase tracking-wider text-ink-faint">
+                        <tr class="table-head">
                             <th class="px-4 py-2.5 font-semibold">Waktu (WITA)</th>
                             <th class="px-4 py-2.5 font-semibold">Aksi</th>
                             <th class="px-4 py-2.5 font-semibold">Entitas</th>
@@ -42,7 +42,7 @@
                     </thead>
                     <tbody class="divide-y divide-line/70">
                         @forelse ($logs as $log)
-                            <tr class="hover:bg-paper/60">
+                            <tr class="table-row">
                                 <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-ink-soft">
                                     {{ $log->created_at->timezone('Asia/Makassar')->format('d/m/Y H:i:s') }}
                                 </td>
