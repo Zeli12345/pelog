@@ -1,0 +1,12 @@
+# OS / Editor
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea
+
+# Build & arsip (output berat berada di E:\balilog-build)
+*.zip
+*.7z
+
+# Log lokal
+*.local.log
