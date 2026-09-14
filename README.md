@@ -46,7 +46,7 @@ Akses dashboard: <http://127.0.0.1:8000>
 ## Status Fase
 
 - [x] **Fase 0** — Environment, tooling, scaffold repo & Laravel
-- [ ] Fase 1 — Fondasi backend: migrasi, model, auth, design token
+- [x] **Fase 1** — Fondasi backend: migrasi, model, auth, design token
 - [ ] Fase 2 — REST API v1 + test
 - [ ] Fase 3 — Dashboard web + gate desain
 - [ ] Fase 4 — Client kiosk (.NET 8)
