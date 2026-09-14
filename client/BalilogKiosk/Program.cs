@@ -11,12 +11,8 @@ internal static class Program
 
         if (!isFirstInstance)
         {
-            MessageBox.Show(
-                "BALI-LOG sudah berjalan pada komputer ini.",
-                "BALI-LOG",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-
+            // Instance lain sudah berjalan (mis. dipicu watchdog) — keluar diam-diam
+            // tanpa dialog agar tidak mengganggu pengguna.
             return;
         }
 

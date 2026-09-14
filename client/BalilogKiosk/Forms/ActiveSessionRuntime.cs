@@ -6,11 +6,24 @@ using Timer = System.Windows.Forms.Timer;
 namespace BalilogKiosk.App.Forms;
 
 /// <summary>
-/// Widget sesi aktif: stopwatch, heartbeat, sinkronisasi, dan screenshot terjadwal.
-/// Selalu di atas; siswa menekan SELESAI untuk mengakhiri sesi.
+/// Runtime sesi aktif TANPA jendela.
+/// Mengelola heartbeat, sinkronisasi, screenshot terjadwal, dan pengakhiran sesi
+/// melalui ikon di system tray atau hotkey Ctrl+Alt+S.
 /// </summary>
-public sealed class ActiveWidgetForm : Form
+public sealed class ActiveSessionRuntime : Form
 {
+    private const int HotkeyId = 0xB1;
+    private const int WmHotkey = 0x0312;
+    private const uint ModAlt = 0x0001;
+    private const uint ModControl = 0x0002;
+    private const int VkS = 0x53;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
     private readonly AppServices _services;
 
     private readonly LocalSessionRecord _record;
@@ -19,11 +32,7 @@ public sealed class ActiveWidgetForm : Form
 
     private readonly bool _isStudent;
 
-    private readonly Label _timerLabel;
-
-    private readonly Label _statusLabel;
-
-    private readonly Button _finishButton;
+    private readonly NotifyIcon _tray;
 
     private readonly Timer _uiTimer = new() { Interval = 1000 };
 
@@ -39,7 +48,7 @@ public sealed class ActiveWidgetForm : Form
 
     private bool _finishing;
 
-    public ActiveWidgetForm(
+    public ActiveSessionRuntime(
         AppServices services,
         LocalSessionRecord record,
         string displayName,
@@ -51,93 +60,34 @@ public sealed class ActiveWidgetForm : Form
         _displayName = displayName;
         _isStudent = record.UserType == "student";
 
-        Text = "BALI-LOG — Sesi Aktif";
+        // Form tidak pernah ditampilkan — hanya wadah handle untuk timer/tray/hotkey.
+        ShowInTaskbar = false;
         FormBorderStyle = FormBorderStyle.None;
+        WindowState = FormWindowState.Minimized;
         StartPosition = FormStartPosition.Manual;
-        TopMost = true;
-        ShowInTaskbar = true;
-        BackColor = Color.FromArgb(15, 34, 55);
-        ClientSize = new Size(340, 172);
-        Font = new Font("Segoe UI", 9F);
+        Location = new Point(-32000, -32000);
+        Size = new Size(1, 1);
 
-        var workingArea = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
-        Location = new Point(workingArea.Right - Width - 14, workingArea.Bottom - Height - 14);
-
-        // Bilah emas di kiri
-        var accent = new Panel
+        _tray = new NotifyIcon
         {
-            BackColor = Color.FromArgb(201, 162, 39),
-            Dock = DockStyle.Left,
-            Width = 5,
+            Icon = LoadTrayIcon(),
+            Visible = true,
         };
 
-        var deviceLabel = new Label
+        _tray.DoubleClick += async (_, _) => await EndSessionAsync();
+
+        var menu = new ContextMenuStrip();
+        menu.Items.Add(new ToolStripMenuItem("Selesai Penggunaan (Ctrl+Alt+S)", null, async (_, _) => await EndSessionAsync()));
+        menu.Items.Add(new ToolStripSeparator());
+
+        var infoItem = new ToolStripMenuItem($"{displayName} — {(string.IsNullOrEmpty(subjectName) ? subtitle : subjectName)}", null, (_, _) => { })
         {
-            Text = Environment.MachineName,
-            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(150, 175, 200),
-            Location = new Point(20, 12),
-            AutoSize = true,
+            Enabled = false,
         };
 
-        var nameLabel = new Label
-        {
-            Text = displayName,
-            Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-            ForeColor = Color.White,
-            Location = new Point(20, 32),
-            AutoSize = false,
-            Size = new Size(300, 22),
-            AutoEllipsis = true,
-        };
+        menu.Items.Add(infoItem);
+        _tray.ContextMenuStrip = menu;
 
-        var subtitleLabel = new Label
-        {
-            Text = string.IsNullOrEmpty(subjectName) ? subtitle : $"{subtitle} · {subjectName}",
-            Font = new Font("Segoe UI", 8.5F),
-            ForeColor = Color.FromArgb(180, 200, 220),
-            Location = new Point(20, 56),
-            AutoSize = false,
-            Size = new Size(300, 18),
-            AutoEllipsis = true,
-        };
-
-        _timerLabel = new Label
-        {
-            Text = "00:00:00",
-            Font = new Font("Consolas", 20F, FontStyle.Bold),
-            ForeColor = Color.FromArgb(255, 214, 120),
-            Location = new Point(20, 78),
-            AutoSize = true,
-        };
-
-        _statusLabel = new Label
-        {
-            Text = "• online",
-            Font = new Font("Segoe UI", 8F),
-            ForeColor = Color.FromArgb(150, 220, 170),
-            Location = new Point(228, 92),
-            AutoSize = true,
-        };
-
-        _finishButton = new Button
-        {
-            Text = "SELESAI PENGGUNAAN",
-            Location = new Point(20, 122),
-            Size = new Size(300, 36),
-            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-            BackColor = Color.FromArgb(178, 58, 46),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand,
-        };
-
-        _finishButton.FlatAppearance.BorderSize = 0;
-        _finishButton.Click += OnFinishClick;
-
-        Controls.AddRange([accent, deviceLabel, nameLabel, subtitleLabel, _timerLabel, _statusLabel, _finishButton]);
-
-        // Timer screenshot: satu kali di menit yang dikonfigurasi.
         var config = _services.Sync.LoadCachedConfig();
         var minute = _services.Config.TestMode ? _services.Config.TestScreenshotMinute : config.ScreenshotMinute;
 
@@ -148,7 +98,7 @@ public sealed class ActiveWidgetForm : Form
             _screenshotTimer.Start();
         }
 
-        _uiTimer.Tick += (_, _) => UpdateElapsed();
+        _uiTimer.Tick += (_, _) => UpdateTooltip();
         _heartbeatTimer.Tick += OnHeartbeatTick;
         _syncTimer.Tick += OnSyncTick;
 
@@ -158,20 +108,67 @@ public sealed class ActiveWidgetForm : Form
 
         SystemEvents.SessionEnding += OnSystemSessionEnding;
 
-        UpdateElapsed();
+        UpdateTooltip();
+
+        // Paksa pembuatan handle agar hotkey & timer langsung aktif tanpa menampilkan jendela.
+        _ = Handle;
     }
 
-    private void UpdateElapsed()
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+
+        RegisterHotKey(Handle, HotkeyId, ModControl | ModAlt, VkS);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WmHotkey && m.WParam.ToInt32() == HotkeyId)
+        {
+            _ = EndSessionAsync();
+
+            return;
+        }
+
+        base.WndProc(ref m);
+    }
+
+    private static Icon LoadTrayIcon()
+    {
+        try
+        {
+            var logoPath = Path.Combine(AppContext.BaseDirectory, "Assets", "logo_sekolah.png");
+
+            if (File.Exists(logoPath))
+            {
+                using var bitmap = new Bitmap(logoPath);
+                using var resized = new Bitmap(bitmap, new Size(16, 16));
+
+                return Icon.FromHandle(resized.GetHicon());
+            }
+        }
+        catch (Exception)
+        {
+            // jatuh ke ikon bawaan
+        }
+
+        return SystemIcons.Application;
+    }
+
+    private TimeSpan Elapsed()
     {
         var started = _record.StartedAtClient ?? _services.Clock.Now;
         var elapsed = _services.Clock.Now - started;
 
-        if (elapsed < TimeSpan.Zero)
-        {
-            elapsed = TimeSpan.Zero;
-        }
+        return elapsed < TimeSpan.Zero ? TimeSpan.Zero : elapsed;
+    }
 
-        _timerLabel.Text = $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+    private void UpdateTooltip()
+    {
+        var text = $"BALI-LOG • {Elapsed():hh\\:mm\\:ss} • {_displayName}";
+
+        // Batas NotifyIcon.Text adalah 63 karakter.
+        _tray.Text = text.Length > 60 ? text[..60] : text;
     }
 
     private async void OnHeartbeatTick(object? sender, EventArgs e)
@@ -194,18 +191,13 @@ public sealed class ActiveWidgetForm : Form
             _record.State = "synced";
             _services.Store.SaveSession(_record);
 
-            ShutdownWidget();
+            ShutdownRuntime();
         }
-
-        UpdateStatus(data is not null);
     }
 
     private async void OnSyncTick(object? sender, EventArgs e)
     {
-        var online = await _services.Api.HealthAsync();
-        UpdateStatus(online);
-
-        if (!online)
+        if (!await _services.Api.HealthAsync())
         {
             return;
         }
@@ -254,15 +246,8 @@ public sealed class ActiveWidgetForm : Form
         await _services.Sync.PushScreenshotsAsync();
     }
 
-    private void UpdateStatus(bool online)
-    {
-        _statusLabel.Text = online ? "• online" : "• offline";
-        _statusLabel.ForeColor = online
-            ? Color.FromArgb(150, 220, 170)
-            : Color.FromArgb(255, 190, 110);
-    }
-
-    private async void OnFinishClick(object? sender, EventArgs e)
+    /// <summary>Mengakhiri sesi (dipanggil tray / hotkey).</summary>
+    public async Task EndSessionAsync()
     {
         if (_finishing)
         {
@@ -270,18 +255,15 @@ public sealed class ActiveWidgetForm : Form
         }
 
         _finishing = true;
-        _finishButton.Enabled = false;
-
         StopTimers();
 
         if (_isStudent)
         {
             using var feedback = new FeedbackForm(_displayName);
 
-            if (feedback.ShowDialog(this) != DialogResult.OK)
+            if (feedback.ShowDialog() != DialogResult.OK)
             {
                 _finishing = false;
-                _finishButton.Enabled = true;
                 StartTimers();
 
                 return;
@@ -298,29 +280,7 @@ public sealed class ActiveWidgetForm : Form
         await _services.Sync.PushSessionsAsync();
         await _services.Sync.PushScreenshotsAsync();
 
-        ShutdownWidget();
-    }
-
-    private void OnSystemSessionEnding(object sender, SessionEndingEventArgs e)
-    {
-        StopTimers();
-
-        if (_record.IsOpen)
-        {
-            _services.Sessions.Close(_record, null, null, "shutdown");
-        }
-
-        _allowClose = true;
-    }
-
-    private void ShutdownWidget()
-    {
-        StopTimers();
-        _allowClose = true;
-
-        SystemEvents.SessionEnding -= OnSystemSessionEnding;
-
-        Close();
+        ShutdownRuntime();
     }
 
     private void StartTimers()
@@ -337,6 +297,36 @@ public sealed class ActiveWidgetForm : Form
         _heartbeatTimer.Stop();
         _syncTimer.Stop();
         _screenshotTimer?.Stop();
+    }
+
+    private void OnSystemSessionEnding(object sender, SessionEndingEventArgs e)
+    {
+        StopTimers();
+
+        if (_record.IsOpen)
+        {
+            _services.Sessions.Close(_record, null, null, "shutdown");
+        }
+
+        _allowClose = true;
+    }
+
+    private void ShutdownRuntime()
+    {
+        StopTimers();
+        _allowClose = true;
+
+        SystemEvents.SessionEnding -= OnSystemSessionEnding;
+
+        _tray.Visible = false;
+        _tray.Dispose();
+
+        if (Handle != IntPtr.Zero)
+        {
+            UnregisterHotKey(Handle, HotkeyId);
+        }
+
+        Close();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

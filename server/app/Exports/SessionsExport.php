@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Http\Controllers\Dashboard;
+namespace App\Exports;
 
-use App\Exports\SessionsExport;
 use App\Models\UsageSession;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;

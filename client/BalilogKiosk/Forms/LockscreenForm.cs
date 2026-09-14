@@ -1021,7 +1021,7 @@ public sealed class LockscreenForm : Form
                 var record = _services.Sessions.BeginStudent(_student.Nisn, subjectId, purpose);
                 _ = _services.Sessions.TryRemoteStartAsync(record);
 
-                LaunchWidget(record, _student.Name, _student.ClassName, subjectName);
+                LaunchSession(record, _student.Name, _student.ClassName, subjectName);
             }
             else
             {
@@ -1035,7 +1035,7 @@ public sealed class LockscreenForm : Form
                 var record = _services.Sessions.BeginStaff(_staff.NipId, purpose);
                 _ = _services.Sessions.TryRemoteStartAsync(record);
 
-                LaunchWidget(record, _staff.Name, "Guru / Pegawai", null);
+                LaunchSession(record, _staff.Name, "Guru / Pegawai", null);
             }
 
             await Task.CompletedTask;
@@ -1046,21 +1046,20 @@ public sealed class LockscreenForm : Form
         }
     }
 
-    private void LaunchWidget(Core.Data.LocalSessionRecord record, string displayName, string subtitle, string? subjectName)
+    private void LaunchSession(Core.Data.LocalSessionRecord record, string displayName, string subtitle, string? subjectName)
     {
         Hide();
 
-        var widget = new ActiveWidgetForm(_services, record, displayName, subtitle, subjectName);
+        // Runtime sesi berjalan tanpa jendela: tray + hotkey Ctrl+Alt+S.
+        var runtime = new ActiveSessionRuntime(_services, record, displayName, subtitle, subjectName);
 
-        widget.FormClosed += (_, _) =>
+        runtime.FormClosed += (_, _) =>
         {
             ResetFlow();
             Show();
             Activate();
             _ = RefreshBootstrapQuietlyAsync();
         };
-
-        widget.Show();
     }
 
     private void ResetFlow()
@@ -1141,7 +1140,7 @@ public sealed class LockscreenForm : Form
             subtitle = "Guru / Pegawai";
         }
 
-        BeginInvoke(() => LaunchWidget(record, displayName, subtitle, subjectName));
+        BeginInvoke(() => LaunchSession(record, displayName, subtitle, subjectName));
     }
 
     protected override void OnHandleCreated(EventArgs e)
