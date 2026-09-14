@@ -1,0 +1,6 @@
+{
+    "base_url":  "http://192.168.0.100:8000",
+    "enrollment_code":  "",
+    "test_mode":  false,
+    "hardening_enabled":  true
+}

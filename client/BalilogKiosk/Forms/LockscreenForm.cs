@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using BalilogKiosk.App.Services;
 using BalilogKiosk.Core.Models;
 using BalilogKiosk.Core.Security;
 using Timer = System.Windows.Forms.Timer;
@@ -77,6 +78,8 @@ public sealed class LockscreenForm : Form
     private Mode _mode = Mode.Student;
     private CachedStudent? _student;
     private CachedStaff? _staff;
+    private readonly KeyboardBlocker _keyboardBlocker = new();
+    private bool _allowExit;
     private bool _busy;
 
     public LockscreenForm(AppServices services)
@@ -495,6 +498,7 @@ public sealed class LockscreenForm : Form
         {
             CenterCard();
             _identifyInput.Focus();
+            ApplyKioskHardening();
         };
 
         Resize += (_, _) => CenterCard();
@@ -1049,9 +1053,94 @@ public sealed class LockscreenForm : Form
         ShowStep(Step.Identify);
     }
 
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    private const int WmHotkey = 0x0312;
+
+    private void ApplyKioskHardening()
+    {
+        if (!_services.Config.HardeningEnabled || _services.Config.TestMode)
+        {
+            return;
+        }
+
+        // Hardening hanya untuk AKUN SISWA (non-admin).
+        // Akun Administrator tidak boleh dikunci agar jalur pemulihan selalu terbuka.
+        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+        var principal = new System.Security.Principal.WindowsPrincipal(identity);
+
+        if (principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
+        {
+            return;
+        }
+
+        KioskHardening.Apply();
+        _keyboardBlocker.Install();
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+
+        // Hotkey rahasia admin: Ctrl + Alt + Shift + B
+        RegisterHotKey(Handle, 1, 0x0002 | 0x0001 | 0x0004, 0x42);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WmHotkey && m.WParam.ToInt32() == 1)
+        {
+            OpenAdminMode();
+
+            return;
+        }
+
+        base.WndProc(ref m);
+    }
+
+    private void OpenAdminMode()
+    {
+        if (!_services.Config.HardeningEnabled || _services.Config.TestMode)
+        {
+            return;
+        }
+
+        _keyboardBlocker.SetEnabled(false);
+
+        using (var unlock = new AdminUnlockForm(_services))
+        {
+            if (unlock.ShowDialog(this) != DialogResult.OK)
+            {
+                _keyboardBlocker.SetEnabled(true);
+
+                return;
+            }
+        }
+
+        KioskHardening.Suspend();
+
+        using (var admin = new AdminModeForm())
+        {
+            admin.ShowDialog(this);
+
+            if (admin.ExitApplication)
+            {
+                _allowExit = true;
+                Application.Exit();
+
+                return;
+            }
+        }
+
+        KioskHardening.Apply();
+        _keyboardBlocker.SetEnabled(true);
+        Activate();
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if (e.CloseReason == CloseReason.UserClosing)
+        if (!_allowExit && e.CloseReason == CloseReason.UserClosing)
         {
             e.Cancel = true;
 
@@ -1060,6 +1149,7 @@ public sealed class LockscreenForm : Form
 
         _clockTimer.Stop();
         _serverTimer.Stop();
+        _keyboardBlocker.Dispose();
 
         base.OnFormClosing(e);
     }

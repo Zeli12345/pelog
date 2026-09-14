@@ -14,6 +14,12 @@ public sealed class KioskConfig
     /// <summary>Mengganti menit screenshot saat TestMode aktif.</summary>
     public int TestScreenshotMinute { get; set; } = 1;
 
+    /// <summary>Hardening HKCU kiosk — hanya diaktifkan pada mesin produksi (oleh installer).</summary>
+    public bool HardeningEnabled { get; set; }
+
+    /// <summary>Hash password admin kiosk (format: pbkdf2-sha256$iterations$salt$hash).</summary>
+    public string? AdminPasswordHash { get; set; }
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,

@@ -5,7 +5,10 @@ using System.Text;
 namespace BalilogKiosk.Core.Security;
 
 /// <summary>
-/// Menyimpan token perangkat dengan proteksi DPAPI (per akun Windows).
+/// Menyimpan token perangkat dengan proteksi DPAPI.
+/// Memakai scope LocalMachine agar token tetap terbaca oleh akun mana pun di
+/// komputer yang sama (installer berjalan sebagai Admin, kiosk berjalan sebagai
+/// akun siswa). Token perangkat bisa dicabut dari dashboard kapan saja.
 /// Jika DPAPI tidak tersedia, fallback ke base64 (hanya untuk pengembangan).
 /// </summary>
 [SupportedOSPlatform("windows")]
@@ -18,7 +21,7 @@ public static class TokenProtector
         try
         {
             var bytes = Encoding.UTF8.GetBytes(plaintext);
-            var protectedBytes = ProtectedData.Protect(bytes, Entropy, DataProtectionScope.CurrentUser);
+            var protectedBytes = ProtectedData.Protect(bytes, Entropy, DataProtectionScope.LocalMachine);
 
             return "dpapi:" + Convert.ToBase64String(protectedBytes);
         }
@@ -35,7 +38,7 @@ public static class TokenProtector
             if (stored.StartsWith("dpapi:", StringComparison.Ordinal))
             {
                 var bytes = Convert.FromBase64String(stored["dpapi:".Length..]);
-                var plain = ProtectedData.Unprotect(bytes, Entropy, DataProtectionScope.CurrentUser);
+                var plain = ProtectedData.Unprotect(bytes, Entropy, DataProtectionScope.LocalMachine);
 
                 return Encoding.UTF8.GetString(plain);
             }
