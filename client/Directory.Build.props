@@ -1,0 +1,13 @@
+<Project>
+
+  <!--
+    BALI-LOG: semua output build (bin/obj) diarahkan ke drive E:
+    agar drive C: (kapasitas terbatas) tidak penuh.
+  -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>E:\balilog-build\client\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>E:\balilog-build\client\bin\$(MSBuildProjectName)\</BaseOutputPath>
+    <MSBuildProjectExtensionsPath>E:\balilog-build\client\obj\$(MSBuildProjectName)\</MSBuildProjectExtensionsPath>
+  </PropertyGroup>
+
+</Project>
