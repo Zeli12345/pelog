@@ -48,7 +48,7 @@ Akses dashboard: <http://127.0.0.1:8000>
 - [x] **Fase 0** — Environment, tooling, scaffold repo & Laravel
 - [x] **Fase 1** — Fondasi backend: migrasi, model, auth, design token
 - [x] **Fase 2** — REST API v1 + test
-- [ ] Fase 3 — Dashboard web + gate desain
+- [x] **Fase 3** — Dashboard web + gate desain
 - [ ] Fase 4 — Client kiosk (.NET 8)
 - [ ] Fase 5 — Hardening + installer
 - [ ] Fase 6 — E2E di VMware
