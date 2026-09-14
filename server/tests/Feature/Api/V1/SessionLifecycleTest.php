@@ -35,7 +35,8 @@ class SessionLifecycleTest extends TestCase
         $this->postJson('/api/v1/sessions/start', $payload, $this->deviceHeaders($token))
             ->assertStatus(201)
             ->assertJsonPath('data.active', true)
-            ->assertJsonPath('data.user_type', 'student');
+            ->assertJsonPath('data.user_type', 'student')
+            ->assertJsonPath('data.duration_minutes', 0);
 
         $this->assertDatabaseHas('usage_sessions', [
             'session_uuid' => $payload['session_uuid'],

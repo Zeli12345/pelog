@@ -214,7 +214,7 @@ class SessionController extends Controller
                 metadata: [
                     'session_uuid' => $session->session_uuid,
                     'close_reason' => $reason->value,
-                    'duration_minutes' => $session->duration_minutes,
+                    'duration_minutes' => (int) ($session->duration_minutes ?? 0),
                 ],
                 actorType: 'device',
                 actorId: $device->id,
@@ -243,7 +243,7 @@ class SessionController extends Controller
             'last_heartbeat_at' => $session->last_heartbeat_at?->toIso8601String(),
             'closed_at' => $session->closed_at?->toIso8601String(),
             'close_reason' => $session->close_reason?->value,
-            'duration_minutes' => $session->duration_minutes,
+            'duration_minutes' => (int) ($session->duration_minutes ?? 0),
             'active' => $session->isActive(),
         ];
     }

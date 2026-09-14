@@ -18,4 +18,8 @@
     <ProjectReference Include="..\BalilogKiosk.Core\BalilogKiosk.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\assets\logo_sekolah.png" Link="Assets\logo_sekolah.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

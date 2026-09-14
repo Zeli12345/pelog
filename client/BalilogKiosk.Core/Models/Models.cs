@@ -185,7 +185,7 @@ public sealed class SessionDto
 
     public string? CloseReason { get; set; }
 
-    public int DurationMinutes { get; set; }
+    public int? DurationMinutes { get; set; }
 }
 
 public sealed class HeartbeatData

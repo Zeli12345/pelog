@@ -1,16 +1,51 @@
-namespace BalilogKiosk;
+using BalilogKiosk.App.Forms;
 
-static class Program
+namespace BalilogKiosk.App;
+
+internal static class Program
 {
-    /// <summary>
-    ///  The main entry point for the application.
-    /// </summary>
     [STAThread]
-    static void Main()
+    private static void Main()
     {
-        // To customize application configuration such as set high DPI settings or default font,
-        // see https://aka.ms/applicationconfiguration.
+        using var mutex = new Mutex(true, @"Local\BALI-LOG-Kiosk", out var isFirstInstance);
+
+        if (!isFirstInstance)
+        {
+            MessageBox.Show(
+                "BALI-LOG sudah berjalan pada komputer ini.",
+                "BALI-LOG",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+
+            return;
+        }
+
         ApplicationConfiguration.Initialize();
-        Application.Run(new Form1());
-    }    
+
+        try
+        {
+            var services = AppServices.Create();
+
+            // Muat token perangkat; kalau belum ada, tampilkan dialog enrollment.
+            if (!services.TryLoadDeviceToken())
+            {
+                using var enroll = new EnrollForm(services);
+
+                if (enroll.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+            }
+
+            Application.Run(new LockscreenForm(services));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                "Aplikasi gagal dijalankan:\n\n" + ex.Message,
+                "BALI-LOG — Kesalahan",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+    }
 }

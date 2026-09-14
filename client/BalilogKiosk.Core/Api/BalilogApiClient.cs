@@ -178,11 +178,22 @@ public sealed class BalilogApiClient
                     return ApiResult<T>.Fail("empty_response", "Respons server kosong.", status);
                 }
 
-                var envelope = JsonSerializer.Deserialize<ApiEnvelope<T>>(text, JsonOptions);
+                ApiEnvelope<T>? envelope = null;
+
+                try
+                {
+                    envelope = JsonSerializer.Deserialize<ApiEnvelope<T>>(text, JsonOptions);
+                }
+                catch (JsonException)
+                {
+                    // ditangani di bawah: sertakan cuplikan respons untuk diagnosa
+                }
 
                 if (envelope is null)
                 {
-                    return ApiResult<T>.Fail("parse_error", "Respons server tidak dapat dibaca.", status);
+                    var snippet = text.Length > 200 ? text[..200] : text;
+
+                    return ApiResult<T>.Fail("parse_error", $"Respons server tidak dapat dibaca (HTTP {status}). {snippet}", status);
                 }
 
                 _clock.Sync(envelope.ServerTime);
