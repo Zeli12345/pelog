@@ -26,6 +26,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Buat ikon Desktop"; GroupDescription: "Ikon:"; Flags: unchecked
+Name: "hardening"; Description: "Terapkan penguncian kiosk (Task Manager, CMD, Regedit, Win+R)"; GroupDescription: "Pengamanan:"; Flags: checkedonce
 Name: "watchdog"; Description: "Pasang pengawas otomatis (menjalankan ulang kiosk bila tertutup)"; GroupDescription: "Pengamanan:"; Flags: checkedonce
 
 [Files]
@@ -33,13 +34,14 @@ Name: "watchdog"; Description: "Pasang pengawas otomatis (menjalankan ulang kios
 Source: "E:\balilog-build\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; 2) Konfigurasi client (dibuat oleh scripts\build-installer.ps1)
-Source: "balilog.client.json"; DestDir: "{commonappdata}\BALI-LOG"; Flags: onlyifdoesntexist
+Source: "balilog.client.json"; DestDir: "{commonappdata}\BALI-LOG"; DestName: "balilog.json"; Flags: onlyifdoesntexist
 
 ; 3) Kode enrollment (opsional)
 Source: "enrollment.txt"; DestDir: "{commonappdata}\BALI-LOG"; Flags: onlyifdoesntexist skipifsourcedoesntexist
 
-; 4) Alat pemulihan untuk Admin IT
+; 4) Alat pemulihan & hardening untuk Admin IT
 Source: "unlock-admin.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "hardening.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README-OPS.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -53,6 +55,8 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 ; Izin akses data untuk semua akun (kiosk berjalan sebagai akun siswa, installer sebagai Admin)
 Filename: "icacls.exe"; Parameters: """{commonappdata}\BALI-LOG"" /grant *S-1-5-32-545:(OI)(CI)M /T /C"; Flags: runhidden; StatusMsg: "Menyiapkan izin folder data..."
+; Terapkan penguncian kiosk untuk akun yang sedang login (installer berjalan sebagai admin)
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\hardening.ps1"" -Apply"; Flags: runhidden; Tasks: hardening; StatusMsg: "Menerapkan penguncian kiosk..."
 ; Autostart saat logon (scheduled task, semua pengguna; berjalan sebagai pengguna yang login)
 Filename: "schtasks.exe"; Parameters: "/Create /F /TN ""BALI-LOG Kiosk (Logon)"" /SC ONLOGON /TR ""{app}\BalilogKiosk.exe"""; Flags: runhidden; StatusMsg: "Mendaftarkan autostart kiosk..."
 ; Watchdog: cek tiap 2 menit, jalankan kiosk bila tidak berjalan

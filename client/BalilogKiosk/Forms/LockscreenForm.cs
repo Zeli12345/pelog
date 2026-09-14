@@ -1065,17 +1065,9 @@ public sealed class LockscreenForm : Form
             return;
         }
 
-        // Hardening hanya untuk AKUN SISWA (non-admin).
-        // Akun Administrator tidak boleh dikunci agar jalur pemulihan selalu terbuka.
-        using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-        var principal = new System.Security.Principal.WindowsPrincipal(identity);
-
-        if (principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator))
-        {
-            return;
-        }
-
-        KioskHardening.Apply();
+        // Kebijakan registry (Task Manager, CMD, Regedit, dll.) diterapkan oleh
+        // INSTALLER dengan hak admin. Aplikasi kiosk (non-admin) hanya memasang
+        // pemblokir shortcut yang berjalan di sesi pengguna.
         _keyboardBlocker.Install();
     }
 
@@ -1118,7 +1110,17 @@ public sealed class LockscreenForm : Form
             }
         }
 
-        KioskHardening.Suspend();
+        // Menangguhkan kebijakan kiosk butuh hak admin (UAC).
+        if (!RunHardeningScript("-Suspend"))
+        {
+            MessageBox.Show(
+                this,
+                "Hardening tidak dapat ditangguhkan (izin admin tidak diberikan).\n" +
+                "Mode admin tetap dibuka, namun penguncian Task Manager/CMD masih aktif.",
+                "BALI-LOG",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
 
         using (var admin = new AdminModeForm())
         {
@@ -1133,9 +1135,41 @@ public sealed class LockscreenForm : Form
             }
         }
 
-        KioskHardening.Apply();
+        RunHardeningScript("-Apply");
         _keyboardBlocker.SetEnabled(true);
         Activate();
+    }
+
+    private static bool RunHardeningScript(string argument)
+    {
+        try
+        {
+            var script = Path.Combine(AppContext.BaseDirectory, "hardening.ps1");
+
+            if (!File.Exists(script))
+            {
+                return false;
+            }
+
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -File \"{script}\" {argument}",
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+            };
+
+            using var process = System.Diagnostics.Process.Start(startInfo);
+            process?.WaitForExit(60_000);
+
+            return process is { ExitCode: 0 };
+        }
+        catch (Exception)
+        {
+            // UAC dibatalkan atau proses gagal start
+            return false;
+        }
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
