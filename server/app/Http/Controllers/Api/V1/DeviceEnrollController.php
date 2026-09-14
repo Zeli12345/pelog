@@ -41,16 +41,36 @@ class DeviceEnrollController extends Controller
             return ApiResponse::error('invalid_enrollment_code', 'Kode enrollment salah.', 401);
         }
 
-        $hostnameTaken = Device::query()
+        $existingByHostname = Device::query()
             ->where('hostname', $data['hostname'])
             ->where('uuid', '!=', $data['device_uuid'])
-            ->exists();
+            ->first();
 
-        if ($hostnameTaken) {
-            return ApiResponse::error(
-                'hostname_taken',
-                'Hostname sudah terdaftar untuk perangkat lain. Hubungi admin IT.',
-                409,
+        if ($existingByHostname !== null) {
+            $hasActiveSession = $existingByHostname->sessions()->active()->exists();
+            $recentlySeen = $existingByHostname->last_seen_at !== null
+                && $existingByHostname->last_seen_at->diffInMinutes(now()) < 10;
+
+            if ($hasActiveSession || $recentlySeen) {
+                return ApiResponse::error(
+                    'hostname_taken',
+                    'Hostname sudah terdaftar untuk perangkat lain. Hubungi admin IT.',
+                    409,
+                );
+            }
+
+            // Adopsi perangkat lama yang sudah tidak aktif (mis. laptop di-reimage).
+            $oldUuid = $existingByHostname->uuid;
+            $existingByHostname->forceFill(['uuid' => $data['device_uuid']])->save();
+
+            Audit::log(
+                action: 'device_adopted',
+                entityType: Device::class,
+                entityId: $existingByHostname->id,
+                metadata: ['hostname' => $data['hostname'], 'old_uuid' => $oldUuid],
+                actorType: 'device',
+                actorId: $existingByHostname->id,
+                request: $request,
             );
         }
 

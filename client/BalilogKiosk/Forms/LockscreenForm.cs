@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using BalilogKiosk.App.Services;
 using BalilogKiosk.Core.Models;
 using BalilogKiosk.Core.Security;
+using BalilogKiosk.Core.Services;
 using Timer = System.Windows.Forms.Timer;
 
 namespace BalilogKiosk.App.Forms;
@@ -499,6 +500,7 @@ public sealed class LockscreenForm : Form
             CenterCard();
             _identifyInput.Focus();
             ApplyKioskHardening();
+            TryRecoverSession();
         };
 
         Resize += (_, _) => CenterCard();
@@ -1056,9 +1058,7 @@ public sealed class LockscreenForm : Form
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-    private const int WmHotkey = 0x0312;
-
-    private void ApplyKioskHardening()
+    private const int WmHotkey = 0x0312;    private void ApplyKioskHardening()
     {
         if (!_services.Config.HardeningEnabled || _services.Config.TestMode)
         {
@@ -1069,6 +1069,52 @@ public sealed class LockscreenForm : Form
         // INSTALLER dengan hak admin. Aplikasi kiosk (non-admin) hanya memasang
         // pemblokir shortcut yang berjalan di sesi pengguna.
         _keyboardBlocker.Install();
+    }
+
+    /// <summary>
+    /// Saat aplikasi dibuka: lanjutkan sesi yang masih berjalan, atau tutup sesi
+    /// menggantung sebagai "recovery" (misal setelah mati listrik).
+    /// </summary>
+    private void TryRecoverSession()
+    {
+        var recovery = _services.Sessions.RecoverOnStartup();
+
+        if (recovery.Action == RecoveryAction.None || recovery.Record is null)
+        {
+            return;
+        }
+
+        if (recovery.Action == RecoveryAction.ClosedAsRecovery)
+        {
+            // Sesi lama ditutup otomatis; worker akan menyinkronkannya.
+            _ = _services.Sync.PushSessionsAsync();
+
+            return;
+        }
+
+        // Sesi masih segar -> lanjutkan dengan widget yang sama.
+        var record = recovery.Record;
+        var displayName = "Pengguna";
+        var subtitle = string.Empty;
+        string? subjectName = null;
+
+        if (record.UserType == "student" && record.Nisn is not null)
+        {
+            var student = _services.Store.GetStudent(record.Nisn);
+            displayName = student?.Name ?? record.Nisn;
+            subtitle = student?.ClassName ?? string.Empty;
+            subjectName = record.SubjectId is null
+                ? null
+                : _services.Store.GetSubjects().FirstOrDefault(subject => subject.Id == record.SubjectId)?.Name;
+        }
+        else if (record.NipId is not null)
+        {
+            var staff = _services.Store.GetStaff(record.NipId);
+            displayName = staff?.Name ?? record.NipId;
+            subtitle = "Guru / Pegawai";
+        }
+
+        BeginInvoke(() => LaunchWidget(record, displayName, subtitle, subjectName));
     }
 
     protected override void OnHandleCreated(EventArgs e)

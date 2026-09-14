@@ -94,6 +94,10 @@ def main() -> int:
                 client.captureScreen(value)
             elif kind == "sleep":
                 time.sleep(float(value))
+            elif kind == "size":
+                client.refreshScreen()
+                width, height = client.screen.size
+                print(f"screen: {width}x{height}")
             else:
                 print(f"Aksi tidak dikenal: {action}", file=sys.stderr)
                 return 2
