@@ -49,7 +49,10 @@ Akses dashboard: <http://127.0.0.1:8000>
 - [x] **Fase 1** — Fondasi backend: migrasi, model, auth, design token
 - [x] **Fase 2** — REST API v1 + test
 - [x] **Fase 3** — Dashboard web + gate desain
-- [ ] Fase 4 — Client kiosk (.NET 8)
-- [ ] Fase 5 — Hardening + installer
-- [ ] Fase 6 — E2E di VMware
-- [ ] Fase 7 — Verifikasi menyeluruh + dokumentasi akhir
+- [x] **Fase 4** — Client kiosk (.NET 8) + 27 test (termasuk E2E server nyata)
+- [x] **Fase 5** — Hardening + installer (`E:\balilog-build\installer\BALI-LOG_Setup.exe`)
+- [x] **Fase 6** — E2E di VMware (20 skenario, lihat `docs/VERIFICATION.md`)
+- [ ] Fase 7 — Verifikasi menyeluruh + dokumentasi akhir *(berjalan — laporan ada di `docs/VERIFICATION.md`)*
+
+> **Laporan verifikasi lengkap:** `docs/VERIFICATION.md`
+> **Bukti uji VM:** `docs/evidence-fase-6/` · **Pratinjau desain:** `docs/design-preview-v2/`

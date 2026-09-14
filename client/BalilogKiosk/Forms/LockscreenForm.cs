@@ -75,6 +75,7 @@ public sealed class LockscreenForm : Form
 
     private readonly Timer _clockTimer;
     private readonly Timer _serverTimer;
+    private readonly Timer _syncTimer;
 
     private Mode _mode = Mode.Student;
     private CachedStudent? _student;
@@ -492,6 +493,10 @@ public sealed class LockscreenForm : Form
         _serverTimer.Tick += async (_, _) => await CheckServerAsync();
         _serverTimer.Start();
 
+        _syncTimer = new Timer { Interval = 60_000 };
+        _syncTimer.Tick += async (_, _) => await SyncIdleAsync();
+        _syncTimer.Start();
+
         SetMode(Mode.Student);
         ShowStep(Step.Identify);
 
@@ -597,6 +602,28 @@ public sealed class LockscreenForm : Form
         _serverLabel.ForeColor = online
             ? Color.FromArgb(150, 220, 170)
             : Color.FromArgb(255, 190, 110);
+    }
+
+    /// <summary>
+    /// Sinkronisasi saat kiosk menganggur: kirim sesi/screenshot tertunda
+    /// (hasil recovery atau mode offline) dan segarkan cache berkala.
+    /// </summary>
+    private async Task SyncIdleAsync()
+    {
+        if (await _services.Api.HealthAsync())
+        {
+            await _services.Sync.PushSessionsAsync();
+            await _services.Sync.PushScreenshotsAsync();
+
+            var config = _services.Sync.LoadCachedConfig();
+            var lastBootstrap = _services.Store.GetKv("bootstrap_at");
+
+            if (DateTimeOffset.TryParse(lastBootstrap, out var at) &&
+                _services.Clock.Now - at > TimeSpan.FromMinutes(Math.Max(1, config.BootstrapRefreshMinutes)))
+            {
+                await _services.Sync.RefreshBootstrapAsync();
+            }
+        }
     }
 
     private async Task RefreshBootstrapQuietlyAsync()
@@ -1229,6 +1256,7 @@ public sealed class LockscreenForm : Form
 
         _clockTimer.Stop();
         _serverTimer.Stop();
+        _syncTimer.Stop();
         _keyboardBlocker.Dispose();
 
         base.OnFormClosing(e);

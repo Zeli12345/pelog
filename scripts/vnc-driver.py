@@ -81,6 +81,16 @@ def main() -> int:
 
             if kind == "key":
                 press_key(client, value)
+            elif kind == "combo":
+                keys = [KEY_ALIASES.get(part, part) for part in value.split("+")]
+                for modifier in keys[:-1]:
+                    client.keyDown(modifier)
+                    client.pause(0.12)
+                client.keyPress(keys[-1])
+                client.pause(0.12)
+                for modifier in reversed(keys[:-1]):
+                    client.keyUp(modifier)
+                    client.pause(0.12)
             elif kind == "type":
                 type_text(client, value)
             elif kind == "click":
