@@ -29,6 +29,11 @@ SMK Negeri 1 Mas Ubud
 2. CARA MENGAKHIRI SESI SISWA (tanpa widget/tray di desktop)
    - Tekan Ctrl + Alt + S (fokus di mana saja), lalu isi form refleksi
      belajar yang muncul.
+   - SELAMA SESI BERJALAN, seluruh aplikasi berfungsi normal: Run (Win+R),
+     CMD, PowerShell, Task Manager, Regedit, Pengaturan, dll. (penguncian
+     kiosk hanya aktif saat layar kunci / tidak ada sesi).
+   - Begitu sesi berakhir (atau laptop kembali ke layar kunci), penguncian
+     kiosk dipasang ulang otomatis — pada SESI BERIKUTNYA bebas lagi.
    - Sesi juga DITUTUP OTOMATIS saat siswa log off, shutdown, atau restart
      (alasan "shutdown"); catatan tersinkron ke server setelah laptop
      menyala kembali.

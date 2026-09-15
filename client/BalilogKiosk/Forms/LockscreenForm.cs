@@ -1121,16 +1121,55 @@ public sealed class LockscreenForm : Form
     {
         Hide();
 
-        // Runtime sesi berjalan tanpa jendela: tray + hotkey Ctrl+Alt+S.
+        // Sesi berjalan: desktop dipakai normal (Run, CMD, Pengaturan, dll. bebas).
+        EnterSessionMode();
+
+        // Runtime sesi berjalan tanpa jendela: hotkey Ctrl+Alt+S untuk mengakhiri.
         var runtime = new ActiveSessionRuntime(_services, record, displayName, subtitle, subjectName);
 
         runtime.FormClosed += (_, _) =>
         {
+            // Kembali ke layar kunci: pasang lagi penguncian kiosk.
+            ExitSessionMode();
+
             ResetFlow();
             Show();
             Activate();
             _ = RefreshBootstrapQuietlyAsync();
         };
+    }
+
+    /// <summary>
+    /// Mode sesi aktif: pemblokir keyboard dimatikan dan kebijakan kiosk
+    /// ditangguhkan agar seluruh aplikasi (Run, CMD, Settings, dsb.)
+    /// berfungsi normal selama siswa/guru memakai laptop.
+    /// </summary>
+    private void EnterSessionMode()
+    {
+        _keyboardBlocker.SetEnabled(false);
+
+        if (!_services.Config.HardeningEnabled || _services.Config.TestMode)
+        {
+            return;
+        }
+
+        Task.Run(KioskHardening.Suspend);
+    }
+
+    /// <summary>
+    /// Kembali ke layar kunci: pasang ulang pemblokir keyboard dan kebijakan
+    /// kiosk supaya laptop tetap terkunci saat tidak ada sesi.
+    /// </summary>
+    private void ExitSessionMode()
+    {
+        _keyboardBlocker.SetEnabled(true);
+
+        if (!_services.Config.HardeningEnabled || _services.Config.TestMode)
+        {
+            return;
+        }
+
+        Task.Run(KioskHardening.Apply);
     }
 
     private void ResetFlow()
@@ -1155,7 +1194,9 @@ public sealed class LockscreenForm : Form
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-    private const int WmHotkey = 0x0312;    private void ApplyKioskHardening()
+    private const int WmHotkey = 0x0312;
+
+    private void ApplyKioskHardening()
     {
         if (!_services.Config.HardeningEnabled || _services.Config.TestMode)
         {
