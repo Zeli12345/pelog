@@ -26,12 +26,6 @@
                 <input id="remember_me" type="checkbox" class="rounded border-line text-navy-800 shadow-sm focus:ring-navy-500" name="remember">
                 {{ __('Remember me') }}
             </label>
-
-            @if (Route::has('password.request'))
-                <a class="text-sm font-medium text-navy-800 hover:underline" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
         </div>
 
         <x-primary-button class="w-full justify-center">
@@ -39,8 +33,4 @@
             {{ __('Log in') }}
         </x-primary-button>
     </form>
-
-    <p class="mt-6 border-t border-line pt-4 text-center text-[11px] leading-relaxed text-ink-faint">
-        Registrasi publik ditutup. Akun dashboard hanya dibuat oleh Admin IT sekolah.
-    </p>
 </x-guest-layout>

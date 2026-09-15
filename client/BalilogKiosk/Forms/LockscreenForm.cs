@@ -598,6 +598,14 @@ public sealed class LockscreenForm : Form
     {
         var online = await _services.Api.HealthAsync();
 
+        if (_services.Store.GetKv("device_maintenance") == "1")
+        {
+            _serverLabel.Text = "• Laptop dalam perawatan Admin IT";
+            _serverLabel.ForeColor = Color.FromArgb(255, 200, 110);
+
+            return;
+        }
+
         _serverLabel.Text = online ? "• Terhubung ke server" : "• Mode offline — data tersimpan di laptop";
         _serverLabel.ForeColor = online
             ? Color.FromArgb(150, 220, 170)
@@ -623,6 +631,9 @@ public sealed class LockscreenForm : Form
             {
                 await _services.Sync.RefreshBootstrapAsync();
             }
+
+            // Auto-update: periksa & unduh rilis baru (di-throttle oleh UpdateService).
+            await _services.Updates.CheckAndStageAsync(_services.Config.UpdateCheckHours);
         }
     }
 
@@ -996,6 +1007,15 @@ public sealed class LockscreenForm : Form
                 return;
             }
 
+            if (_services.Store.GetKv("device_maintenance") == "1" &&
+                !await _services.Api.HealthAsync())
+            {
+                // Saat offline, pakai status terakhir yang diketahui (konservatif).
+                _detailsError.Text = "Laptop ini sedang dalam perawatan Admin IT.";
+
+                return;
+            }
+
             string? subjectName = null;
             long? subjectId = null;
 
@@ -1019,7 +1039,13 @@ public sealed class LockscreenForm : Form
                 subjectName = subject.Name;
 
                 var record = _services.Sessions.BeginStudent(_student.Nisn, subjectId, purpose);
-                _ = _services.Sessions.TryRemoteStartAsync(record);
+
+                if (!await StartRemoteOrRejectAsync(record))
+                {
+                    _detailsError.Text = "Laptop ini sedang dalam perawatan Admin IT. Penggunaan tidak dapat dimulai.";
+
+                    return;
+                }
 
                 LaunchSession(record, _student.Name, _student.ClassName, subjectName);
             }
@@ -1033,7 +1059,13 @@ public sealed class LockscreenForm : Form
                 }
 
                 var record = _services.Sessions.BeginStaff(_staff.NipId, purpose);
-                _ = _services.Sessions.TryRemoteStartAsync(record);
+
+                if (!await StartRemoteOrRejectAsync(record))
+                {
+                    _detailsError.Text = "Laptop ini sedang dalam perawatan Admin IT. Penggunaan tidak dapat dimulai.";
+
+                    return;
+                }
 
                 LaunchSession(record, _staff.Name, "Guru / Pegawai", null);
             }
@@ -1044,6 +1076,38 @@ public sealed class LockscreenForm : Form
         {
             _busy = false;
         }
+    }
+
+    /// <summary>
+    /// Kirim start ke server saat online agar penolakan (mis. perangkat dalam
+    /// perawatan) langsung terlihat. Saat offline, sesi tetap berjalan lokal.
+    /// </summary>
+    private async Task<bool> StartRemoteOrRejectAsync(Core.Data.LocalSessionRecord record)
+    {
+        if (!await _services.Api.HealthAsync())
+        {
+            _ = _services.Sessions.TryRemoteStartAsync(record);
+
+            return true;
+        }
+
+        var result = await _services.Sessions.TryRemoteStartAsync(record);
+
+        if (result is { Ok: false, ErrorCode: "device_maintenance" })
+        {
+            _services.Sessions.Close(record, null, null, "admin");
+            _services.Store.SetKv("device_maintenance", "1");
+
+            return false;
+        }
+
+        if (result is { Ok: true })
+        {
+            // Sesi diterima server: pastikan penanda perawatan lama dibersihkan.
+            _services.Store.SetKv("device_maintenance", "0");
+        }
+
+        return true;
     }
 
     private void LaunchSession(Core.Data.LocalSessionRecord record, string displayName, string subtitle, string? subjectName)
@@ -1182,8 +1246,9 @@ public sealed class LockscreenForm : Form
             }
         }
 
-        // Menangguhkan kebijakan kiosk butuh hak admin (UAC).
-        if (!RunHardeningScript("-Suspend"))
+        // Menangguhkan kebijakan kiosk lewat Scheduled Task elevated yang dibuat
+        // installer (runas + powershell diblokir DisallowRun saat hardening aktif).
+        if (!KioskHardening.Suspend())
         {
             MessageBox.Show(
                 this,
@@ -1207,41 +1272,9 @@ public sealed class LockscreenForm : Form
             }
         }
 
-        RunHardeningScript("-Apply");
+        KioskHardening.Apply();
         _keyboardBlocker.SetEnabled(true);
         Activate();
-    }
-
-    private static bool RunHardeningScript(string argument)
-    {
-        try
-        {
-            var script = Path.Combine(AppContext.BaseDirectory, "hardening.ps1");
-
-            if (!File.Exists(script))
-            {
-                return false;
-            }
-
-            var startInfo = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -File \"{script}\" {argument}",
-                UseShellExecute = true,
-                Verb = "runas",
-                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
-            };
-
-            using var process = System.Diagnostics.Process.Start(startInfo);
-            process?.WaitForExit(60_000);
-
-            return process is { ExitCode: 0 };
-        }
-        catch (Exception)
-        {
-            // UAC dibatalkan atau proses gagal start
-            return false;
-        }
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

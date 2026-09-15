@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\CloseReason;
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\StaffMember;
@@ -33,6 +34,24 @@ class SessionController extends Controller
 
         /** @var Device $device */
         $device = $request->attributes->get('balilog_device');
+
+        if ($device->status === DeviceStatus::Maintenance) {
+            Audit::log(
+                action: 'session_blocked_maintenance',
+                entityType: Device::class,
+                entityId: $device->id,
+                metadata: ['session_uuid' => $data['session_uuid']],
+                actorType: 'device',
+                actorId: $device->id,
+                request: $request,
+            );
+
+            return ApiResponse::error(
+                'device_maintenance',
+                'Laptop ini sedang dalam perawatan Admin IT. Penggunaan tidak dapat dimulai.',
+                423,
+            );
+        }
 
         $existing = UsageSession::query()->where('session_uuid', $data['session_uuid'])->first();
 

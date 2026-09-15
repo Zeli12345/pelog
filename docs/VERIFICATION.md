@@ -178,7 +178,30 @@ Konteks: build baru (tanpa widget timer, tanpa dialog instance ganda, perbaikan 
 Catatan operasional penting hasil sesi ini:
 
 1. Saat hardening aktif, di akun siswa **cmd.exe dan file .bat/.cmd diblokir** (DisableCMD=2) dan **PowerShell diblokir** (DisallowRun). Untuk pemeliharaan di akun siswa, jalankan skrip lewat **wscript (.vbs)** - lihat `scripts/vm-reset-kiosk.vbs` - atau login ke akun admin Windows.
-2. **MODE ADMIN tidak dapat menangguhkan hardening saat policy aktif** karena skrip suspend memakai `powershell.exe` yang juga diblokir DisallowRun. Rekomendasi perbaikan: ganti mekanisme suspend menjadi Scheduled Task elevated yang dibuat installer (belum diimplementasikan).
+2. **MODE ADMIN tidak dapat menangguhkan hardening saat policy aktif** karena skrip suspend memakai `powershell.exe` yang juga diblokir DisallowRun. Rekomendasi perbaikan: ganti mekanisme suspend menjadi Scheduled Task elevated yang dibuat installer (belum diimplementasikan). **[SUDAH DIPERBAIKI - lihat bagian 8]**
+
+---
+
+## 8. Verifikasi Fitur Baru (2026-09-15, sesi lanjutan)
+
+Fitur yang ditambahkan/diperbaiki: nama perangkat saat enroll, mode perawatan perangkat, filter & urutan halaman Screenshot, tutup paksa sesi dari dashboard, perbaikan MODE ADMIN (Scheduled Task), heartbeat saat form refleksi, pembersihan teks UI.
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Enroll menyimpan label perangkat (kolom "Nama perangkat") | Lulus - unit test server |
+| 2 | Ubah nama/lokasi/status perangkat dari dashboard | Lulus - DB `LAB-BL-09` + audit `device_updated` |
+| 3 | Status perawatan memblokir sesi baru | Lulus - HTTP 423 `device_maintenance` + audit `session_blocked_maintenance` |
+| 4 | Client menampilkan pesan + label status perawatan | Lulus - pesan merah saat MULAI + label bawah "Laptop dalam perawatan Admin IT" |
+| 5 | Kembali ke Tersedia langsung bisa mulai (tanpa tunggu refresh 15 menit) | Lulus - sesi id=16 dibuat seketika |
+| 6 | Filter screenshot per perangkat + pencarian nama + 4 mode urut | Lulus - UI + unit test |
+| 7 | Tutup paksa sesi aktif dari dashboard (alasan `admin`) | Lulus - durasi benar, perangkat kembali `available`, audit `session_closed_admin` |
+| 8 | MODE ADMIN menangguhkan hardening tanpa prompt UAC | Lulus - tanpa peringatan; probe registry `DisableTaskMgr` hilang; KEMBALI KE KIOSK menerapkan ulang |
+| 9 | Form refleksi tidak memblokir heartbeat (non-modal) | Lulus - sesi tetap berjalan & tercatat (id=16, feedback tersimpan) |
+| 10 | Pembersihan teks UI (login, footer, catatan penyimpanan) | Lulus - halaman login bersih, catatan penyimpanan dihapus |
+
+Catatan teknis: task elevated dibuat lewat XML (`schtasks /TR` tidak bisa menangani path ber-spasi + kutip - "Invalid argument/option"). Task: `BALILogHardeningSuspend` / `BALILogHardeningApply` (InteractiveToken + HighestAvailable, tanpa trigger), dibuat installer saat opsi "Terapkan penguncian kiosk" dicentang.
+
+Tes otomatis: **98 tes server** (15 baru: label perangkat, blokir perawatan, admin perangkat, tutup sesi, filter screenshot) + **27 tes client** - semuanya hijau.
 3. Heartbeat terjeda selama dialog Refleksi terbuka (modal memblokir UI thread). Aman karena penutup sesi menggantung memakai batas 15 menit; endpoint end tetap idempoten.
 
 Batasan yang tersisa sama dengan bagian 6.

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\CloseReason;
 use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\UsageSession;
+use App\Support\Audit;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -49,5 +52,39 @@ class SessionController extends Controller
             'devices' => Device::query()->orderByRaw('label IS NULL, label')->orderBy('hostname')->get(),
             'userTypes' => UserType::cases(),
         ]);
+    }
+
+    public function close(UsageSession $session): RedirectResponse
+    {
+        if (! $session->isActive()) {
+            return back()->with('status', 'Sesi sudah selesai.');
+        }
+
+        $closedAt = now();
+        $startedAt = $session->started_at_server ?? $session->started_at_client ?? $session->created_at;
+
+        $session->forceFill([
+            'closed_at' => $closedAt,
+            'close_reason' => CloseReason::Admin,
+            'duration_minutes' => $startedAt !== null
+                ? max(0, (int) $startedAt->diffInMinutes($closedAt))
+                : 0,
+        ])->save();
+
+        $session->device?->forceFill(['status' => 'available'])->saveQuietly();
+
+        Audit::log(
+            action: 'session_closed_admin',
+            entityType: UsageSession::class,
+            entityId: $session->id,
+            metadata: [
+                'session_uuid' => $session->session_uuid,
+                'device_id' => $session->device_id,
+            ],
+            actorType: 'user',
+            actorId: auth()->id(),
+        );
+
+        return back()->with('status', 'Sesi berhasil ditutup.');
     }
 }

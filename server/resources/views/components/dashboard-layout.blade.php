@@ -160,7 +160,7 @@
         </main>
 
         <footer class="border-t border-line/70 px-4 py-3 text-center text-[11px] text-ink-faint lg:px-6">
-            BALI-LOG v{{ config('balilog.version') }} — Buku Aktivitas Laptop &amp; Informasi Device Log · SMK Negeri 1 Mas Ubud
+                &copy; {{ now()->year }} SMK Negeri 1 Mas Ubud
         </footer>
     </div>
 </div>

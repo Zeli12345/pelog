@@ -35,24 +35,6 @@
             <h1 class="text-2xl font-bold leading-snug text-white">
                 Sistem Monitoring Aktivitas Komputer &amp; Laptop Sekolah
             </h1>
-            <p class="mt-3 text-sm leading-relaxed text-navy-200">
-                Mencatat siapa menggunakan perangkat, untuk mata pelajaran apa, dan berapa lama —
-                lengkap dengan refleksi belajar siswa.
-            </p>
-            <ul class="mt-6 space-y-2.5 text-sm text-navy-200">
-                <li class="flex items-center gap-2.5">
-                    <span class="h-1.5 w-1.5 rounded-full bg-gold-400"></span>
-                    Status 30+ perangkat secara real-time
-                </li>
-                <li class="flex items-center gap-2.5">
-                    <span class="h-1.5 w-1.5 rounded-full bg-gold-400"></span>
-                    Tetap berjalan saat jaringan sekolah terputus
-                </li>
-                <li class="flex items-center gap-2.5">
-                    <span class="h-1.5 w-1.5 rounded-full bg-gold-400"></span>
-                    Laporan penggunaan &amp; refleksi belajar siswa
-                </li>
-            </ul>
         </div>
 
         <div class="relative">
@@ -76,7 +58,7 @@
         </div>
 
         <p class="mt-10 text-center text-[11px] text-ink-faint">
-            BALI-LOG v{{ config('balilog.version') }} — Buku Aktivitas Laptop &amp; Informasi Device Log
+            &copy; {{ now()->year }} SMK Negeri 1 Mas Ubud
         </p>
     </main>
 </div>

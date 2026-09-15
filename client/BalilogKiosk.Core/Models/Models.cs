@@ -61,6 +61,8 @@ public sealed class EnrollRequest
 
     public string Hostname { get; set; } = string.Empty;
 
+    public string? Label { get; set; }
+
     public List<string>? MacList { get; set; }
 
     public string DeviceType { get; set; } = "laptop";
@@ -100,7 +102,18 @@ public sealed class BootstrapData
 
     public List<CachedSubject> Subjects { get; set; } = [];
 
+    public DeviceInfo? Device { get; set; }
+
     public ClientConfig Config { get; set; } = new();
+}
+
+public sealed class DeviceInfo
+{
+    public string Hostname { get; set; } = string.Empty;
+
+    public string? Label { get; set; }
+
+    public bool Maintenance { get; set; }
 }
 
 public sealed class CachedStudent
@@ -258,4 +271,21 @@ public sealed class SyncSessionResult
 public sealed class SyncResults
 {
     public List<SyncSessionResult> Results { get; set; } = [];
+}
+
+public sealed class AppReleaseInfo
+{
+    public bool Available { get; set; }
+
+    public string? Version { get; set; }
+
+    public string? Sha256 { get; set; }
+
+    public long SizeBytes { get; set; }
+
+    public bool Mandatory { get; set; }
+
+    public string? Notes { get; set; }
+
+    public string? Url { get; set; }
 }

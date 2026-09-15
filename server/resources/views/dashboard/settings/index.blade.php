@@ -173,14 +173,6 @@
                 </p>
             </section>
 
-            <section class="card p-5">
-                <h2 class="text-sm font-semibold text-ink">Catatan Penyimpanan</h2>
-                <ul class="mt-2 space-y-1.5 text-[11px] leading-relaxed text-ink-soft">
-                    <li>• Screenshot disimpan sebagai berkas di server (bukan di database).</li>
-                    <li>• Estimasi: ±55 KB per screenshot WebP 1280 px.</li>
-                    <li>• 30 perangkat × 6 sesi/hari ≈ 10 MB/hari ≈ 3,6 GB/tahun.</li>
-                </ul>
-            </section>
         </aside>
     </div>
 </x-dashboard-layout>

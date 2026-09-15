@@ -35,6 +35,8 @@ Write-Host '[unlock] Log off / log in ulang agar perubahan berlaku penuh.' -Fore
 if ($FullUninstall) {
     schtasks /Delete /F /TN "BALI-LOG Kiosk (Logon)" | Out-Null
     schtasks /Delete /F /TN "BALI-LOG Kiosk (Watchdog)" | Out-Null
+    schtasks /Delete /F /TN "BALILogHardeningSuspend" | Out-Null
+    schtasks /Delete /F /TN "BALILogHardeningApply" | Out-Null
 
     Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'BALILogKiosk' -ErrorAction SilentlyContinue
 

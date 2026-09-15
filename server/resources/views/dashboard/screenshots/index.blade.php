@@ -1,25 +1,50 @@
-<x-dashboard-layout title="Screenshot" subtitle="Bukti visual aktivitas sesi siswa">
+<x-dashboard-layout title="Screenshot" subtitle="Bukti visual aktivitas sesi">
     <div class="space-y-4">
         <section class="card p-4">
-            <form method="GET" action="{{ route('screenshots.index') }}" class="flex flex-wrap items-end gap-3">
+            <form method="GET" action="{{ route('screenshots.index') }}" class="grid grid-cols-2 gap-3 lg:grid-cols-6">
+                <div>
+                    <label class="label" for="device_id">Perangkat</label>
+                    <select id="device_id" name="device_id" class="input text-xs">
+                        <option value="">Semua</option>
+                        @foreach ($devices as $device)
+                            <option value="{{ $device->id }}" @selected((string) $filters['device_id'] === (string) $device->id)>
+                                {{ $device->label ?? $device->hostname }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
                 <div>
                     <label class="label" for="from">Dari</label>
-                    <input type="date" id="from" name="from" value="{{ $from }}" class="input text-xs">
+                    <input type="date" id="from" name="from" value="{{ $filters['from'] }}" class="input text-xs">
                 </div>
                 <div>
                     <label class="label" for="to">Sampai</label>
-                    <input type="date" id="to" name="to" value="{{ $to }}" class="input text-xs">
+                    <input type="date" id="to" name="to" value="{{ $filters['to'] }}" class="input text-xs">
                 </div>
-                <button type="submit" class="btn-primary !py-2 text-xs">Terapkan</button>
-                <a href="{{ route('screenshots.index') }}" class="btn-secondary !py-2 text-xs">Reset</a>
-                <p class="ml-auto text-xs text-ink-faint">{{ $screenshots->total() }} screenshot · retensi permanen</p>
+                <div>
+                    <label class="label" for="sort">Urutkan</label>
+                    <select id="sort" name="sort" class="input text-xs">
+                        <option value="latest" @selected($filters['sort'] === 'latest')>Terbaru dulu</option>
+                        <option value="oldest" @selected($filters['sort'] === 'oldest')>Terlama dulu</option>
+                        <option value="device" @selected($filters['sort'] === 'device')>Perangkat (A-Z)</option>
+                        <option value="student" @selected($filters['sort'] === 'student')>Nama siswa (A-Z)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label" for="q">Cari</label>
+                    <input type="text" id="q" name="q" value="{{ $filters['q'] }}" placeholder="Nama / NISN / tujuan…" class="input text-xs">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="btn-primary !py-2 text-xs">Terapkan</button>
+                    <a href="{{ route('screenshots.index') }}" class="btn-secondary !py-2 text-xs">Reset</a>
+                </div>
             </form>
         </section>
 
         @if ($screenshots->isEmpty())
             <section class="card px-4 py-16 text-center">
-                <p class="text-sm font-medium text-ink-soft">Belum ada screenshot pada rentang ini.</p>
-                <p class="mt-1 text-xs text-ink-faint">Screenshot diambil otomatis 1× per sesi siswa (menit ke-30).</p>
+                <p class="text-sm font-medium text-ink-soft">Belum ada screenshot yang cocok dengan filter.</p>
+                <p class="mt-1 text-xs text-ink-faint">Screenshot diambil otomatis 1x per sesi siswa.</p>
             </section>
         @else
             <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
@@ -46,7 +71,10 @@
                 @endforeach
             </div>
 
-            <div>{{ $screenshots->links() }}</div>
+            <div class="flex items-center justify-between">
+                <p class="text-xs text-ink-faint">{{ $screenshots->total() }} screenshot</p>
+                {{ $screenshots->links() }}
+            </div>
         @endif
     </div>
 </x-dashboard-layout>

@@ -19,6 +19,7 @@ class DeviceEnrollController extends Controller
             'enrollment_code' => ['required', 'string', 'max:64'],
             'device_uuid' => ['required', 'uuid'],
             'hostname' => ['required', 'string', 'max:100'],
+            'label' => ['nullable', 'string', 'max:40'],
             'mac_list' => ['nullable', 'array'],
             'device_type' => ['nullable', 'in:pc,laptop'],
             'agent_version' => ['nullable', 'string', 'max:30'],
@@ -79,8 +80,11 @@ class DeviceEnrollController extends Controller
         $device = Device::query()->firstOrNew(['uuid' => $data['device_uuid']]);
         $isNew = ! $device->exists;
 
+        $label = trim((string) ($data['label'] ?? ''));
+
         $device->fill([
             'hostname' => $data['hostname'],
+            'label' => $label !== '' ? $label : $device->label,
             'device_token_hash' => hash('sha256', $token),
             'mac_list' => $data['mac_list'] ?? null,
             'device_type' => $data['device_type'] ?? 'laptop',

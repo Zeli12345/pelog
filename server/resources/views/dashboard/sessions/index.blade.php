@@ -63,6 +63,9 @@
                                 <th class="px-4 py-2.5 font-semibold">Durasi</th>
                                 <th class="px-4 py-2.5 font-semibold">Refleksi</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
+                                @if (auth()->user()->isAdminIt())
+                                    <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-line/70">
@@ -105,6 +108,16 @@
                                             <span class="badge-muted">{{ $session->close_reason?->label() ?? 'Selesai' }}</span>
                                         @endif
                                     </td>
+                                    @if (auth()->user()->isAdminIt())
+                                        <td class="px-4 py-2.5 text-right">
+                                            @if ($session->isActive())
+                                                <form method="POST" action="{{ route('sessions.close', $session) }}" onsubmit="return confirm('Tutup paksa sesi ini? Perangkat akan kembali tersedia.')">
+                                                    @csrf
+                                                    <button type="submit" class="btn-secondary !px-2.5 !py-1 text-[11px]">Tutup</button>
+                                                </form>
+                                            @endif
+                                        </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Device;
 use App\Models\Screenshot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -13,21 +14,57 @@ class ScreenshotController extends Controller
 {
     public function index(Request $request): View
     {
-        $from = $request->query('from');
-        $to = $request->query('to');
+        $filters = [
+            'from' => $request->query('from'),
+            'to' => $request->query('to'),
+            'device_id' => $request->query('device_id'),
+            'q' => trim((string) $request->query('q', '')),
+            'sort' => $request->query('sort', 'latest'),
+        ];
 
         $screenshots = Screenshot::query()
+            ->select('screenshots.*')
             ->with(['usageSession.device', 'usageSession.student', 'usageSession.staff'])
-            ->when($from, fn ($query, $value) => $query->whereDate('captured_at', '>=', $value))
-            ->when($to, fn ($query, $value) => $query->whereDate('captured_at', '<=', $value))
-            ->orderByDesc('captured_at')
-            ->paginate(24)
-            ->withQueryString();
+            ->when($filters['from'], fn ($query, $value) => $query->whereDate('screenshots.captured_at', '>=', $value))
+            ->when($filters['to'], fn ($query, $value) => $query->whereDate('screenshots.captured_at', '<=', $value))
+            ->when($filters['device_id'], function ($query, $value) {
+                $query->whereHas('usageSession', fn ($session) => $session->where('device_id', $value));
+            })
+            ->when($filters['q'] !== '', function ($query) use ($filters) {
+                $search = $filters['q'];
+
+                $query->whereHas('usageSession', function ($session) use ($search) {
+                    $session->where('usage_purpose', 'like', "%{$search}%")
+                        ->orWhereHas('student', function ($student) use ($search) {
+                            $student->where('name', 'like', "%{$search}%")
+                                ->orWhere('nisn', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('staff', function ($staff) use ($search) {
+                            $staff->where('name', 'like', "%{$search}%")
+                                ->orWhere('nip_id', 'like', "%{$search}%");
+                        });
+                });
+            });
+
+        match ($filters['sort']) {
+            'oldest' => $screenshots->orderBy('screenshots.captured_at'),
+            'device' => $screenshots
+                ->leftJoin('usage_sessions as filter_session', 'filter_session.id', '=', 'screenshots.usage_session_id')
+                ->leftJoin('devices as filter_device', 'filter_device.id', '=', 'filter_session.device_id')
+                ->orderByRaw('COALESCE(filter_device.label, filter_device.hostname) asc')
+                ->orderByDesc('screenshots.captured_at'),
+            'student' => $screenshots
+                ->leftJoin('usage_sessions as filter_session', 'filter_session.id', '=', 'screenshots.usage_session_id')
+                ->leftJoin('students as filter_student', 'filter_student.id', '=', 'filter_session.student_id')
+                ->orderByRaw("COALESCE(filter_student.name, 'zzz') asc")
+                ->orderByDesc('screenshots.captured_at'),
+            default => $screenshots->orderByDesc('screenshots.captured_at'),
+        };
 
         return view('dashboard.screenshots.index', [
-            'screenshots' => $screenshots,
-            'from' => $from,
-            'to' => $to,
+            'screenshots' => $screenshots->paginate(24)->withQueryString(),
+            'filters' => $filters,
+            'devices' => Device::query()->orderByRaw('label IS NULL, label')->orderBy('hostname')->get(),
         ]);
     }
 

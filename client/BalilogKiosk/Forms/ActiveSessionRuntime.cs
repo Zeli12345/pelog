@@ -213,6 +213,9 @@ public sealed class ActiveSessionRuntime : Form
         {
             await _services.Sync.RefreshBootstrapAsync();
         }
+
+        // Auto-update: periksa & unduh rilis baru (di-throttle oleh UpdateService).
+        await _services.Updates.CheckAndStageAsync(_services.Config.UpdateCheckHours);
     }
 
     private async void OnScreenshotTick(object? sender, EventArgs e)
@@ -259,9 +262,9 @@ public sealed class ActiveSessionRuntime : Form
 
         if (_isStudent)
         {
-            using var feedback = new FeedbackForm(_displayName);
+            var (confirmed, feedbackText, comprehension) = await ShowFeedbackAsync();
 
-            if (feedback.ShowDialog() != DialogResult.OK)
+            if (!confirmed)
             {
                 _finishing = false;
                 StartTimers();
@@ -269,7 +272,7 @@ public sealed class ActiveSessionRuntime : Form
                 return;
             }
 
-            _services.Sessions.Close(_record, feedback.Feedback, feedback.Comprehension);
+            _services.Sessions.Close(_record, feedbackText, comprehension);
         }
         else
         {
@@ -281,6 +284,30 @@ public sealed class ActiveSessionRuntime : Form
         await _services.Sync.PushScreenshotsAsync();
 
         ShutdownRuntime();
+    }
+
+    /// <summary>
+    /// Menampilkan form refleksi TANPA modal agar timer heartbeat/sinkronisasi
+    /// tetap berjalan selama siswa mengisi.
+    /// </summary>
+    private async Task<(bool Confirmed, string? Feedback, string? Comprehension)> ShowFeedbackAsync()
+    {
+        using var feedback = new FeedbackForm(_displayName)
+        {
+            TopMost = true,
+        };
+
+        var completion = new TaskCompletionSource<(bool, string?, string?)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        feedback.FormClosed += (_, _) => completion.TrySetResult((
+            feedback.DialogResult == DialogResult.OK,
+            feedback.Feedback,
+            feedback.Comprehension));
+
+        feedback.Show();
+
+        return await completion.Task;
     }
 
     private void StartTimers()

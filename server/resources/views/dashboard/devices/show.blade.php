@@ -32,6 +32,13 @@
                         <p class="text-sm font-semibold text-ink">{{ $activeSession->student?->name ?? $activeSession->staff?->name }}</p>
                         <p class="text-xs text-ink-soft">{{ $activeSession->student?->class ?? 'Guru / Pegawai' }} · {{ $activeSession->subject?->name ?? 'tanpa mapel' }}</p>
                         <p class="mt-1 font-mono text-xs text-moss-700">Durasi {{ $start ? $start->diff(now())->format('%H:%I') : '—' }}</p>
+
+                        @if (auth()->user()->isAdminIt())
+                            <form method="POST" action="{{ route('sessions.close', $activeSession) }}" class="mt-2" onsubmit="return confirm('Tutup paksa sesi ini? Perangkat akan kembali tersedia.')">
+                                @csrf
+                                <button type="submit" class="btn-secondary !px-2.5 !py-1 text-[11px]">Tutup Sesi</button>
+                            </form>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -77,6 +84,46 @@
                 </div>
             </dl>
         </section>
+
+        {{-- Pengaturan perangkat (Admin IT) --}}
+        @if (auth()->user()->isAdminIt())
+            <section class="card p-4">
+                <header class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-sm font-semibold text-ink">Pengaturan Perangkat</h3>
+                    @if ($device->status === \App\Enums\DeviceStatus::Maintenance)
+                        <span class="badge border-gold-300 bg-gold-50 text-gold-800">Mode perawatan aktif</span>
+                    @endif
+                </header>
+
+                <form method="POST" action="{{ route('devices.update', $device) }}" class="grid grid-cols-1 gap-3 md:grid-cols-4 md:items-end">
+                    @csrf
+                    @method('PUT')
+
+                    <div>
+                        <label class="label" for="label">Nama perangkat</label>
+                        <input id="label" name="label" value="{{ old('label', $device->label) }}" placeholder="mis. LAB-BL-09" class="input text-xs">
+                    </div>
+                    <div>
+                        <label class="label" for="location_label">Lokasi</label>
+                        <input id="location_label" name="location_label" value="{{ old('location_label', $device->location_label) }}" placeholder="mis. Lab Komputer 1" class="input text-xs">
+                    </div>
+                    <div>
+                        <label class="label" for="status">Status</label>
+                        <select id="status" name="status" class="input text-xs">
+                            <option value="available" @selected($device->status->value === 'available')>Tersedia (normal)</option>
+                            <option value="maintenance" @selected($device->status->value === 'maintenance')>Perawatan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn-primary w-full justify-center !py-2 text-xs">Simpan Pengaturan</button>
+                    </div>
+                </form>
+
+                <p class="mt-2 text-[11px] leading-relaxed text-ink-faint">
+                    Status perawatan memblokir dimulainya sesi baru di laptop ini sampai dikembalikan ke Tersedia.
+                </p>
+            </section>
+        @endif
 
         {{-- Riwayat sesi --}}
         <section class="card overflow-hidden">

@@ -67,6 +67,17 @@ public sealed class SyncService
         _store.ReplaceStaff(result.Data.Staff);
         _store.ReplaceSubjects(result.Data.Subjects);
         _store.SetKv("client_config", JsonSerializer.Serialize(result.Data.Config, JsonOptions));
+
+        if (result.Data.Device is { } device)
+        {
+            _store.SetKv("device_maintenance", device.Maintenance ? "1" : "0");
+
+            if (!string.IsNullOrWhiteSpace(device.Label))
+            {
+                _store.SetKv("device_label", device.Label);
+            }
+        }
+
         _store.SetKv("bootstrap_at", _clock.Now.ToString("o"));
         LastError = null;
 

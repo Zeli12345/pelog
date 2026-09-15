@@ -72,20 +72,27 @@ public sealed class SessionManager
         return record;
     }
 
-    public async Task TryRemoteStartAsync(LocalSessionRecord record, CancellationToken cancellationToken = default)
+    public async Task<ApiResult<SessionDto>?> TryRemoteStartAsync(LocalSessionRecord record, CancellationToken cancellationToken = default)
     {
-        var request = new StartSessionRequest
+        try
         {
-            SessionUuid = record.SessionUuid,
-            UserType = record.UserType,
-            Nisn = record.Nisn,
-            NipId = record.NipId,
-            SubjectId = record.SubjectId,
-            UsagePurpose = record.UsagePurpose,
-            StartedAtClient = record.StartedAtClient,
-        };
+            var request = new StartSessionRequest
+            {
+                SessionUuid = record.SessionUuid,
+                UserType = record.UserType,
+                Nisn = record.Nisn,
+                NipId = record.NipId,
+                SubjectId = record.SubjectId,
+                UsagePurpose = record.UsagePurpose,
+                StartedAtClient = record.StartedAtClient,
+            };
 
-        await _api.StartSessionAsync(request, cancellationToken);
+            return await _api.StartSessionAsync(request, cancellationToken);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     public void Heartbeat(LocalSessionRecord record)

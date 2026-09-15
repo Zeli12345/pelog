@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ClientDownloadController;
 use App\Http\Controllers\Dashboard\AuditController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\DeviceController;
@@ -21,6 +22,11 @@ Route::get('/', function () {
         : redirect()->route('login');
 });
 
+// Unduhan installer client untuk agen pembaruan otomatis (diakses sebagai SYSTEM).
+Route::get('/downloads/client-setup', [ClientDownloadController::class, 'download'])
+    ->middleware('throttle:30,1')
+    ->name('client.download');
+
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -38,6 +44,12 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('admin')->group(function () {
         Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
+
+        // Perangkat: ubah nama/lokasi/status (mode perawatan)
+        Route::put('/devices/{device}', [DeviceController::class, 'update'])->name('devices.update');
+
+        // Sesi: tutup paksa sesi aktif
+        Route::post('/sessions/{session}/close', [SessionController::class, 'close'])->name('sessions.close');
 
         // Siswa
         Route::get('/students/import', [StudentImportController::class, 'form'])->name('students.import.form');
@@ -62,6 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
         Route::post('/settings/enrollment-code', [SettingsController::class, 'generateEnrollmentCode'])->name('settings.enrollment-code');
+        Route::post('/settings/client-installer', [SettingsController::class, 'uploadClientInstaller'])->name('settings.client-installer');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
