@@ -157,3 +157,28 @@ BALI-LOG Kiosk (Watchdog)  ...    Running
 4. **Impor data nyata** (siswa/guru) dan penyesuaian logo/teks sekolah.
 5. **Uji uninstall** di mesin produksi (skrip & task sudah disiapkan).
 6. **Kebijakan privasi** perlu disahkan sekolah sebelum screenshot aktif di mesin nyata.
+
+---
+
+## 7. Verifikasi Tambahan: Update Versi Tanpa Widget (2026-09-15)
+
+Konteks: build baru (tanpa widget timer, tanpa dialog instance ganda, perbaikan export xlsx) dipasang di VM `balilog vm` memakai installer yang sama (GUI, diunduh via Edge di guest).
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 1 | Desktop selama sesi aktif tanpa widget stopwatch | Lulus - tidak ada widget; desktop bersih |
+| 2 | Ikon tray selama sesi (logo, tooltip durasi) | Lulus - ikon tampil di system tray |
+| 3 | Hotkey Ctrl+Alt+S membuka Refleksi lalu menutup sesi | Lulus - form muncul, SIMPAN kembali ke lockscreen |
+| 4 | Watchdog (tiap 2 menit) tidak lagi memunculkan dialog "sudah berjalan" | Lulus - peluncuran ganda keluar senyap, tanpa dialog |
+| 5 | Login siswa: NISN - nama/kelas - PIN - mapel/tujuan - mulai | Lulus |
+| 6 | Wizard PIN pertama (wajib online) untuk siswa demo | Lulus - PIN tersimpan via server |
+| 7 | Sesi tercatat server: start, tutup, feedback, pemahaman | Lulus - `usage_sessions` id=6, close_reason=normal, sangat_paham, sync_source=online |
+| 8 | Device terdaftar ulang setelah DB staging di-reset | Lulus - `devices` id=9 DESKTOP-OQKA7B3 (kode enrollment baru) |
+
+Catatan operasional penting hasil sesi ini:
+
+1. Saat hardening aktif, di akun siswa **cmd.exe dan file .bat/.cmd diblokir** (DisableCMD=2) dan **PowerShell diblokir** (DisallowRun). Untuk pemeliharaan di akun siswa, jalankan skrip lewat **wscript (.vbs)** - lihat `scripts/vm-reset-kiosk.vbs` - atau login ke akun admin Windows.
+2. **MODE ADMIN tidak dapat menangguhkan hardening saat policy aktif** karena skrip suspend memakai `powershell.exe` yang juga diblokir DisallowRun. Rekomendasi perbaikan: ganti mekanisme suspend menjadi Scheduled Task elevated yang dibuat installer (belum diimplementasikan).
+3. Heartbeat terjeda selama dialog Refleksi terbuka (modal memblokir UI thread). Aman karena penutup sesi menggantung memakai batas 15 menit; endpoint end tetap idempoten.
+
+Batasan yang tersisa sama dengan bagian 6.
