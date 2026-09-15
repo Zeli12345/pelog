@@ -8,6 +8,9 @@ namespace BalilogKiosk.App.Services;
 /// elevated yang dibuat installer. Cara ini dipakai karena saat hardening aktif,
 /// peluncuran powershell.exe lewat shell diblokir DisallowRun (jadi runas + UAC
 /// tidak mungkin), sementara Task Scheduler menjalankan proses langsung.
+/// Setelah penangguhan, shell (explorer) dimuat ulang karena Explorer yang sudah
+/// berjalan dapat men-cache kebijakan lama ("Accessing the resource ... has been
+/// disallowed") sampai dimuat ulang / logon berikutnya.
 /// </summary>
 internal static class KioskHardening
 {
@@ -15,13 +18,78 @@ internal static class KioskHardening
 
     public const string ApplyTaskName = "BALILogHardeningApply";
 
-    private const string PolicyKey = @"Software\Policies\Microsoft\Windows\System";
+    private const string SystemPolicyKey = @"Software\Policies\Microsoft\Windows\System";
 
-    private const string ProbeValue = "DisableTaskMgr";
+    private const string ExplorerPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";
 
-    public static bool Suspend() => RunTask(SuspendTaskName, policyShouldExist: false);
+    private const string CmdPolicyKey = @"Software\Policies\Microsoft\Windows\System";
+
+    private static readonly (string Key, string Value)[] PolicyProbes =
+    [
+        (SystemPolicyKey, "DisableTaskMgr"),
+        (SystemPolicyKey, "DisableRegistryTools"),
+        (ExplorerPolicyKey, "NoRun"),
+        (ExplorerPolicyKey, "NoControlPanel"),
+        (ExplorerPolicyKey, "DisallowRun"),
+        (CmdPolicyKey, "DisableCMD"),
+    ];
+
+    public static bool Suspend()
+    {
+        if (!RunTask(SuspendTaskName, policyShouldExist: false))
+        {
+            return false;
+        }
+
+        // Muat ulang shell di latar belakang agar kebijakan lama tidak tersisa
+        // di Explorer yang sedang berjalan.
+        Task.Run(RestartExplorer);
+
+        return true;
+    }
 
     public static bool Apply() => RunTask(ApplyTaskName, policyShouldExist: true);
+
+    /// <summary>
+    /// Menjalankan ulang explorer.exe (normal, bukan elevated) dengan aman.
+    /// Dipakai setelah penangguhan dan tersedia juga sebagai tombol manual
+    /// di mode admin.
+    /// </summary>
+    public static void RestartExplorer()
+    {
+        try
+        {
+            using (var kill = Process.Start(new ProcessStartInfo
+            {
+                FileName = "taskkill.exe",
+                Arguments = "/f /im explorer.exe",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            }))
+            {
+                kill?.WaitForExit(5000);
+            }
+
+            Thread.Sleep(800);
+        }
+        catch (Exception)
+        {
+            // Explorer mungkin tidak berjalan; abaikan.
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                UseShellExecute = false,
+            });
+        }
+        catch (Exception)
+        {
+            // Shell akan pulih saat logon berikutnya; abaikan.
+        }
+    }
 
     private static bool RunTask(string taskName, bool policyShouldExist)
     {
@@ -76,10 +144,22 @@ internal static class KioskHardening
         }
     }
 
+    /// <summary>
+    /// True bila SALAH SATU kebijakan hardening masih terpasang.
+    /// Penangguhan baru dianggap berhasil bila semuanya benar-benar hilang.
+    /// </summary>
     private static bool IsPolicyPresent()
     {
-        using var key = Registry.CurrentUser.OpenSubKey(PolicyKey);
+        foreach (var (keyPath, valueName) in PolicyProbes)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(keyPath);
 
-        return key?.GetValue(ProbeValue) is not null;
+            if (key?.GetValue(valueName) is not null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

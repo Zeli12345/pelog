@@ -211,6 +211,11 @@ Fitur yang ditambahkan/diperbaiki: nama perangkat saat enroll, mode perawatan pe
 | 16 | MODE ADMIN: tombol pintasan **Buka CMD** berfungsi | Lulus - jendela Command Prompt terbuka & dapat diketik |
 | 17 | MODE ADMIN: tombol pintasan **Pengaturan** berfungsi | Lulus - aplikasi Windows Settings terbuka |
 | 18 | KEMBALI KE KIOSK menerapkan ulang kebijakan + menampilkan kiosk | Lulus - kiosk kembali, hardening aktif via task |
+| 19 | Ketik `cmd` pada address bar Explorer saat MODE ADMIN (keluhan pengguna) | Lulus - Command Prompt terbuka; tidak ada lagi pesan "Accessing the resource 'cmd' has been disallowed" |
+| 20 | Run dialog (Win+R) + `cmd` saat MODE ADMIN | Lulus - dialog terbuka, cmd berjalan |
+| 21 | Shell (explorer) dimuat ulang otomatis setelah penangguhan (anti-cache kebijakan) | Lulus - shell baru tanpa kebijakan lama; tersedia juga tombol manual "Muat Ulang Shell" |
+| 22 | "Keluar Aplikasi" melepas penguncian (mesin kembali normal) | Lulus - kebijakan ditangguhkan saat keluar aplikasi |
+| 23 | Hardening dipasang ulang otomatis setiap aplikasi kiosk dijalankan | Lulus - `Last Run Time` task `BALILogHardeningApply` = waktu start aplikasi, `Last Result: 0` |
 
 Catatan teknis: task elevated dibuat lewat XML (`schtasks /TR` tidak bisa menangani path ber-spasi + kutip - "Invalid argument/option"). Task: `BALILogHardeningSuspend` / `BALILogHardeningApply` (InteractiveToken + HighestAvailable, tanpa trigger), dibuat installer saat opsi "Terapkan penguncian kiosk" dicentang.
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using BalilogKiosk.App.Services;
 
 namespace BalilogKiosk.App.Forms;
 
@@ -37,7 +38,7 @@ public sealed class AdminModeForm : Form
 
         var note = new Label
         {
-            Text = "Hardening ditangguhkan — desktop bebas dipakai maintenance.",
+            Text = "Hardening ditangguhkan. Bila masih ada yang terblokir, klik \"Muat Ulang Shell\".",
             Font = new Font("Segoe UI", 8.5F),
             ForeColor = Color.FromArgb(180, 200, 220),
             Location = new Point(20, 44),
@@ -52,11 +53,26 @@ public sealed class AdminModeForm : Form
         var powershellButton = CreateToolButton("PowerShell", 152, 108, () => Launch("powershell.exe"));
         var explorerButton = CreateToolButton("Explorer", 284, 108, () => Launch("explorer.exe"));
 
+        var refreshButton = new Button
+        {
+            Text = "Muat Ulang Shell (segarkan kebijakan)",
+            Location = new Point(20, 144),
+            Size = new Size(390, 30),
+            Font = new Font("Segoe UI", 8.5F),
+            BackColor = Color.FromArgb(40, 62, 40),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+        };
+
+        refreshButton.FlatAppearance.BorderColor = Color.FromArgb(90, 130, 90);
+        refreshButton.Click += (_, _) => Task.Run(KioskHardening.RestartExplorer);
+
         var backButton = new Button
         {
             Text = "KEMBALI KE KIOSK",
-            Location = new Point(20, 158),
-            Size = new Size(210, 44),
+            Location = new Point(20, 190),
+            Size = new Size(210, 40),
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             BackColor = Color.FromArgb(201, 162, 39),
             ForeColor = Color.FromArgb(25, 28, 32),
@@ -74,8 +90,8 @@ public sealed class AdminModeForm : Form
         var exitButton = new Button
         {
             Text = "Keluar Aplikasi",
-            Location = new Point(240, 158),
-            Size = new Size(170, 44),
+            Location = new Point(240, 190),
+            Size = new Size(170, 40),
             Font = new Font("Segoe UI", 9F),
             BackColor = Color.FromArgb(178, 58, 46),
             ForeColor = Color.White,
@@ -95,6 +111,7 @@ public sealed class AdminModeForm : Form
             badge, note,
             cmdButton, taskmgrButton, settingsButton,
             regeditButton, powershellButton, explorerButton,
+            refreshButton,
             backButton, exitButton,
         ]);
     }

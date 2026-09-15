@@ -88,6 +88,13 @@ public sealed class LockscreenForm : Form
     {
         _services = services;
 
+        // Pastikan kebijakan penguncian terpasang setiap aplikasi dijalankan
+        // (mis. setelah "Keluar Aplikasi" lalu pengawas menghidupkan ulang kiosk).
+        if (_services.Config.HardeningEnabled && !_services.Config.TestMode)
+        {
+            Task.Run(KioskHardening.Apply);
+        }
+
         Text = "BALI-LOG — Kiosk";
         WindowState = FormWindowState.Maximized;
         FormBorderStyle = FormBorderStyle.None;
@@ -1269,6 +1276,10 @@ public sealed class LockscreenForm : Form
 
             if (admin.ExitApplication)
             {
+                // Tinggalkan mesin dalam keadaan normal: lepaskan kebijakan kiosk
+                // agar cmd/Pengaturan/dll. tetap bisa dipakai setelah keluar.
+                KioskHardening.Suspend();
+
                 _allowExit = true;
                 Application.Exit();
 

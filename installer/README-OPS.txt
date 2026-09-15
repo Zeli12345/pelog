@@ -8,15 +8,23 @@ SMK Negeri 1 Mas Ubud
    - Masukkan password admin kiosk (diatur saat pertama kali diminta).
    - Mode Admin aktif: jendela kiosk DISEMBUNYIKAN, desktop bisa dipakai;
      penguncian kiosk ditangguhkan sementara lewat Scheduled Task
-     "BALILogHardeningSuspend" (tanpa prompt UAC).
+     "BALILogHardeningSuspend" (tanpa prompt UAC), lalu shell (explorer)
+     dimuat ulang otomatis agar kebijakan lama tidak tersisa.
    - Form admin menyediakan pintasan: Buka CMD, Task Manager, Pengaturan,
-     Regedit, PowerShell, Explorer (dijalankan langsung sehingga tetap
-     berfungsi walau kebijakan shell masih aktif).
+     Regedit, PowerShell, Explorer, dan MUAT ULANG SHELL (bila masih ada
+     aplikasi yang terblokir oleh kebijakan lama).
    - Klik "KEMBALI KE KIOSK" bila selesai (kebijakan dipasang ulang), atau
-     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya.
+     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya — pada opsi ini
+     penguncian juga DILEPAS agar cmd/Pengaturan/dll. normal kembali.
    - Bila muncul peringatan "Hardening tidak dapat ditangguhkan":
-     task admin tidak ada (instalasi lama) — jalankan installer ulang,
-     atau login dengan AKUN ADMIN WINDOWS untuk perbaikan.
+     task admin tidak ada (instalasi lama) — jalankan installer ulang.
+     Sementara itu, tombol PowerShell/Pengaturan/Explorer tetap berfungsi
+     (dijalankan langsung tanpa shell), dan dari PowerShell admin dapat
+     menghapus kebijakan secara manual:
+       Remove-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer' -Name NoRun,NoControlPanel,DisallowRun -EA SilentlyContinue
+       Remove-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Name DisableTaskMgr,DisableRegistryTools -EA SilentlyContinue
+       Remove-ItemProperty 'HKCU:\Software\Policies\Microsoft\Windows\System' -Name DisableCMD -EA SilentlyContinue
+     lalu jalankan "Muat Ulang Shell" (atau log off/log in).
 
 2. CARA MENGAKHIRI SESI SISWA (tanpa widget/tray di desktop)
    - Tekan Ctrl + Alt + S (fokus di mana saja), lalu isi form refleksi
