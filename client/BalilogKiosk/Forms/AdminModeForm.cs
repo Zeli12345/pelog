@@ -1,8 +1,11 @@
+using System.Diagnostics;
+
 namespace BalilogKiosk.App.Forms;
 
 /// <summary>
 /// Banner MODE ADMIN: hardening ditangguhkan sementara untuk maintenance.
-/// Admin dapat kembali ke kiosk atau keluar dari aplikasi.
+/// Menyediakan tombol pintasan yang dijalankan langsung (CreateProcess),
+/// sehingga tetap berfungsi meski sebagian kebijakan shell masih aktif.
 /// </summary>
 public sealed class AdminModeForm : Form
 {
@@ -17,7 +20,7 @@ public sealed class AdminModeForm : Form
         ShowInTaskbar = true;
         BackColor = Color.FromArgb(15, 34, 55);
         ForeColor = Color.White;
-        ClientSize = new Size(430, 150);
+        ClientSize = new Size(430, 240);
         Font = new Font("Segoe UI", 9.5F);
 
         var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1280, 720);
@@ -28,24 +31,32 @@ public sealed class AdminModeForm : Form
             Text = "🔓  MODE ADMIN AKTIF",
             Font = new Font("Segoe UI", 12F, FontStyle.Bold),
             ForeColor = Color.FromArgb(255, 214, 120),
-            Location = new Point(18, 16),
+            Location = new Point(18, 14),
             AutoSize = true,
         };
 
         var note = new Label
         {
-            Text = "Hardening kiosk ditangguhkan sementara.\nIngat: kembali ke kiosk bila maintenance selesai.",
+            Text = "Hardening ditangguhkan — desktop bebas dipakai maintenance.",
             Font = new Font("Segoe UI", 8.5F),
             ForeColor = Color.FromArgb(180, 200, 220),
-            Location = new Point(20, 48),
-            Size = new Size(392, 40),
+            Location = new Point(20, 44),
+            Size = new Size(396, 20),
         };
+
+        var cmdButton = CreateToolButton("Buka CMD", 20, 72, () => Launch("cmd.exe"));
+        var taskmgrButton = CreateToolButton("Task Manager", 152, 72, () => Launch("taskmgr.exe"));
+        var settingsButton = CreateToolButton("Pengaturan", 284, 72, () => Launch("ms-settings:", viaShell: true));
+
+        var regeditButton = CreateToolButton("Regedit", 20, 108, () => Launch("regedit.exe"));
+        var powershellButton = CreateToolButton("PowerShell", 152, 108, () => Launch("powershell.exe"));
+        var explorerButton = CreateToolButton("Explorer", 284, 108, () => Launch("explorer.exe"));
 
         var backButton = new Button
         {
             Text = "KEMBALI KE KIOSK",
-            Location = new Point(20, 96),
-            Size = new Size(210, 38),
+            Location = new Point(20, 158),
+            Size = new Size(210, 44),
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             BackColor = Color.FromArgb(201, 162, 39),
             ForeColor = Color.FromArgb(25, 28, 32),
@@ -63,8 +74,8 @@ public sealed class AdminModeForm : Form
         var exitButton = new Button
         {
             Text = "Keluar Aplikasi",
-            Location = new Point(240, 96),
-            Size = new Size(170, 38),
+            Location = new Point(240, 158),
+            Size = new Size(170, 44),
             Font = new Font("Segoe UI", 9F),
             BackColor = Color.FromArgb(178, 58, 46),
             ForeColor = Color.White,
@@ -80,6 +91,51 @@ public sealed class AdminModeForm : Form
             Close();
         };
 
-        Controls.AddRange([badge, note, backButton, exitButton]);
+        Controls.AddRange([
+            badge, note,
+            cmdButton, taskmgrButton, settingsButton,
+            regeditButton, powershellButton, explorerButton,
+            backButton, exitButton,
+        ]);
+    }
+
+    private static Button CreateToolButton(string text, int x, int y, Action action)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Location = new Point(x, y),
+            Size = new Size(126, 30),
+            Font = new Font("Segoe UI", 8.5F),
+            BackColor = Color.FromArgb(28, 52, 78),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+        };
+
+        button.FlatAppearance.BorderColor = Color.FromArgb(70, 100, 130);
+        button.Click += (_, _) => action();
+
+        return button;
+    }
+
+    /// <summary>
+    /// Jalankan langsung lewat CreateProcess (bukan shell) supaya tidak terkena
+    /// kebijakan DisallowRun walau kebijakan sedang aktif.
+    /// </summary>
+    private static void Launch(string target, bool viaShell = false)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = viaShell });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                "Gagal membuka " + target + ":\n\n" + ex.Message,
+                "BALI-LOG",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
     }
 }

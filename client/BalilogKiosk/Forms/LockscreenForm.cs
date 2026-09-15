@@ -1259,9 +1259,13 @@ public sealed class LockscreenForm : Form
                 MessageBoxIcon.Warning);
         }
 
+        // Sembunyikan jendela kiosk selama mode admin agar desktop, cmd,
+        // Settings, taskbar, dsb. benar-benar bisa dipakai.
+        Hide();
+
         using (var admin = new AdminModeForm())
         {
-            admin.ShowDialog(this);
+            admin.ShowDialog();
 
             if (admin.ExitApplication)
             {
@@ -1273,8 +1277,9 @@ public sealed class LockscreenForm : Form
         }
 
         KioskHardening.Apply();
-        _keyboardBlocker.SetEnabled(true);
+        Show();
         Activate();
+        _keyboardBlocker.SetEnabled(true);
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

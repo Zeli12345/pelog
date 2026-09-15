@@ -6,14 +6,18 @@ using Timer = System.Windows.Forms.Timer;
 namespace BalilogKiosk.App.Forms;
 
 /// <summary>
-/// Runtime sesi aktif TANPA jendela.
+/// Runtime sesi aktif TANPA jendela dan TANPA ikon tray.
 /// Mengelola heartbeat, sinkronisasi, screenshot terjadwal, dan pengakhiran sesi
-/// melalui ikon di system tray atau hotkey Ctrl+Alt+S.
+/// melalui hotkey Ctrl+Alt+S. Saat Windows dimatikan / restart / log off,
+/// sesi ditutup otomatis (alasan "shutdown") dan antrean disinkronkan
+/// pada saat aplikasi berjalan lagi.
 /// </summary>
 public sealed class ActiveSessionRuntime : Form
 {
     private const int HotkeyId = 0xB1;
     private const int WmHotkey = 0x0312;
+    private const int WmQueryEndSession = 0x0011;
+    private const int WmEndSession = 0x0016;
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
     private const int VkS = 0x53;
@@ -32,10 +36,6 @@ public sealed class ActiveSessionRuntime : Form
 
     private readonly bool _isStudent;
 
-    private readonly NotifyIcon _tray;
-
-    private readonly Timer _uiTimer = new() { Interval = 1000 };
-
     private readonly Timer _heartbeatTimer = new() { Interval = 60_000 };
 
     private readonly Timer _syncTimer = new() { Interval = 30_000 };
@@ -47,6 +47,8 @@ public sealed class ActiveSessionRuntime : Form
     private bool _allowClose;
 
     private bool _finishing;
+
+    private bool _shutdownHandled;
 
     public ActiveSessionRuntime(
         AppServices services,
@@ -60,33 +62,13 @@ public sealed class ActiveSessionRuntime : Form
         _displayName = displayName;
         _isStudent = record.UserType == "student";
 
-        // Form tidak pernah ditampilkan — hanya wadah handle untuk timer/tray/hotkey.
+        // Form tidak pernah ditampilkan — hanya wadah handle untuk timer & hotkey.
         ShowInTaskbar = false;
         FormBorderStyle = FormBorderStyle.None;
         WindowState = FormWindowState.Minimized;
         StartPosition = FormStartPosition.Manual;
         Location = new Point(-32000, -32000);
         Size = new Size(1, 1);
-
-        _tray = new NotifyIcon
-        {
-            Icon = LoadTrayIcon(),
-            Visible = true,
-        };
-
-        _tray.DoubleClick += async (_, _) => await EndSessionAsync();
-
-        var menu = new ContextMenuStrip();
-        menu.Items.Add(new ToolStripMenuItem("Selesai Penggunaan (Ctrl+Alt+S)", null, async (_, _) => await EndSessionAsync()));
-        menu.Items.Add(new ToolStripSeparator());
-
-        var infoItem = new ToolStripMenuItem($"{displayName} — {(string.IsNullOrEmpty(subjectName) ? subtitle : subjectName)}", null, (_, _) => { })
-        {
-            Enabled = false,
-        };
-
-        menu.Items.Add(infoItem);
-        _tray.ContextMenuStrip = menu;
 
         var config = _services.Sync.LoadCachedConfig();
         var minute = _services.Config.TestMode ? _services.Config.TestScreenshotMinute : config.ScreenshotMinute;
@@ -98,17 +80,13 @@ public sealed class ActiveSessionRuntime : Form
             _screenshotTimer.Start();
         }
 
-        _uiTimer.Tick += (_, _) => UpdateTooltip();
         _heartbeatTimer.Tick += OnHeartbeatTick;
         _syncTimer.Tick += OnSyncTick;
 
-        _uiTimer.Start();
         _heartbeatTimer.Start();
         _syncTimer.Start();
 
         SystemEvents.SessionEnding += OnSystemSessionEnding;
-
-        UpdateTooltip();
 
         // Paksa pembuatan handle agar hotkey & timer langsung aktif tanpa menampilkan jendela.
         _ = Handle;
@@ -130,45 +108,18 @@ public sealed class ActiveSessionRuntime : Form
             return;
         }
 
+        // Hook shutdown/restart/logoff yang andal: Windows mengirim pesan ini ke
+        // semua jendela top-level (termasuk yang tersembunyi). Selalu izinkan
+        // shutdown (jangan pernah menghambat) sambil menutup sesi lebih dulu.
+        if (m.Msg is WmQueryEndSession or WmEndSession)
+        {
+            CloseForShutdown();
+            m.Result = new IntPtr(1);
+
+            return;
+        }
+
         base.WndProc(ref m);
-    }
-
-    private static Icon LoadTrayIcon()
-    {
-        try
-        {
-            var logoPath = Path.Combine(AppContext.BaseDirectory, "Assets", "logo_sekolah.png");
-
-            if (File.Exists(logoPath))
-            {
-                using var bitmap = new Bitmap(logoPath);
-                using var resized = new Bitmap(bitmap, new Size(16, 16));
-
-                return Icon.FromHandle(resized.GetHicon());
-            }
-        }
-        catch (Exception)
-        {
-            // jatuh ke ikon bawaan
-        }
-
-        return SystemIcons.Application;
-    }
-
-    private TimeSpan Elapsed()
-    {
-        var started = _record.StartedAtClient ?? _services.Clock.Now;
-        var elapsed = _services.Clock.Now - started;
-
-        return elapsed < TimeSpan.Zero ? TimeSpan.Zero : elapsed;
-    }
-
-    private void UpdateTooltip()
-    {
-        var text = $"BALI-LOG • {Elapsed():hh\\:mm\\:ss} • {_displayName}";
-
-        // Batas NotifyIcon.Text adalah 63 karakter.
-        _tray.Text = text.Length > 60 ? text[..60] : text;
     }
 
     private async void OnHeartbeatTick(object? sender, EventArgs e)
@@ -249,7 +200,7 @@ public sealed class ActiveSessionRuntime : Form
         await _services.Sync.PushScreenshotsAsync();
     }
 
-    /// <summary>Mengakhiri sesi (dipanggil tray / hotkey).</summary>
+    /// <summary>Mengakhiri sesi (dipanggil hotkey Ctrl+Alt+S).</summary>
     public async Task EndSessionAsync()
     {
         if (_finishing)
@@ -312,7 +263,6 @@ public sealed class ActiveSessionRuntime : Form
 
     private void StartTimers()
     {
-        _uiTimer.Start();
         _heartbeatTimer.Start();
         _syncTimer.Start();
         _screenshotTimer?.Start();
@@ -320,22 +270,74 @@ public sealed class ActiveSessionRuntime : Form
 
     private void StopTimers()
     {
-        _uiTimer.Stop();
         _heartbeatTimer.Stop();
         _syncTimer.Stop();
         _screenshotTimer?.Stop();
     }
 
+    /// <summary>
+    /// Hook shutdown / restart / log off: tutup sesi sesegera mungkin (tulis lokal
+    /// dulu supaya tidak hilang), lalu upaya terakhir lapor ke server maksimal
+    /// 2 detik. Sisa antrean akan tersinkron saat aplikasi jalan kembali.
+    /// Selalu mengembalikan kendali agar tidak pernah menghambat shutdown.
+    /// </summary>
     private void OnSystemSessionEnding(object sender, SessionEndingEventArgs e)
     {
-        StopTimers();
-
-        if (_record.IsOpen)
-        {
-            _services.Sessions.Close(_record, null, null, "shutdown");
-        }
+        CloseForShutdown();
 
         _allowClose = true;
+    }
+
+    /// <summary>
+    /// Menutup sesi untuk shutdown/restart/logoff. Dipanggil dari dua jalur
+    /// (SystemEvents.SessionEnding dan WM_QUERYENDSESSION) sehingga diberi
+    /// penjaga idempoten. Tidak pernah melempar exception.
+    /// </summary>
+    private void CloseForShutdown()
+    {
+        if (_shutdownHandled)
+        {
+            return;
+        }
+
+        _shutdownHandled = true;
+
+        try
+        {
+            // Jejak diagnostik ringan (berguna saat maintenance).
+            try
+            {
+                File.AppendAllText(
+                    Path.Combine(_services.DataDirectory, "shutdown.log"),
+                    $"{DateTime.Now:O} sesi={_record.SessionUuid} alasan=shutdown{Environment.NewLine}");
+            }
+            catch (Exception)
+            {
+                // Logging opsional.
+            }
+
+            StopTimers();
+
+            if (_record.IsOpen)
+            {
+                _services.Sessions.Close(_record, null, null, "shutdown");
+
+                try
+                {
+                    _services.Sessions.TryRemoteEndAsync(_record).Wait(TimeSpan.FromSeconds(2));
+                }
+                catch (Exception)
+                {
+                    // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
+                }
+            }
+
+            _allowClose = true;
+        }
+        catch (Exception)
+        {
+            // Apa pun yang terjadi, jangan halangi shutdown.
+        }
     }
 
     private void ShutdownRuntime()
@@ -344,9 +346,6 @@ public sealed class ActiveSessionRuntime : Form
         _allowClose = true;
 
         SystemEvents.SessionEnding -= OnSystemSessionEnding;
-
-        _tray.Visible = false;
-        _tray.Dispose();
 
         if (Handle != IntPtr.Zero)
         {

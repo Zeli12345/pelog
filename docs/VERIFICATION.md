@@ -199,7 +199,22 @@ Fitur yang ditambahkan/diperbaiki: nama perangkat saat enroll, mode perawatan pe
 | 9 | Form refleksi tidak memblokir heartbeat (non-modal) | Lulus - sesi tetap berjalan & tercatat (id=16, feedback tersimpan) |
 | 10 | Pembersihan teks UI (login, footer, catatan penyimpanan) | Lulus - halaman login bersih, catatan penyimpanan dihapus |
 
+### 8.1 Hook shutdown/restart + tray + mode admin desktop (2026-09-15, sesi ketiga)
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 11 | Sesi aktif ditutup otomatis saat **Restart OS** (tombol Start > Restart) | Lulus - sesi `id=25` tercatat `close_reason=shutdown`, `closed_at` benar; bukti log lokal `C:\ProgramData\BALI-LOG\data\shutdown.log` |
+| 12 | Sesi aktif ditutup otomatis saat aplikasi ditutup paksa installer (Restart Manager) | Lulus - `id=24` tercatat `close_reason=shutdown` |
+| 13 | Sinkronisasi menerapkan penutupan sesi yang sudah ada di server (idempoten) | Lulus - `id=21` tertutup `normal` + feedback via sync klien |
+| 14 | Ikon tray dihilangkan saat sesi berjalan | Lulus - area tray bersih (hanya ikon sistem) |
+| 15 | MODE ADMIN: jendela kiosk disembunyikan, desktop bebas dipakai | Lulus - desktop + taskbar dapat digunakan |
+| 16 | MODE ADMIN: tombol pintasan **Buka CMD** berfungsi | Lulus - jendela Command Prompt terbuka & dapat diketik |
+| 17 | MODE ADMIN: tombol pintasan **Pengaturan** berfungsi | Lulus - aplikasi Windows Settings terbuka |
+| 18 | KEMBALI KE KIOSK menerapkan ulang kebijakan + menampilkan kiosk | Lulus - kiosk kembali, hardening aktif via task |
+
 Catatan teknis: task elevated dibuat lewat XML (`schtasks /TR` tidak bisa menangani path ber-spasi + kutip - "Invalid argument/option"). Task: `BALILogHardeningSuspend` / `BALILogHardeningApply` (InteractiveToken + HighestAvailable, tanpa trigger), dibuat installer saat opsi "Terapkan penguncian kiosk" dicentang.
+
+Hook shutdown ganda: `SystemEvents.SessionEnding` + pesan Windows `WM_QUERYENDSESSION`/`WM_ENDSESSION` pada jendela runtime (idempoten, tidak pernah menghambat shutdown). Urutan: tulis penutupan ke DB lokal -> upaya lapor server maks 2 detik -> sisa antrean tersinkron saat aplikasi jalan kembali.
 
 Tes otomatis: **98 tes server** (15 baru: label perangkat, blokir perawatan, admin perangkat, tutup sesi, filter screenshot) + **27 tes client** - semuanya hijau.
 3. Heartbeat terjeda selama dialog Refleksi terbuka (modal memblokir UI thread). Aman karena penutup sesi menggantung memakai batas 15 menit; endpoint end tetap idempoten.

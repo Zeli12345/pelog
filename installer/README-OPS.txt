@@ -6,21 +6,27 @@ SMK Negeri 1 Mas Ubud
 1. CARA KELUAR / MAINTENANCE (tanpa uninstall)
    - Tekan Ctrl + Alt + Shift + B pada layar kiosk.
    - Masukkan password admin kiosk (diatur saat pertama kali diminta).
-   - Mode Admin aktif: penguncian kiosk ditangguhkan sementara (lewat
-     Scheduled Task "BALILogHardeningSuspend" — tanpa prompt UAC).
-   - Klik "KEMBALI KE KIOSK" bila selesai, atau "Keluar Aplikasi"
-     untuk menghentikan kiosk sepenuhnya (maintenance berat).
+   - Mode Admin aktif: jendela kiosk DISEMBUNYIKAN, desktop bisa dipakai;
+     penguncian kiosk ditangguhkan sementara lewat Scheduled Task
+     "BALILogHardeningSuspend" (tanpa prompt UAC).
+   - Form admin menyediakan pintasan: Buka CMD, Task Manager, Pengaturan,
+     Regedit, PowerShell, Explorer (dijalankan langsung sehingga tetap
+     berfungsi walau kebijakan shell masih aktif).
+   - Klik "KEMBALI KE KIOSK" bila selesai (kebijakan dipasang ulang), atau
+     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya.
    - Bila muncul peringatan "Hardening tidak dapat ditangguhkan":
      task admin tidak ada (instalasi lama) — jalankan installer ulang,
      atau login dengan AKUN ADMIN WINDOWS untuk perbaikan.
 
-2. CARA MENGAKHIRI SESI SISWA (tanpa widget di desktop)
-   - Ikon BALI-LOG berada di system tray (dekat jam). Arahkan kursor
-     untuk melihat durasi berjalan.
-   - Klik DUA KALI ikon tersebut, atau klik kanan > "Selesai Penggunaan",
-     lalu isi form refleksi belajar.
-   - Alternatif cepat: tekan Ctrl + Alt + S.
-   - Sesi juga tertutup otomatis saat siswa log off / mematikan laptop.
+2. CARA MENGAKHIRI SESI SISWA (tanpa widget/tray di desktop)
+   - Tekan Ctrl + Alt + S (fokus di mana saja), lalu isi form refleksi
+     belajar yang muncul.
+   - Sesi juga DITUTUP OTOMATIS saat siswa log off, shutdown, atau restart
+     (alasan "shutdown"); catatan tersinkron ke server setelah laptop
+     menyala kembali.
+   - Sesi yang tertinggal karena mati listrik / aplikasi dihentikan paksa
+     akan dipulihkan: dilanjutkan bila baru, atau ditutup sebagai
+     "recovery" oleh server (pemantau sesi menggantung).
    - Admin IT juga dapat menutup paksa sesi dari dashboard:
      menu Sesi Penggunaan > tombol "Tutup" pada baris sesi aktif.
 
