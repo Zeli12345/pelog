@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AppUpdateController;
 use App\Http\Controllers\Api\V1\BootstrapController;
 use App\Http\Controllers\Api\V1\DeviceEnrollController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -20,6 +21,9 @@ Route::prefix('v1')->group(function () {
     // Perangkat terautentikasi
     Route::middleware([EnsureDeviceToken::class, 'throttle:device'])->group(function () {
         Route::get('/bootstrap', [BootstrapController::class, 'index']);
+
+        Route::get('/app/latest', [AppUpdateController::class, 'latest']);
+        Route::get('/app/installer', [AppUpdateController::class, 'download']);
 
         Route::get('/students/{nisn}', [StudentController::class, 'show']);
         Route::post('/students/{nisn}/pin', [StudentPinController::class, 'store']);

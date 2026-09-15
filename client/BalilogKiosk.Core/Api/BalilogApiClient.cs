@@ -109,6 +109,47 @@ public sealed class BalilogApiClient
             cancellationToken);
     }
 
+    public Task<ApiResult<AppReleaseInfo>> GetLatestAppAsync(CancellationToken cancellationToken = default)
+    {
+        return SendAsync<AppReleaseInfo>(CreateRequest(HttpMethod.Get, "app/latest"), cancellationToken);
+    }
+
+    /// <summary>
+    /// Mengunduh installer rilis ke path tujuan (streaming).
+    /// URL boleh absolut (dari respons /app/latest) maupun relatif.
+    /// </summary>
+    public async Task<bool> DownloadInstallerAsync(string url, string destinationPath, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var response = await _http.SendAsync(
+                CreateRequest(HttpMethod.Get, url),
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            var directory = Path.GetDirectoryName(destinationPath);
+
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            await using var target = File.Create(destinationPath);
+            await response.Content.CopyToAsync(target, cancellationToken);
+
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     public async Task<ApiResult<ScreenshotData>> UploadScreenshotAsync(
         string sessionUuid,
         string filePath,

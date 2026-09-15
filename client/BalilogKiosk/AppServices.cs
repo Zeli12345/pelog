@@ -26,6 +26,8 @@ public sealed class AppServices : IDisposable
 
     public SyncService Sync { get; }
 
+    public UpdateService Updates { get; }
+
     public string DataDirectory { get; }
 
     public string ScreenshotDirectory { get; }
@@ -38,7 +40,8 @@ public sealed class AppServices : IDisposable
         BalilogApiClient api,
         LocalStore store,
         SessionManager sessions,
-        SyncService sync)
+        SyncService sync,
+        UpdateService updates)
     {
         Config = config;
         DataDirectory = dataDirectory;
@@ -49,6 +52,7 @@ public sealed class AppServices : IDisposable
         Store = store;
         Sessions = sessions;
         Sync = sync;
+        Updates = updates;
     }
 
     public static AppServices Create()
@@ -75,8 +79,9 @@ public sealed class AppServices : IDisposable
         var store = new LocalStore(Path.Combine(dataDirectory, "local.db"));
         var sessions = new SessionManager(store, api, clock);
         var sync = new SyncService(store, api, clock);
+        var updates = new UpdateService(store, api, dataDirectory);
 
-        return new AppServices(config, dataDirectory, clock, http, api, store, sessions, sync);
+        return new AppServices(config, dataDirectory, clock, http, api, store, sessions, sync, updates);
     }
 
     /// <summary>Menyimpan/memuat token perangkat dengan DPAPI.</summary>

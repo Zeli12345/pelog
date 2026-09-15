@@ -40,6 +40,16 @@ class SettingsSeeder extends Seeder
 
             // Enrollment (hash diisi dari dashboard saat kode dibuat)
             'enrollment_code_hash' => null,
+
+            // Auto-update client
+            'app_updater_enabled' => true,
+            'app_version' => '1.0.0',
+            'app_installer_file' => null,
+            'app_installer_sha256' => null,
+            'app_installer_size' => 0,
+            'app_update_notes' => null,
+            'app_update_mandatory' => false,
+            'app_update_check_hours' => 6,
         ];
 
         foreach ($defaults as $key => $value) {

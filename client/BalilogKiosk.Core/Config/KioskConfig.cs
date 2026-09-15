@@ -20,6 +20,9 @@ public sealed class KioskConfig
     /// <summary>Hash password admin kiosk (format: pbkdf2-sha256$iterations$salt$hash).</summary>
     public string? AdminPasswordHash { get; set; }
 
+    /// <summary>Interval pemeriksaan auto-update (jam).</summary>
+    public int UpdateCheckHours { get; set; } = 6;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,

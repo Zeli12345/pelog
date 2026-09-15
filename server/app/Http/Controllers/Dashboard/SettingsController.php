@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Http\Controllers\ClientDownloadController;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Support\Audit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -45,6 +47,13 @@ class SettingsController extends Controller
                 ->all(),
             'enrollmentEnabled' => is_string(Setting::getValue('enrollment_code_hash')),
             'lastEnrollmentCode' => session('enrollment_code'),
+            'clientUpdate' => [
+                'latest_version' => Setting::getValue('client_latest_version'),
+                'sha256' => Setting::getValue('client_installer_sha256'),
+                'size' => Setting::getValue('client_installer_size'),
+                'notes' => Setting::getValue('client_update_notes'),
+                'uploaded_at' => Setting::getValue('client_installer_uploaded_at'),
+            ],
         ]);
     }
 
@@ -120,5 +129,51 @@ class SettingsController extends Controller
         return redirect()->route('settings.index')
             ->with('status', 'Kode enrollment baru dibuat. Salin sekarang — kode hanya ditampilkan sekali.')
             ->with('enrollment_code', $code);
+    }
+
+    /// <summary>Unggah installer client baru untuk pembaruan otomatis.</summary>
+    public function uploadClientInstaller(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'client_latest_version' => ['required', 'string', 'max:20', 'regex:/^\d+\.\d+\.\d+$/'],
+            'client_installer' => ['required', 'file', 'max:204800'], // maks 200 MB
+            'client_update_notes' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        $file = $request->file('client_installer');
+
+        if (! in_array(strtolower((string) $file->getClientOriginalExtension()), ['exe', 'msi'], true)) {
+            return back()->withErrors([
+                'client_installer' => 'Berkas harus berupa installer Windows (.exe).',
+            ]);
+        }
+
+        Storage::disk('local')->putFileAs(
+            'client',
+            $file,
+            'BALI-LOG_Setup.exe',
+        );
+
+        $absolutePath = Storage::disk('local')->path(ClientDownloadController::INSTALLER_PATH);
+
+        Setting::setValue('client_latest_version', $data['client_latest_version']);
+        Setting::setValue('client_installer_sha256', hash_file('sha256', $absolutePath));
+        Setting::setValue('client_installer_size', filesize($absolutePath));
+        Setting::setValue('client_update_notes', $data['client_update_notes'] ?? null);
+        Setting::setValue('client_installer_uploaded_at', now()->toIso8601String());
+
+        Audit::log(
+            action: 'client_installer_uploaded',
+            metadata: [
+                'version' => $data['client_latest_version'],
+                'size' => filesize($absolutePath),
+            ],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return redirect()->route('settings.index')
+            ->with('status', 'Installer client v'.$data['client_latest_version'].' tersimpan. Laptop akan memperbarui otomatis (agen cek tiap jam / saat boot).');
     }
 }
