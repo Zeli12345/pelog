@@ -229,3 +229,34 @@ Tes otomatis: **98 tes server** (15 baru: label perangkat, blokir perawatan, adm
 3. Heartbeat terjeda selama dialog Refleksi terbuka (modal memblokir UI thread). Aman karena penutup sesi menggantung memakai batas 15 menit; endpoint end tetap idempoten.
 
 Batasan yang tersisa sama dengan bagian 6.
+
+---
+
+## 9. Intersep Shutdown/Restart dengan Refleksi Wajib (2026-09-15, sesi keempat)
+
+Fitur: shutdown/restart saat sesi berjalan ditahan (`WM_QUERYENDSESSION` -> FALSE) + alasan tampil di layar Windows; form refleksi WAJIB (tanpa tombol lewati) tampil di desktop setelah pengguna memilih Cancel/Batal pada layar Windows; setelah "SIMPAN & MATIKAN" aplikasi mematikan komputer (`ExitWindowsEx(EWX_POWEROFF)` + hak `SE_SHUTDOWN_NAME`); "BATAL" menghentikan percobaan shutdown (sesi lanjut); **log off TIDAK diintersep**; tanda `shutdown_pending` di DB lokal memastikan sesi tetap tercatat `shutdown` bila proses dibunuh paksa.
+
+| # | Skenario | Hasil |
+|---|---|---|
+| 28 | Shutdown saat sesi aktif (`shutdown /s /t 0`) | Lulus - layar Windows "Closing 1 app and shutting down" menampilkan alasan "BALI-LOG: klik Cancel/Batal, lalu isi refleksi belajar supaya laptop bisa dimatikan." (sesi id=46) |
+| 29 | Klik Cancel pada layar Windows | Lulus - kembali ke desktop; form "Refleksi Sebelum Mematikan" tampil di atas (TopMost + re-assert Z-order tiap 700 md) |
+| 30 | Isi refleksi + "SIMPAN & MATIKAN" | Lulus - sesi `id=50` `close_reason=shutdown` + feedback + pemahaman `paham`; **komputer mati otomatis** (VM power-off; terbukti dari daftar VM - balilog vm hilang - dan koneksi VNC terputus) |
+| 31 | Tombol "BATAL" pada form | Lulus - percobaan shutdown dibatalkan; sesi `id=52` tetap berjalan (heartbeat lanjut); log `alasan=feedback-cancelled` |
+| 32 | Log off (`shutdown /l`) | Lulus - TANPA form refleksi; sesi `id=51` ditutup otomatis `close_reason=shutdown` |
+| 33 | Regresi alur normal Ctrl+Alt+S | Lulus - form mode normal ("SIMPAN KUNCI LAPTOP", tanpa Batal); sesi `id=52` ditutup `normal` + feedback |
+| 34 | Shutdown paksa dari layar Windows ("Shut down anyway") | Lulus - sesi tetap ditutup `shutdown` (id=43; jalur WM_ENDSESSION + tanda `shutdown_pending`, juga diuji unit) |
+| 35 | Sesuaikan verifikasi: akun kiosk bersandi -> layar "Sign in" setelah Cancel | Catatan - pada VM, akun goldpump bersandi sehingga kembali ke desktop butuh sandi; disarankan akun kiosk tanpa sandi agar siswa kembali dengan satu klik |
+| 36 | Auto power-off gagal (degradasi, sebelum fix struct LUID) | Lulus - pesan "Refleksi tersimpan. Silakan matikan laptop dengan menu Power atau tombol power." + log `alasan=poweroff-manual` + kiosk kembali terkunci |
+
+Temuan & perbaikan penting sesi ini:
+
+1. `ShutdownBlockReasonCreate` ada di **user32.dll** (header winuser.h), bukan shell32.dll - deklarasi salah menyebabkan `EntryPointNotFoundException` (dialog crash .NET) tepat saat penolakan shutdown. Diperbaiki + dibungkus try/catch (API opsional; pemblokiran tetap jalan lewat nilai balik FALSE).
+2. Struct `TOKEN_PRIVILEGES` dengan field `long Luid` salah alignment di x64 (native: LUID 4-byte aligned) sehingga `AdjustTokenPrivileges` gagal dan auto power-off tidak jalan. Diperbaiki memakai `struct Luid { uint LowPart; int HighPart; }`.
+3. Layar "menutup aplikasi" milik Windows selalu tampil saat ada penolakan shutdown dan tidak dapat ditimpa oleh jendela aplikasi (topmost tidak menang). Alur baku: pengguna klik Cancel/Batal pada layar itu -> form aplikasi tampil. Teks alasan di layar Windows memberi instruksi langsung.
+4. Log diagnostik `C:\ProgramData\BALI-LOG\data\shutdown.log` kini mencatat tiap tahap: `blocked-feedback`, `feedback-cancelled`, `feedback-saved`, `poweroff-manual`, `shutdown`.
+5. Tes otomatis bertambah 4 tes recovery untuk tanda `shutdown_pending` -> **31 tes client** (semuanya hijau).
+
+Batasan (batas OS, bukan bug aplikasi):
+
+- `shutdown /f` (paksa) dan tahan tombol power 5 detik tidak dapat diintersep; sesi tetap tercatat `shutdown` lewat hook/tanda.
+- Bila pengguna memilih "Shut down anyway", refleksi terlewat (sesi tetap ditutup `shutdown`).

@@ -17,7 +17,7 @@ public sealed class FeedbackForm : Form
 
     public string? Comprehension { get; private set; }
 
-    public FeedbackForm(string studentName)
+    public FeedbackForm(string studentName, bool shutdownMode = false)
     {
         _studentName = studentName;
 
@@ -32,7 +32,7 @@ public sealed class FeedbackForm : Form
 
         var title = new Label
         {
-            Text = "Refleksi Hasil Belajar",
+            Text = shutdownMode ? "Refleksi Sebelum Mematikan" : "Refleksi Hasil Belajar",
             Font = new Font("Segoe UI", 18F, FontStyle.Bold),
             ForeColor = Color.FromArgb(25, 28, 32),
             Location = new Point(32, 24),
@@ -41,11 +41,14 @@ public sealed class FeedbackForm : Form
 
         var subtitle = new Label
         {
-            Text = $"{_studentName}, sebelum mengakhiri sesi silakan isi ringkasan belajar kamu.",
+            Text = shutdownMode
+                ? $"{_studentName}, laptop ini akan dimatikan. Isi refleksi belajar kamu dulu agar catatan sesi tersimpan."
+                : $"{_studentName}, sebelum mengakhiri sesi silakan isi ringkasan belajar kamu.",
             Font = new Font("Segoe UI", 9.5F),
             ForeColor = Color.FromArgb(90, 96, 105),
             Location = new Point(34, 62),
             AutoSize = true,
+            MaximumSize = new Size(556, 0),
         };
 
         var feedbackLabel = new Label
@@ -110,9 +113,11 @@ public sealed class FeedbackForm : Form
 
         var saveButton = new Button
         {
-            Text = "S I M P A N   &   K U N C I   L A P T O P",
-            Location = new Point(32, 486),
-            Size = new Size(556, 52),
+            Text = shutdownMode
+                ? "S I M P A N   &   M A T I K A N"
+                : "S I M P A N   &   K U N C I   L A P T O P",
+            Location = shutdownMode ? new Point(232, 486) : new Point(32, 486),
+            Size = shutdownMode ? new Size(356, 52) : new Size(556, 52),
             Font = new Font("Segoe UI", 11F, FontStyle.Bold),
             BackColor = Color.FromArgb(27, 58, 92),
             ForeColor = Color.White,
@@ -131,6 +136,32 @@ public sealed class FeedbackForm : Form
         };
 
         Controls.AddRange([title, subtitle, feedbackLabel, _feedbackInput, levelLabel, saveButton]);
+
+        if (shutdownMode)
+        {
+            var cancelButton = new Button
+            {
+                Text = "B A T A L",
+                Location = new Point(32, 486),
+                Size = new Size(180, 52),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                BackColor = Color.FromArgb(228, 231, 235),
+                ForeColor = Color.FromArgb(40, 44, 52),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+            };
+
+            cancelButton.FlatAppearance.BorderSize = 0;
+            cancelButton.Click += (_, _) =>
+            {
+                DialogResult = DialogResult.Cancel;
+                Close();
+            };
+
+            Controls.Add(cancelButton);
+
+            CancelButton = cancelButton;
+        }
 
         AcceptButton = saveButton;
         ActiveControl = _feedbackInput;

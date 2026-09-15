@@ -147,15 +147,34 @@ public sealed class SessionManager
     /// </summary>
     public RecoveryResult RecoverOnStartup()
     {
+        var shutdownPending = _store.GetKv("shutdown_pending");
         var openSessions = _store.GetOpenSessions();
 
         if (openSessions.Count == 0)
         {
+            ClearShutdownPending(shutdownPending);
+
             return new RecoveryResult(RecoveryAction.None, null);
         }
 
         var session = openSessions[^1];
         var lastSeen = session.LastHeartbeatAt ?? session.StartedAtClient ?? session.CreatedAt;
+
+        // Shutdown/restart sempat ditahan untuk meminta refleksi, tetapi mesin
+        // tetap mati (mis. siswa memilih "Shut down anyway" atau tombol power):
+        // tutup sesi sebagai "shutdown", bukan "recovery".
+        if (!string.IsNullOrEmpty(shutdownPending) && shutdownPending == session.SessionUuid)
+        {
+            session.EndedAtClient = lastSeen;
+            session.CloseReason = "shutdown";
+            session.State = "closed";
+            _store.SaveSession(session);
+            _store.SetKv("shutdown_pending", "");
+
+            return new RecoveryResult(RecoveryAction.ClosedAsRecovery, session);
+        }
+
+        ClearShutdownPending(shutdownPending);
 
         if (_clock.Now - lastSeen <= ResumeWindow)
         {
@@ -168,5 +187,13 @@ public sealed class SessionManager
         _store.SaveSession(session);
 
         return new RecoveryResult(RecoveryAction.ClosedAsRecovery, session);
+    }
+
+    private void ClearShutdownPending(string? pending)
+    {
+        if (!string.IsNullOrEmpty(pending))
+        {
+            _store.SetKv("shutdown_pending", "");
+        }
     }
 }

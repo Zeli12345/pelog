@@ -34,9 +34,28 @@ SMK Negeri 1 Mas Ubud
      kiosk hanya aktif saat layar kunci / tidak ada sesi).
    - Begitu sesi berakhir (atau laptop kembali ke layar kunci), penguncian
      kiosk dipasang ulang otomatis — pada SESI BERIKUTNYA bebas lagi.
-   - Sesi juga DITUTUP OTOMATIS saat siswa log off, shutdown, atau restart
-     (alasan "shutdown"); catatan tersinkron ke server setelah laptop
-     menyala kembali.
+   - SHUTDOWN / RESTART SAAT SESI BERJALAN: ditahan lebih dulu. Windows
+     menampilkan layar "menutup aplikasi" dengan alasan
+     "BALI-LOG: klik Cancel/Batal, lalu isi refleksi belajar supaya
+     laptop bisa dimatikan."
+       Langkah siswa: klik "Cancel"/"Batal" pada layar Windows tersebut,
+       lalu form "Refleksi Sebelum Mematikan" muncul (WAJIB diisi - tanpa
+       tombol lewati). Setelah "SIMPAN & MATIKAN", laptop dimatikan
+       otomatis oleh aplikasi.
+       - Tombol "BATAL" pada form (atau menutup form) = membatalkan
+         percobaan shutdown; sesi tetap berjalan.
+       - Bila siswa memilih "Shut down anyway" di layar Windows, sesi
+         tetap ditutup dan tercatat "shutdown" (refleksi terlewat).
+       - Bila akun kiosk Windows memakai sandi, Windows dapat menampilkan
+         layar "Sign in" setelah Cancel; disarankan akun kiosk TANPA sandi
+         (autologon) agar siswa kembali ke desktop dengan satu klik.
+       - Log off / sign out TIDAK diintersep: sesi langsung ditutup
+         otomatis (alasan "shutdown").
+       - Shutdown yang dipaksa dari luar (shutdown /f, tahan tombol power)
+         tidak bisa ditahan Windows; catatan sesi tetap aman.
+       - Diagnosa: C:\ProgramData\BALI-LOG\data\shutdown.log berisi tahap
+         blocked-feedback, feedback-cancelled, feedback-saved,
+         poweroff-manual, shutdown.
    - Sesi yang tertinggal karena mati listrik / aplikasi dihentikan paksa
      akan dipulihkan: dilanjutkan bila baru, atau ditutup sebagai
      "recovery" oleh server (pemantau sesi menggantung).
