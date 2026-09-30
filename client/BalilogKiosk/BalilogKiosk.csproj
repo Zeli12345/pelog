@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Samakan dengan AppInfo.Version (client/BalilogKiosk.Core/AppInfo.cs)
+         dan AppVersion di installer/balilog-setup.iss saat merilis versi baru. -->
+    <Version>1.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
