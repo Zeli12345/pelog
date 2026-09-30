@@ -76,6 +76,8 @@ public sealed class SessionManager
     {
         try
         {
+            var (totalGb, usedGb) = GetSystemStorage();
+
             var request = new StartSessionRequest
             {
                 SessionUuid = record.SessionUuid,
@@ -85,6 +87,8 @@ public sealed class SessionManager
                 SubjectId = record.SubjectId,
                 UsagePurpose = record.UsagePurpose,
                 StartedAtClient = record.StartedAtClient,
+                StorageTotalGb = totalGb,
+                StorageUsedGb = usedGb,
             };
 
             return await _api.StartSessionAsync(request, cancellationToken);
@@ -92,6 +96,34 @@ public sealed class SessionManager
         catch (Exception)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Kapasitas drive sistem dalam GB (total, terpakai). Kegagalan apa pun
+    /// menghasilkan null agar pembuatan sesi tidak terganggu.
+    /// </summary>
+    private static (int? TotalGb, int? UsedGb) GetSystemStorage()
+    {
+        try
+        {
+            var systemRoot = Path.GetPathRoot(Environment.SystemDirectory);
+            var drive = new System.IO.DriveInfo(systemRoot ?? string.Empty);
+
+            if (!drive.IsReady)
+            {
+                return (null, null);
+            }
+
+            const double bytesPerGb = 1024d * 1024d * 1024d;
+
+            return (
+                (int)(drive.TotalSize / bytesPerGb),
+                (int)((drive.TotalSize - drive.TotalFreeSpace) / bytesPerGb));
+        }
+        catch (Exception)
+        {
+            return (null, null);
         }
     }
 
@@ -134,10 +166,11 @@ public sealed class SessionManager
             cancellationToken);
     }
 
-    public void AttachScreenshot(LocalSessionRecord record, string filePath)
+    public void AttachScreenshot(LocalSessionRecord record, string filePath, DateTimeOffset? capturedAt = null)
     {
         record.ScreenshotPath = filePath;
         record.ScreenshotState = "pending";
+        record.ScreenshotCapturedAt = capturedAt ?? _clock.Now;
         _store.SaveSession(record);
     }
 

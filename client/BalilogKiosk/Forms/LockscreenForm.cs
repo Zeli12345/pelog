@@ -83,6 +83,7 @@ public sealed class LockscreenForm : Form
     private readonly KeyboardBlocker _keyboardBlocker = new();
     private bool _allowExit;
     private bool _busy;
+    private bool _enrollmentRecoveryOpen;
 
     public LockscreenForm(AppServices services)
     {
@@ -627,6 +628,15 @@ public sealed class LockscreenForm : Form
     {
         if (await _services.Api.HealthAsync())
         {
+            // Token yang dicabut server tidak boleh membuat kiosk offline
+            // selamanya: token dihapus dan pendaftaran ulang ditawarkan.
+            if (!await _services.VerifyDeviceTokenAsync())
+            {
+                RecoverEnrollment();
+
+                return;
+            }
+
             await _services.Sync.PushSessionsAsync();
             await _services.Sync.PushScreenshotsAsync();
 
@@ -641,6 +651,44 @@ public sealed class LockscreenForm : Form
 
             // Auto-update: periksa & unduh rilis baru (di-throttle oleh UpdateService).
             await _services.Updates.CheckAndStageAsync(_services.Config.UpdateCheckHours);
+        }
+    }
+
+    /// <summary>
+    /// Token perangkat ditolak server (device_token_invalid): buka dialog
+    /// pendaftaran tanpa menutup kiosk supaya perangkat bisa pulih sendiri.
+    /// Selalu dijalankan di UI thread (dialog WinForms).
+    /// </summary>
+    private void RecoverEnrollment()
+    {
+        if (IsDisposed || Disposing)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(new Action(RecoverEnrollment));
+
+            return;
+        }
+
+        if (_enrollmentRecoveryOpen)
+        {
+            return;
+        }
+
+        _enrollmentRecoveryOpen = true;
+
+        try
+        {
+            using var enroll = new EnrollForm(_services);
+
+            enroll.ShowDialog(this);
+        }
+        finally
+        {
+            _enrollmentRecoveryOpen = false;
         }
     }
 
@@ -848,11 +896,12 @@ public sealed class LockscreenForm : Form
                 return;
             }
 
-            var online = await _services.Api.HealthAsync();
-
-            if (!online && config.PinSetupRequiresOnline)
+            // PIN selalu dibuat di server (hash kanonik), jadi wajib online.
+            // SetPinAsync tidak pernah dipanggil saat offline; siswa dapat mencoba
+            // lagi (dan server diperiksa ulang) setelah koneksi tersambung.
+            if (!await _services.Api.HealthAsync())
             {
-                _pinSetupError.Text = "PIN hanya dapat dibuat saat tersambung ke server. Lapor guru/IT, atau coba lagi saat koneksi tersedia.";
+                _pinSetupError.Text = "PIN harus dibuat saat laptop tersambung ke server. Sambungkan koneksi, lalu tekan S I M P A N   P I N lagi.";
 
                 return;
             }
@@ -1023,7 +1072,6 @@ public sealed class LockscreenForm : Form
                 return;
             }
 
-            string? subjectName = null;
             long? subjectId = null;
 
             if (_mode == Mode.Student)
@@ -1043,7 +1091,6 @@ public sealed class LockscreenForm : Form
                 }
 
                 subjectId = subject.Id;
-                subjectName = subject.Name;
 
                 var record = _services.Sessions.BeginStudent(_student.Nisn, subjectId, purpose);
 
@@ -1054,7 +1101,7 @@ public sealed class LockscreenForm : Form
                     return;
                 }
 
-                LaunchSession(record, _student.Name, _student.ClassName, subjectName);
+                LaunchSession(record, _student.Name);
             }
             else
             {
@@ -1074,7 +1121,7 @@ public sealed class LockscreenForm : Form
                     return;
                 }
 
-                LaunchSession(record, _staff.Name, "Guru / Pegawai", null);
+                LaunchSession(record, _staff.Name);
             }
 
             await Task.CompletedTask;
@@ -1117,15 +1164,15 @@ public sealed class LockscreenForm : Form
         return true;
     }
 
-    private void LaunchSession(Core.Data.LocalSessionRecord record, string displayName, string subtitle, string? subjectName)
+    private void LaunchSession(Core.Data.LocalSessionRecord record, string displayName)
     {
         Hide();
 
         // Sesi berjalan: desktop dipakai normal (Run, CMD, Pengaturan, dll. bebas).
         EnterSessionMode();
 
-        // Runtime sesi berjalan tanpa jendela: hotkey Ctrl+Alt+S untuk mengakhiri.
-        var runtime = new ActiveSessionRuntime(_services, record, displayName, subtitle, subjectName);
+        // Runtime sesi berjalan tanpa jendela: hotkey Ctrl+Alt+S (cadangan Ctrl+Alt+E) untuk mengakhiri.
+        var runtime = new ActiveSessionRuntime(_services, record, displayName);
 
         runtime.FormClosed += (_, _) =>
         {
@@ -1206,7 +1253,14 @@ public sealed class LockscreenForm : Form
         // Kebijakan registry (Task Manager, CMD, Regedit, dll.) diterapkan oleh
         // INSTALLER dengan hak admin. Aplikasi kiosk (non-admin) hanya memasang
         // pemblokir shortcut yang berjalan di sesi pengguna.
-        _keyboardBlocker.Install();
+        // Bila hook gagal, ulangi sekali lalu catat supaya kondisi kiosk yang
+        // tidak terkunci (Alt+Tab/Win/Ctrl+Esc) tidak lewat begitu saja.
+        if (!_keyboardBlocker.Install() && !_keyboardBlocker.Install())
+        {
+            LocalLog.Write(
+                _services.DataDirectory,
+                "keyboard-blocker: hook gagal dipasang — Alt+Tab/tombol Windows/Ctrl+Esc mungkin tidak terblokir.");
+        }
     }
 
     /// <summary>
@@ -1233,26 +1287,19 @@ public sealed class LockscreenForm : Form
         // Sesi masih segar -> lanjutkan dengan widget yang sama.
         var record = recovery.Record;
         var displayName = "Pengguna";
-        var subtitle = string.Empty;
-        string? subjectName = null;
 
         if (record.UserType == "student" && record.Nisn is not null)
         {
             var student = _services.Store.GetStudent(record.Nisn);
             displayName = student?.Name ?? record.Nisn;
-            subtitle = student?.ClassName ?? string.Empty;
-            subjectName = record.SubjectId is null
-                ? null
-                : _services.Store.GetSubjects().FirstOrDefault(subject => subject.Id == record.SubjectId)?.Name;
         }
         else if (record.NipId is not null)
         {
             var staff = _services.Store.GetStaff(record.NipId);
             displayName = staff?.Name ?? record.NipId;
-            subtitle = "Guru / Pegawai";
         }
 
-        BeginInvoke(() => LaunchSession(record, displayName, subtitle, subjectName));
+        BeginInvoke(() => LaunchSession(record, displayName));
     }
 
     protected override void OnHandleCreated(EventArgs e)

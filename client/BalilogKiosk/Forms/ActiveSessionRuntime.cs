@@ -8,7 +8,8 @@ namespace BalilogKiosk.App.Forms;
 /// <summary>
 /// Runtime sesi aktif TANPA jendela dan TANPA ikon tray.
 /// Mengelola heartbeat, sinkronisasi, screenshot terjadwal, dan pengakhiran sesi
-/// melalui hotkey Ctrl+Alt+S. Saat Windows dimatikan / restart / log off:
+/// melalui hotkey Ctrl+Alt+S (cadangan Ctrl+Alt+E bila registrasi gagal).
+/// Saat Windows dimatikan / restart / log off:
 /// - log off: sesi ditutup otomatis (alasan "shutdown");
 /// - shutdown / restart: ditahan lebih dulu jika ada sesi berjalan supaya siswa
 ///   mengisi refleksi (wajib), lalu komputer dimatikan;
@@ -25,6 +26,7 @@ public sealed class ActiveSessionRuntime : Form
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
     private const int VkS = 0x53;
+    private const int VkE = 0x45;
     private const uint SwpNoSize = 0x0001;
     private const uint SwpNoMove = 0x0002;
     private const uint SwpNoActivate = 0x0010;
@@ -78,9 +80,7 @@ public sealed class ActiveSessionRuntime : Form
     public ActiveSessionRuntime(
         AppServices services,
         LocalSessionRecord record,
-        string displayName,
-        string subtitle,
-        string? subjectName)
+        string displayName)
     {
         _services = services;
         _record = record;
@@ -123,7 +123,31 @@ public sealed class ActiveSessionRuntime : Form
     {
         base.OnHandleCreated(e);
 
-        RegisterHotKey(Handle, HotkeyId, ModControl | ModAlt, VkS);
+        RegisterSessionHotkey();
+    }
+
+    /// <summary>
+    /// Mendaftarkan hotkey pengakhir sesi. Ctrl+Alt+S adalah hotkey utama;
+    /// bila gagal (mis. sudah dipakai aplikasi lain), Ctrl+Alt+E dipakai sebagai
+    /// cadangan. Kombinasi yang benar-benar aktif selalu dicatat ke log lokal.
+    /// </summary>
+    private void RegisterSessionHotkey()
+    {
+        if (RegisterHotKey(Handle, HotkeyId, ModControl | ModAlt, VkS))
+        {
+            LocalLog.Write(_services.DataDirectory, "hotkey sesi aktif: Ctrl+Alt+S");
+
+            return;
+        }
+
+        if (RegisterHotKey(Handle, HotkeyId, ModControl | ModAlt, VkE))
+        {
+            LocalLog.Write(_services.DataDirectory, "hotkey sesi aktif: Ctrl+Alt+E (Ctrl+Alt+S gagal terdaftar)");
+
+            return;
+        }
+
+        LocalLog.Write(_services.DataDirectory, "hotkey sesi GAGAL terdaftar: Ctrl+Alt+S dan Ctrl+Alt+E tidak tersedia");
     }
 
     protected override void WndProc(ref Message m)
@@ -244,7 +268,18 @@ public sealed class ActiveSessionRuntime : Form
                 // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
             }
 
-            await _services.Sync.PushSessionsAsync();
+            // Batas singkat juga untuk unggahan antrean: jaringan yang tidak
+            // merespons tidak boleh menahan shutdown (30 detik timeout HttpClient).
+            try
+            {
+                using var flushTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+                await _services.Sync.PushSessionsAsync(flushTimeout.Token);
+            }
+            catch (Exception)
+            {
+                // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
+            }
 
             _services.Store.SetKv("shutdown_pending", "");
             SafeBlockReason(create: false);
@@ -330,9 +365,8 @@ public sealed class ActiveSessionRuntime : Form
             return;
         }
 
-        _screenshotTaken = true;
-
         var config = _services.Sync.LoadCachedConfig();
+        var capturedAt = _services.Clock.Now;
 
         var path = ScreenCapture.CaptureToFile(
             _services.ScreenshotDirectory,
@@ -344,10 +378,18 @@ public sealed class ActiveSessionRuntime : Form
 
         if (path is null)
         {
+            // Gagal menangkap/menyandi: jangan tandai sesi sudah punya screenshot,
+            // jadwalkan percobaan berikutnya pada interval yang sama.
+            _screenshotTimer?.Start();
+
             return;
         }
 
-        _services.Sessions.AttachScreenshot(_record, path);
+        // Tandai hanya setelah capture benar-benar berhasil, supaya kegagalan
+        // tidak menghabiskan jatah satu-satunya screenshot sesi.
+        _screenshotTaken = true;
+
+        _services.Sessions.AttachScreenshot(_record, path, capturedAt);
 
         await _services.Sync.PushScreenshotsAsync();
     }
@@ -525,7 +567,10 @@ public sealed class ActiveSessionRuntime : Form
 
                 try
                 {
-                    _services.Sessions.TryRemoteEndAsync(_record).Wait(TimeSpan.FromSeconds(2));
+                    // Dijalankan di thread latar: menunggu task ini langsung di UI
+                    // thread akan deadlock karena kelanjutannya menangkap
+                    // synchronization context WinForms.
+                    Task.Run(() => _services.Sessions.TryRemoteEndAsync(_record)).Wait(TimeSpan.FromSeconds(2));
                 }
                 catch (Exception)
                 {

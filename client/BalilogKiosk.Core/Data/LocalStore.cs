@@ -1,3 +1,4 @@
+using System.Globalization;
 using BalilogKiosk.Core.Models;
 using Microsoft.Data.Sqlite;
 
@@ -29,13 +30,19 @@ public sealed class LocalSessionRecord
 
     public string CloseReason { get; set; } = "normal";
 
-    /// <summary>open | closed | synced</summary>
+    /// <summary>open | closed | synced | failed</summary>
     public string State { get; set; } = "open";
 
     public string? ScreenshotPath { get; set; }
 
     /// <summary>none | pending | synced</summary>
     public string ScreenshotState { get; set; } = "none";
+
+    /// <summary>Waktu nyata saat screenshot diambil (null untuk data lama).</summary>
+    public DateTimeOffset? ScreenshotCapturedAt { get; set; }
+
+    /// <summary>Jumlah percobaan sinkronisasi yang gagal (membatasi retry antrean).</summary>
+    public int SyncFailedAttempts { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
@@ -115,8 +122,14 @@ public sealed class LocalStore : IDisposable
                 state TEXT NOT NULL DEFAULT 'open',
                 screenshot_path TEXT,
                 screenshot_state TEXT NOT NULL DEFAULT 'none',
+                screenshot_captured_at TEXT,
+                sync_failed_attempts INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL
             );");
+
+        // Upgrade idempoten untuk basis data lama yang belum memiliki kolom di atas.
+        EnsureColumn("sessions", "screenshot_captured_at", "TEXT");
+        EnsureColumn("sessions", "sync_failed_attempts", "INTEGER NOT NULL DEFAULT 0");
     }
 
     private void Execute(string sql)
@@ -126,10 +139,43 @@ public sealed class LocalStore : IDisposable
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Menambahkan kolom yang belum ada (idempoten) agar basis data lama
+    /// ikut ter-upgrade tanpa menghapus cache siswa/sesi.
+    /// </summary>
+    private void EnsureColumn(string table, string column, string definition)
+    {
+        var exists = false;
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = $"PRAGMA table_info({table})";
+
+            using var reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                {
+                    exists = true;
+
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+        {
+            Execute($"ALTER TABLE {table} ADD COLUMN {column} {definition}");
+        }
+    }
+
     private static string? Iso(DateTimeOffset? value) => value?.ToUniversalTime().ToString("o");
 
     private static DateTimeOffset? ParseIso(string? value) =>
-        string.IsNullOrEmpty(value) ? null : DateTimeOffset.Parse(value);
+        string.IsNullOrEmpty(value)
+            ? null
+            : DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
     // ---------- Key-value ----------
 
@@ -158,6 +204,25 @@ public sealed class LocalStore : IDisposable
     {
         using var transaction = _connection.BeginTransaction();
 
+        // Simpan status lockout PIN lokal agar refresh bootstrap tidak mereset
+        // hitungan percobaan / masa kunci PIN siswa.
+        var pinState = new Dictionary<string, (int Failed, string? LockedUntil)>(StringComparer.Ordinal);
+
+        using (var read = _connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText = "SELECT nisn, pin_failed, pin_locked_until FROM students";
+
+            using var reader = read.ExecuteReader();
+
+            while (reader.Read())
+            {
+                pinState[reader.GetString(0)] = (
+                    reader.GetInt32(1),
+                    reader.IsDBNull(2) ? null : reader.GetString(2));
+            }
+        }
+
         using (var delete = _connection.CreateCommand())
         {
             delete.Transaction = transaction;
@@ -167,11 +232,15 @@ public sealed class LocalStore : IDisposable
 
         foreach (var student in students)
         {
+            pinState.TryGetValue(student.Nisn, out var pin);
+            var failed = pin.Failed;
+            var lockedUntil = pin.LockedUntil;
+
             using var insert = _connection.CreateCommand();
             insert.Transaction = transaction;
             insert.CommandText = @"
                 INSERT INTO students (nisn, name, class, has_pin, pin_algo, pin_salt, pin_iterations, pin_hash, pin_failed, pin_locked_until)
-                VALUES ($nisn, $name, $class, $hasPin, $algo, $salt, $iterations, $hash, 0, NULL)";
+                VALUES ($nisn, $name, $class, $hasPin, $algo, $salt, $iterations, $hash, $failed, $locked)";
             insert.Parameters.AddWithValue("$nisn", student.Nisn);
             insert.Parameters.AddWithValue("$name", student.Name);
             insert.Parameters.AddWithValue("$class", student.ClassName);
@@ -180,6 +249,8 @@ public sealed class LocalStore : IDisposable
             insert.Parameters.AddWithValue("$salt", (object?)student.Pin?.Salt ?? DBNull.Value);
             insert.Parameters.AddWithValue("$iterations", (object?)student.Pin?.Iterations ?? DBNull.Value);
             insert.Parameters.AddWithValue("$hash", (object?)student.Pin?.Hash ?? DBNull.Value);
+            insert.Parameters.AddWithValue("$failed", failed);
+            insert.Parameters.AddWithValue("$locked", (object?)lockedUntil ?? DBNull.Value);
             insert.ExecuteNonQuery();
         }
 
@@ -331,7 +402,7 @@ public sealed class LocalStore : IDisposable
 
         return (
             reader.GetInt32(0),
-            reader.IsDBNull(1) ? null : DateTimeOffset.Parse(reader.GetString(1)));
+            ParseIso(reader.IsDBNull(1) ? null : reader.GetString(1)));
     }
 
     public void SavePinState(string nisn, int failed, DateTimeOffset? lockedUntil)
@@ -371,12 +442,12 @@ public sealed class LocalStore : IDisposable
                 session_uuid, user_type, nisn, nip_id, subject_id, purpose,
                 started_at_client, last_heartbeat_at, ended_at_client,
                 feedback, comprehension, close_reason, state,
-                screenshot_path, screenshot_state, created_at
+                screenshot_path, screenshot_state, screenshot_captured_at, created_at
             ) VALUES (
                 $uuid, $userType, $nisn, $nip, $subjectId, $purpose,
                 $started, $heartbeat, $ended,
                 $feedback, $comprehension, $reason, $state,
-                $shotPath, $shotState, $created
+                $shotPath, $shotState, $shotCaptured, $created
             )
             ON CONFLICT(session_uuid) DO UPDATE SET
                 last_heartbeat_at = excluded.last_heartbeat_at,
@@ -386,7 +457,8 @@ public sealed class LocalStore : IDisposable
                 close_reason = excluded.close_reason,
                 state = excluded.state,
                 screenshot_path = excluded.screenshot_path,
-                screenshot_state = excluded.screenshot_state";
+                screenshot_state = excluded.screenshot_state,
+                screenshot_captured_at = excluded.screenshot_captured_at";
         command.Parameters.AddWithValue("$uuid", record.SessionUuid);
         command.Parameters.AddWithValue("$userType", record.UserType);
         command.Parameters.AddWithValue("$nisn", (object?)record.Nisn ?? DBNull.Value);
@@ -402,6 +474,7 @@ public sealed class LocalStore : IDisposable
         command.Parameters.AddWithValue("$state", record.State);
         command.Parameters.AddWithValue("$shotPath", (object?)record.ScreenshotPath ?? DBNull.Value);
         command.Parameters.AddWithValue("$shotState", record.ScreenshotState);
+        command.Parameters.AddWithValue("$shotCaptured", (object?)Iso(record.ScreenshotCapturedAt) ?? DBNull.Value);
         command.Parameters.AddWithValue("$created", Iso(record.CreatedAt) ?? string.Empty);
         command.ExecuteNonQuery();
     }
@@ -472,6 +545,37 @@ public sealed class LocalStore : IDisposable
         command.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Menambah jumlah percobaan sinkronisasi yang gagal untuk satu sesi
+    /// (mengembalikan nilai terbaru) agar antrean tidak dikirim tanpa batas.
+    /// </summary>
+    public int IncrementSyncAttempts(string sessionUuid)
+    {
+        using (var update = _connection.CreateCommand())
+        {
+            update.CommandText = "UPDATE sessions SET sync_failed_attempts = sync_failed_attempts + 1 WHERE session_uuid = $uuid";
+            update.Parameters.AddWithValue("$uuid", sessionUuid);
+            update.ExecuteNonQuery();
+        }
+
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT sync_failed_attempts FROM sessions WHERE session_uuid = $uuid";
+        command.Parameters.AddWithValue("$uuid", sessionUuid);
+
+        var value = command.ExecuteScalar();
+
+        return value is null or DBNull ? 0 : Convert.ToInt32(value);
+    }
+
+    /// <summary>Menandai sesi berhenti dikirim karena ditolak server berulang kali.</summary>
+    public void MarkSessionSyncFailed(string sessionUuid)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "UPDATE sessions SET state = 'failed' WHERE session_uuid = $uuid";
+        command.Parameters.AddWithValue("$uuid", sessionUuid);
+        command.ExecuteNonQuery();
+    }
+
     private List<LocalSessionRecord> QuerySessions(string sql)
     {
         using var command = _connection.CreateCommand();
@@ -510,6 +614,8 @@ public sealed class LocalStore : IDisposable
             State = reader.GetString(reader.GetOrdinal("state")),
             ScreenshotPath = GetNullable("screenshot_path"),
             ScreenshotState = reader.GetString(reader.GetOrdinal("screenshot_state")),
+            ScreenshotCapturedAt = ParseIso(GetNullable("screenshot_captured_at")),
+            SyncFailedAttempts = reader.GetInt32(reader.GetOrdinal("sync_failed_attempts")),
             CreatedAt = ParseIso(GetNullable("created_at")) ?? DateTimeOffset.UtcNow,
         };
     }

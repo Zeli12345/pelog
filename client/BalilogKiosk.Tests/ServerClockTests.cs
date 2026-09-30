@@ -33,4 +33,19 @@ public class ServerClockTests
 
         Assert.Equal(TimeSpan.FromMinutes(2), clock.Offset);
     }
+
+    [Fact]
+    public void Sync_Uses_Roundtrip_Midpoint()
+    {
+        var started = new DateTimeOffset(2026, 9, 14, 10, 0, 0, TimeSpan.Zero);
+        var completed = started.AddSeconds(2);
+        var clock = new ServerClock(() => completed);
+
+        // Server 7 menit di depan titik tengah round-trip (started + 1 detik).
+        // Tanpa midpoint, offset akan meleset +/- 1 detik.
+        clock.Sync(started.AddMinutes(7).AddSeconds(1), started);
+
+        Assert.Equal(TimeSpan.FromMinutes(7), clock.Offset);
+        Assert.True(clock.IsSynced);
+    }
 }

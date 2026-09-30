@@ -20,14 +20,27 @@ public sealed class ServerClock
 
     public bool IsSynced { get; private set; }
 
-    public void Sync(DateTimeOffset? serverTime)
+    /// <summary>Waktu lokal mentah (tanpa offset server) untuk mengukur awal round-trip.</summary>
+    public DateTimeOffset LocalNow => _utcNow();
+
+    /// <summary>
+    /// Menerapkan waktu server relatif terhadap titik tengah round-trip
+    /// (bila <paramref name="requestStartedAt"/> diberikan), sehingga offset
+    /// tidak melenceng sebesar setengah RTT.
+    /// </summary>
+    public void Sync(DateTimeOffset? serverTime, DateTimeOffset? requestStartedAt = null)
     {
         if (serverTime is null)
         {
             return;
         }
 
-        _offset = serverTime.Value - _utcNow();
+        var completedAt = _utcNow();
+        var clientReference = requestStartedAt is { } startedAt && completedAt > startedAt
+            ? startedAt + (completedAt - startedAt) / 2
+            : completedAt;
+
+        _offset = serverTime.Value - clientReference;
         IsSynced = true;
     }
 }

@@ -66,6 +66,26 @@ class StudentsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 continue;
             }
 
+            if (mb_strlen($name) > 150) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nisn' => $nisn,
+                    'message' => 'Nama maksimal 150 karakter.',
+                ];
+
+                continue;
+            }
+
+            if (mb_strlen($class) > 50) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nisn' => $nisn,
+                    'message' => 'Kelas maksimal 50 karakter.',
+                ];
+
+                continue;
+            }
+
             $student = Student::withTrashed()->firstOrNew(['nisn' => $nisn]);
             $isNew = ! $student->exists;
 
@@ -76,10 +96,20 @@ class StudentsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 $student->is_active = true;
             }
 
-            $student->save();
+            try {
+                $student->save();
 
-            if ($student->trashed()) {
-                $student->restore();
+                if ($student->trashed()) {
+                    $student->restore();
+                }
+            } catch (\Throwable) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nisn' => $nisn,
+                    'message' => 'Baris gagal disimpan.',
+                ];
+
+                continue;
             }
 
             if ($isNew) {

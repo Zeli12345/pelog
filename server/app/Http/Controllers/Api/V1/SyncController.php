@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\CloseReason;
+use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\StaffMember;
@@ -11,9 +12,11 @@ use App\Models\Subject;
 use App\Models\UsageSession;
 use App\Support\ApiResponse;
 use App\Support\Audit;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class SyncController extends Controller
@@ -70,24 +73,7 @@ class SyncController extends Controller
         $existing = UsageSession::query()->where('session_uuid', $data['session_uuid'])->first();
 
         if ($existing !== null) {
-            if ($existing->device_id !== $device->id) {
-                return [
-                    'session_uuid' => $data['session_uuid'],
-                    'status' => 'error',
-                    'message' => 'Sesi milik perangkat lain.',
-                ];
-            }
-
-            // Lengkapi data akhir jika sesi masih terbuka dan payload membawa penutupan.
-            if ($existing->isActive() && isset($data['ended_at_client'])) {
-                $this->close($existing, $device, $data);
-            }
-
-            return [
-                'session_uuid' => $data['session_uuid'],
-                'status' => 'skipped',
-                'message' => 'Sesi sudah ada (idempoten).',
-            ];
+            return $this->existingItemResult($device, $existing, $data);
         }
 
         $student = null;
@@ -127,22 +113,49 @@ class SyncController extends Controller
             }
         }
 
-        $session = UsageSession::query()->create([
-            'session_uuid' => $data['session_uuid'],
-            'device_id' => $device->id,
-            'user_type' => $data['user_type'],
-            'student_id' => $student?->id,
-            'staff_id' => $staff?->id,
-            'subject_id' => $data['subject_id'] ?? null,
-            'usage_purpose' => $data['usage_purpose'],
-            'started_at_client' => isset($data['started_at_client']) ? Carbon::parse($data['started_at_client']) : null,
-            'started_at_server' => null,
-            'last_heartbeat_at' => isset($data['ended_at_client']) ? null : now(),
-            'sync_source' => 'offline',
-        ]);
+        try {
+            $session = DB::transaction(function () use ($device, $data, $student, $staff) {
+                Device::query()->whereKey($device->id)->lockForUpdate()->first();
 
-        if (isset($data['ended_at_client'])) {
-            $this->close($session, $device, $data);
+                $raced = UsageSession::query()->where('session_uuid', $data['session_uuid'])->first();
+
+                if ($raced !== null) {
+                    return $raced;
+                }
+
+                $session = UsageSession::query()->create([
+                    'session_uuid' => $data['session_uuid'],
+                    'device_id' => $device->id,
+                    'user_type' => $data['user_type'],
+                    'student_id' => $student?->id,
+                    'staff_id' => $staff?->id,
+                    'subject_id' => $data['subject_id'] ?? null,
+                    'usage_purpose' => $data['usage_purpose'],
+                    'started_at_client' => isset($data['started_at_client']) ? Carbon::parse($data['started_at_client']) : null,
+                    'started_at_server' => null,
+                    'last_heartbeat_at' => isset($data['ended_at_client']) ? null : now(),
+                    'sync_source' => 'offline',
+                ]);
+
+                if (isset($data['ended_at_client'])) {
+                    $this->close($session, $device, $data);
+                }
+
+                return $session;
+            });
+        } catch (QueryException $exception) {
+            // Balapan tetap bisa lolos lewat unique session_uuid; perlakukan sebagai idempoten.
+            $raced = UsageSession::query()->where('session_uuid', $data['session_uuid'])->first();
+
+            if ($raced === null) {
+                throw $exception;
+            }
+
+            $session = $raced;
+        }
+
+        if (! $session->wasRecentlyCreated) {
+            return $this->existingItemResult($device, $session, $data);
         }
 
         Audit::log(
@@ -163,6 +176,70 @@ class SyncController extends Controller
 
     /**
      * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function existingItemResult(Device $device, UsageSession $existing, array $data): array
+    {
+        if ($existing->device_id !== $device->id) {
+            return [
+                'session_uuid' => $data['session_uuid'],
+                'status' => 'error',
+                'message' => 'Sesi milik perangkat lain.',
+            ];
+        }
+
+        // Lengkapi data akhir jika sesi masih terbuka dan payload membawa penutupan.
+        if ($existing->isActive()) {
+            if (isset($data['ended_at_client'])) {
+                $this->close($existing, $device, $data);
+            }
+        } else {
+            $this->applyOfflineReflection($existing, $data);
+        }
+
+        return [
+            'session_uuid' => $data['session_uuid'],
+            'status' => 'skipped',
+            'message' => 'Sesi sudah ada (idempoten).',
+        ];
+    }
+
+    /**
+     * Sesi yang sudah ditutup server (mis. oleh balilog:close-stale-sessions) tetap
+     * menyimpan refleksi offline tanpa mengubah closed_at/started_at.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function applyOfflineReflection(UsageSession $session, array $data): void
+    {
+        $updates = [];
+
+        if ($session->student_feedback === null && isset($data['student_feedback'])) {
+            $updates['student_feedback'] = $data['student_feedback'];
+        }
+
+        if ($session->comprehension_level === null && isset($data['comprehension_level'])) {
+            $updates['comprehension_level'] = $data['comprehension_level'];
+        }
+
+        if (isset($data['ended_at_client'])) {
+            $startedAt = $session->started_at_client ?? $session->started_at_server ?? $session->created_at;
+
+            if ($startedAt !== null) {
+                $updates['duration_minutes'] = max(
+                    0,
+                    (int) $startedAt->diffInMinutes(Carbon::parse($data['ended_at_client'])),
+                );
+            }
+        }
+
+        if ($updates !== []) {
+            $session->forceFill($updates)->save();
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
      */
     private function close(UsageSession $session, Device $device, array $data): void
     {
@@ -178,7 +255,7 @@ class SyncController extends Controller
             'duration_minutes' => $startedAt !== null ? max(0, (int) $startedAt->diffInMinutes($closedAt)) : 0,
         ])->save();
 
-        if (! $device->sessions()->active()->exists()) {
+        if ($device->status === DeviceStatus::InUse && ! $device->sessions()->active()->exists()) {
             $device->forceFill(['status' => 'available'])->saveQuietly();
         }
     }

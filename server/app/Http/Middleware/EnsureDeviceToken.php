@@ -27,7 +27,18 @@ class EnsureDeviceToken
             return ApiResponse::error('device_token_invalid', 'Token perangkat tidak valid.', 401);
         }
 
-        $device->forceFill(['last_seen_at' => now()])->saveQuietly();
+        $updates = ['last_seen_at' => now()];
+
+        // Versi aplikasi kiosk dilaporkan lewat header X-App-Version pada setiap
+        // request terautentikasi; dipakai dashboard untuk menandai perangkat
+        // yang belum memakai rilis terbaru.
+        $version = trim((string) $request->header('X-App-Version', ''));
+
+        if (preg_match('/^\d+(\.\d+){1,3}$/', $version) === 1) {
+            $updates['agent_version'] = $version;
+        }
+
+        $device->forceFill($updates)->saveQuietly();
 
         $request->attributes->set('balilog_device', $device);
 

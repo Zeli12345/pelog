@@ -6,10 +6,15 @@ use App\Models\UsageSession;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use PhpOffice\PhpSpreadsheet\Shared\StringHelper;
 
-class SessionsExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping
+class SessionsExport extends DefaultValueBinder implements FromQuery, ShouldAutoSize, WithCustomValueBinder, WithHeadings, WithMapping
 {
     /**
      * @param  array<string, string|null>  $filters
@@ -24,7 +29,35 @@ class SessionsExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMap
             ->when($this->filters['to'], fn ($query, $to) => $query->whereDate('started_at_server', '<=', $to))
             ->when($this->filters['user_type'], fn ($query, $type) => $query->where('user_type', $type))
             ->when($this->filters['device_id'], fn ($query, $deviceId) => $query->where('device_id', $deviceId))
+            ->when(($this->filters['q'] ?? '') !== '', function ($query) {
+                $search = $this->filters['q'];
+                $query->where(function ($inner) use ($search) {
+                    $inner->where('usage_purpose', 'like', "%{$search}%")
+                        ->orWhereHas('student', function ($student) use ($search) {
+                            $student->where('name', 'like', "%{$search}%")
+                                ->orWhere('nisn', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('staff', fn ($staff) => $staff->where('name', 'like', "%{$search}%"));
+                });
+            })
             ->orderByDesc('started_at_server');
+    }
+
+    /**
+     * Force formula-like free-text values to be written as inert strings.
+     *
+     * @param  mixed  $value
+     * @return bool
+     */
+    public function bindValue(Cell $cell, $value)
+    {
+        if (is_string($value) && preg_match('/^[=+\-@\t\r]/', $value) === 1) {
+            $cell->setValueExplicit(StringHelper::sanitizeUTF8($value), DataType::TYPE_STRING);
+
+            return true;
+        }
+
+        return parent::bindValue($cell, $value);
     }
 
     /**

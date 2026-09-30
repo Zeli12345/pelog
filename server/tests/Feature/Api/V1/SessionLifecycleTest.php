@@ -219,4 +219,81 @@ class SessionLifecycleTest extends TestCase
             ->assertStatus(401)
             ->assertJsonPath('error.code', 'device_token_invalid');
     }
+
+    public function test_end_releases_in_use_device(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+
+        $uuid = (string) Str::uuid();
+
+        $this->postJson('/api/v1/sessions/start', [
+            'session_uuid' => $uuid,
+            'user_type' => 'student',
+            'nisn' => '0051234567',
+            'usage_purpose' => 'Praktikum singkat',
+        ], $this->deviceHeaders($token))->assertStatus(201);
+
+        $this->assertSame('in_use', $device->refresh()->status->value);
+
+        $this->postJson('/api/v1/sessions/end', [
+            'session_uuid' => $uuid,
+            'close_reason' => 'normal',
+        ], $this->deviceHeaders($token))->assertOk();
+
+        $this->assertSame('available', $device->refresh()->status->value);
+    }
+
+    public function test_end_keeps_maintenance_device_status(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+
+        $uuid = (string) Str::uuid();
+
+        $this->postJson('/api/v1/sessions/start', [
+            'session_uuid' => $uuid,
+            'user_type' => 'student',
+            'nisn' => '0051234567',
+            'usage_purpose' => 'Sesi berjalan lalu masuk perawatan',
+        ], $this->deviceHeaders($token))->assertStatus(201);
+
+        // Admin menandai perangkat masuk perawatan saat sesi masih berjalan.
+        $device->forceFill(['status' => 'maintenance'])->save();
+
+        $this->postJson('/api/v1/sessions/end', [
+            'session_uuid' => $uuid,
+            'close_reason' => 'normal',
+        ], $this->deviceHeaders($token))
+            ->assertOk()
+            ->assertJsonPath('data.active', false);
+
+        $this->assertSame(
+            'maintenance',
+            $device->refresh()->status->value,
+            'Menutup sesi tidak boleh mengembalikan status perawatan menjadi available.',
+        );
+    }
+
+    public function test_heartbeat_response_no_longer_includes_commands(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+
+        $uuid = (string) Str::uuid();
+
+        $this->postJson('/api/v1/sessions/start', [
+            'session_uuid' => $uuid,
+            'user_type' => 'student',
+            'nisn' => '0051234567',
+            'usage_purpose' => 'Praktikum tanpa perintah server',
+        ], $this->deviceHeaders($token))->assertStatus(201);
+
+        $this->postJson('/api/v1/sessions/heartbeat', [
+            'session_uuid' => $uuid,
+        ], $this->deviceHeaders($token))
+            ->assertOk()
+            ->assertJsonPath('data.active', true)
+            ->assertJsonMissingPath('data.commands');
+    }
 }

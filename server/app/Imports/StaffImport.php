@@ -56,6 +56,26 @@ class StaffImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 continue;
             }
 
+            if (mb_strlen($nip) > 30) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nip' => $nip,
+                    'message' => 'NIP/NUPTK maksimal 30 karakter.',
+                ];
+
+                continue;
+            }
+
+            if (mb_strlen($name) > 150) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nip' => $nip,
+                    'message' => 'Nama maksimal 150 karakter.',
+                ];
+
+                continue;
+            }
+
             if (! in_array($role, ['teacher', 'staff', 'admin'], true)) {
                 $role = 'teacher';
             }
@@ -70,10 +90,20 @@ class StaffImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 $member->is_active = true;
             }
 
-            $member->save();
+            try {
+                $member->save();
 
-            if ($member->trashed()) {
-                $member->restore();
+                if ($member->trashed()) {
+                    $member->restore();
+                }
+            } catch (\Throwable) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nip' => $nip,
+                    'message' => 'Baris gagal disimpan.',
+                ];
+
+                continue;
             }
 
             if ($isNew) {

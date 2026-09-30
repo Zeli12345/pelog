@@ -85,6 +85,16 @@ class SubjectController extends Controller
         if ($subject->sessions()->exists()) {
             $subject->update(['is_active' => false]);
 
+            Audit::log(
+                action: 'subject_deactivated',
+                entityType: Subject::class,
+                entityId: $subject->id,
+                metadata: ['code' => $subject->code],
+                actorType: 'user',
+                actorId: $request->user()->id,
+                request: $request,
+            );
+
             return redirect()->route('subjects.index')->with('status', "{$subject->name} dinonaktifkan karena sudah dipakai pada sesi penggunaan.");
         }
 

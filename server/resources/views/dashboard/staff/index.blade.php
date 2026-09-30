@@ -62,7 +62,7 @@
                                             <a href="{{ route('staff.edit', $member) }}" class="btn-secondary !px-2 !py-1 text-xs" title="Edit">
                                                 <x-icon name="pencil" size="h-3.5 w-3.5" />
                                             </a>
-                                            <form method="POST" action="{{ route('staff.destroy', $member) }}" onsubmit="return confirm('Hapus {{ $member->name }}?')">
+                                            <form method="POST" action="{{ route('staff.destroy', $member) }}" data-confirm="Hapus {{ $member->name }}?">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn-secondary !px-2 !py-1 text-xs text-brick-600" title="Hapus">
@@ -81,4 +81,14 @@
             @endif
         </section>
     </div>
+
+    <script>
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('form[data-confirm]');
+
+            if (form && ! confirm(form.dataset.confirm)) {
+                event.preventDefault();
+            }
+        });
+    </script>
 </x-dashboard-layout>

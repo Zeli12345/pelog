@@ -37,6 +37,7 @@ if ($FullUninstall) {
     schtasks /Delete /F /TN "BALI-LOG Kiosk (Watchdog)" | Out-Null
     schtasks /Delete /F /TN "BALILogHardeningSuspend" | Out-Null
     schtasks /Delete /F /TN "BALILogHardeningApply" | Out-Null
+    schtasks /Delete /F /TN "BALILogAutoUpdate" | Out-Null
 
     Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'BALILogKiosk' -ErrorAction SilentlyContinue
 

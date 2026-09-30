@@ -48,6 +48,7 @@ class DeviceController extends Controller
             'search' => $search,
             'statusFilter' => $statusFilter,
             'onlineWindow' => $onlineWindow,
+            'latestVersion' => (string) Setting::getValue('app_version', config('balilog.version')),
         ]);
     }
 

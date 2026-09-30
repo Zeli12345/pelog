@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Enums\ComprehensionLevel;
+use App\Enums\UserType;
 use App\Exports\SessionsExport;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\UsageSession;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -63,7 +66,7 @@ class ReportController extends Controller
     {
         $filters = $this->filters($request);
         $format = (string) $request->query('format', 'csv');
-        $filename = 'laporan-sesi-'.$filters['from'].'_'.$filters['to'];
+        $filename = 'laporan-sesi-'.preg_replace('/[^0-9_-]/', '', $filters['from'].'_'.$filters['to']);
 
         if ($format === 'xlsx') {
             return Excel::download(new SessionsExport($filters), $filename.'.xlsx');
@@ -88,18 +91,18 @@ class ReportController extends Controller
             foreach ($sessions as $session) {
                 fputcsv($output, [
                     ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('Y-m-d') ?? '-',
-                    $session->device?->label ?? $session->device?->hostname ?? '-',
-                    $session->user_type->label(),
-                    $session->student?->name ?? $session->staff?->name ?? '-',
-                    $session->student?->class ?? $session->staff?->role?->label() ?? '-',
-                    $session->subject?->name ?? '-',
-                    $session->usage_purpose,
+                    $this->csvText($session->device?->label ?? $session->device?->hostname) ?? '-',
+                    $this->csvText($session->user_type->label()),
+                    $this->csvText($session->student?->name ?? $session->staff?->name) ?? '-',
+                    $this->csvText($session->student?->class ?? $session->staff?->role?->label()) ?? '-',
+                    $this->csvText($session->subject?->name) ?? '-',
+                    $this->csvText($session->usage_purpose),
                     ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('H:i') ?? '-',
                     $session->closed_at?->timezone('Asia/Makassar')->format('H:i') ?? '-',
                     $session->duration_minutes,
-                    $session->comprehension_level?->label() ?? '-',
-                    $session->student_feedback ?? '-',
-                    $session->close_reason?->label() ?? '-',
+                    $this->csvText($session->comprehension_level?->label()) ?? '-',
+                    $this->csvText($session->student_feedback) ?? '-',
+                    $this->csvText($session->close_reason?->label()) ?? '-',
                 ]);
             }
 
@@ -112,13 +115,37 @@ class ReportController extends Controller
      */
     private function filters(Request $request): array
     {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'user_type' => ['nullable', Rule::enum(UserType::class)],
+            'device_id' => ['nullable', 'integer', 'exists:devices,id'],
+            'q' => ['nullable', 'string', 'max:255'],
+        ]);
+
         return [
-            'from' => (string) $request->query('from', now()->startOfMonth()->toDateString()),
-            'to' => (string) $request->query('to', now()->toDateString()),
-            'user_type' => $request->query('user_type'),
-            'device_id' => $request->query('device_id'),
-            'q' => trim((string) $request->query('q', '')),
+            'from' => filled($validated['from'] ?? null)
+                ? Carbon::parse($validated['from'])->toDateString()
+                : now()->startOfMonth()->toDateString(),
+            'to' => filled($validated['to'] ?? null)
+                ? Carbon::parse($validated['to'])->toDateString()
+                : now()->toDateString(),
+            'user_type' => $validated['user_type'] ?? null,
+            'device_id' => $validated['device_id'] ?? null,
+            'q' => trim((string) ($validated['q'] ?? '')),
         ];
+    }
+
+    /**
+     * Prefix values Excel could interpret as a formula so CSV exports stay inert.
+     */
+    private function csvText(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'".$value : $value;
     }
 
     /**

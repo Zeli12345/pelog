@@ -85,7 +85,12 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-xs text-ink-soft">
-                                        <p class="font-mono">{{ $device->agent_version ?? '—' }}</p>
+                                        <p class="font-mono">
+                                            {{ $device->agent_version ?? '—' }}
+                                            @if ($device->agent_version && $device->agent_version !== $latestVersion)
+                                                <span class="badge-warn ml-1 !px-1.5 !py-0 text-[10px]" title="Rilis terbaru: {{ $latestVersion }}">lama</span>
+                                            @endif
+                                        </p>
                                         <p class="text-[11px] text-ink-faint">{{ $device->windows_version ? \Illuminate\Support\Str::limit($device->windows_version, 30) : '—' }}</p>
                                     </td>
                                     <td class="px-4 py-3 text-xs text-ink-soft">{{ $device->last_seen_at?->diffForHumans(short: true) ?? '—' }}</td>

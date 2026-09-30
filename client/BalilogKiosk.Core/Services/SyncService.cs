@@ -12,6 +12,8 @@ namespace BalilogKiosk.Core.Services;
 /// </summary>
 public sealed class SyncService
 {
+    private const int MaxSyncAttempts = 3;
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -114,11 +116,27 @@ public sealed class SyncService
 
             foreach (var record in batch)
             {
-                if (statusByUuid.TryGetValue(record.SessionUuid, out var status) &&
-                    (status == "created" || status == "skipped"))
+                if (!statusByUuid.TryGetValue(record.SessionUuid, out var status))
+                {
+                    continue;
+                }
+
+                if (status == "created" || status == "skipped")
                 {
                     _store.MarkSessionSynced(record.SessionUuid);
                     pushed++;
+
+                    continue;
+                }
+
+                if (status == "error")
+                {
+                    // Server menolak permanen (mis. siswa nonaktif / mapel terhapus).
+                    // Batasi percobaan agar sesi tidak dikirim ulang selamanya.
+                    if (_store.IncrementSyncAttempts(record.SessionUuid) >= MaxSyncAttempts)
+                    {
+                        _store.MarkSessionSyncFailed(record.SessionUuid);
+                    }
                 }
             }
         }
@@ -151,7 +169,7 @@ public sealed class SyncService
                 record.SessionUuid,
                 record.ScreenshotPath,
                 Guid.NewGuid().ToString(),
-                record.LastHeartbeatAt ?? _clock.Now,
+                record.ScreenshotCapturedAt ?? record.LastHeartbeatAt ?? _clock.Now,
                 cancellationToken);
 
             if (!result.Ok)
@@ -163,6 +181,17 @@ public sealed class SyncService
 
             _store.MarkScreenshotSynced(record.SessionUuid);
             pushed++;
+
+            // Berkas lokal hanya diperlukan sampai berhasil diunggah; hapus agar
+            // folder screenshot tidak tumbuh tanpa batas.
+            try
+            {
+                File.Delete(record.ScreenshotPath);
+            }
+            catch (Exception)
+            {
+                // Gagal menghapus tidak menghambat antrean berikutnya.
+            }
         }
 
         return pushed;

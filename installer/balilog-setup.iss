@@ -5,7 +5,7 @@
 [Setup]
 AppId={{8F1A2C64-3B7E-4F3A-9C21-BALI0G000001}
 AppName=BALI-LOG Kiosk
-AppVersion=1.0.0
+AppVersion=1.0.2
 AppPublisher=SMK Negeri 1 Mas Ubud
 AppPublisherURL=https://balilog.smkn1mas.sch.id
 DefaultDirName={autopf}\BALI-LOG Kiosk
@@ -30,8 +30,8 @@ Name: "hardening"; Description: "Terapkan penguncian kiosk (Task Manager, CMD, R
 Name: "watchdog"; Description: "Pasang pengawas otomatis (menjalankan ulang kiosk bila tertutup)"; GroupDescription: "Pengamanan:"; Flags: checkedonce
 
 [Files]
-; 1) Aplikasi hasil publish
-Source: "E:\balilog-build\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; 1) Aplikasi hasil publish (tanpa file debug *.pdb / dokumentasi *.xml.docs)
+Source: "E:\balilog-build\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,*.xml.docs"
 
 ; 2) Konfigurasi client (dibuat oleh scripts\build-installer.ps1)
 Source: "balilog.client.json"; DestDir: "{commonappdata}\BALI-LOG"; DestName: "balilog.json"; Flags: onlyifdoesntexist
@@ -42,6 +42,7 @@ Source: "enrollment.txt"; DestDir: "{commonappdata}\BALI-LOG"; Flags: onlyifdoes
 ; 4) Alat pemulihan & hardening untuk Admin IT
 Source: "unlock-admin.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "hardening.ps1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "apply-update.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README-OPS.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
@@ -55,12 +56,14 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 ; Izin akses data untuk semua akun (kiosk berjalan sebagai akun siswa, installer sebagai Admin)
 Filename: "icacls.exe"; Parameters: """{commonappdata}\BALI-LOG"" /grant *S-1-5-32-545:(OI)(CI)M /T /C"; Flags: runhidden; StatusMsg: "Menyiapkan izin folder data..."
+; CATATAN: entri di bawah hanya untuk instalasi INTERAKTIF (mode senyap = pembaruan
+; otomatis oleh SYSTEM; task sudah ada dan policy HKCU-SYSTEM tidak relevan).
 ; Terapkan penguncian kiosk untuk akun yang sedang login (installer berjalan sebagai admin)
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\hardening.ps1"" -Apply"; Flags: runhidden; Tasks: hardening; StatusMsg: "Menerapkan penguncian kiosk..."
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\hardening.ps1"" -Apply"; Flags: runhidden; Tasks: hardening; Check: NotSilent; StatusMsg: "Menerapkan penguncian kiosk..."
 ; Autostart saat logon (scheduled task, semua pengguna; berjalan sebagai pengguna yang login)
-Filename: "schtasks.exe"; Parameters: "/Create /F /TN ""BALI-LOG Kiosk (Logon)"" /SC ONLOGON /TR ""{app}\BalilogKiosk.exe"""; Flags: runhidden; StatusMsg: "Mendaftarkan autostart kiosk..."
+Filename: "schtasks.exe"; Parameters: "/Create /F /TN ""BALI-LOG Kiosk (Logon)"" /SC ONLOGON /TR ""{app}\BalilogKiosk.exe"""; Flags: runhidden; Check: NotSilent; StatusMsg: "Mendaftarkan autostart kiosk..."
 ; Watchdog: cek tiap 2 menit, jalankan kiosk bila tidak berjalan
-Filename: "schtasks.exe"; Parameters: "/Create /F /TN ""BALI-LOG Kiosk (Watchdog)"" /SC MINUTE /MO 2 /TR ""{app}\BalilogKiosk.exe"""; Flags: runhidden; Tasks: watchdog
+Filename: "schtasks.exe"; Parameters: "/Create /F /TN ""BALI-LOG Kiosk (Watchdog)"" /SC MINUTE /MO 2 /TR ""{app}\BalilogKiosk.exe"""; Flags: runhidden; Tasks: watchdog; Check: NotSilent
 ; Jalankan aplikasi setelah instalasi
 Filename: "{app}\BalilogKiosk.exe"; Description: "Jalankan BALI-LOG sekarang"; Flags: nowait postinstall skipifsilent
 
@@ -69,10 +72,16 @@ Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALI-LOG Kiosk (Logon)""
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALI-LOG Kiosk (Watchdog)"""; Flags: runhidden; RunOnceId: "DelTaskWatchdog"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogHardeningSuspend"""; Flags: runhidden; RunOnceId: "DelTaskSuspend"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogHardeningApply"""; Flags: runhidden; RunOnceId: "DelTaskApply"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogAutoUpdate"""; Flags: runhidden; RunOnceId: "DelTaskAutoUpdate"
 
 [UninstallDelete]
 ; Catatan: data (SQLite, screenshot tertunda) & konfigurasi di ProgramData sengaja TIDAK dihapus
 ; agar riwayat tidak hilang saat uninstall. Hapus manual bila diperlukan.
+
+[InstallDelete]
+; Bersihkan sisa file sementara Inno Setup dari instalasi sebelumnya
+; (mis. is-UW44ZX2FLC.tmp yang tertinggal). Pola dibatasi agar aman.
+Type: files; Name: "{app}\is-*.tmp"
 
 [Code]
 // Tugas elevated untuk MODE ADMIN (suspend/apply kebijakan) TANPA prompt UAC.
@@ -82,20 +91,22 @@ const
   SuspendTaskName = 'BALILogHardeningSuspend';
   ApplyTaskName = 'BALILogHardeningApply';
 
-function BuildTaskXml(const Args: string): string;
+function NotSilent(): Boolean;
+begin
+  // Pembaruan otomatis berjalan senyap sebagai SYSTEM (/VERYSILENT): lewati
+  // entri [Run] yang khusus instalasi interaktif (policy HKCU + task pengguna).
+  Result := not WizardSilent;
+end;
+
+function BuildTaskXml(const Args, Description, TriggersXml, PrincipalsXml: string): string;
 begin
   Result :=
     '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">' + #13#10 +
     '  <RegistrationInfo>' + #13#10 +
-    '    <Description>BALI-LOG kiosk hardening control</Description>' + #13#10 +
+    '    <Description>' + Description + '</Description>' + #13#10 +
     '  </RegistrationInfo>' + #13#10 +
-    '  <Triggers />' + #13#10 +
-    '  <Principals>' + #13#10 +
-    '    <Principal id="Author">' + #13#10 +
-    '      <LogonType>InteractiveToken</LogonType>' + #13#10 +
-    '      <RunLevel>HighestAvailable</RunLevel>' + #13#10 +
-    '    </Principal>' + #13#10 +
-    '  </Principals>' + #13#10 +
+    TriggersXml +
+    PrincipalsXml +
     '  <Settings>' + #13#10 +
     '    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>' + #13#10 +
     '    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>' + #13#10 +
@@ -130,7 +141,15 @@ begin
           ExpandConstant('{app}') + '\hardening.ps1&quot; ' + Mode;
 
   XmlPath := ExpandConstant('{tmp}\' + TaskName + '.xml');
-  SaveStringToFile(XmlPath, BuildTaskXml(Args), False);
+  SaveStringToFile(XmlPath, BuildTaskXml(Args,
+    'BALI-LOG kiosk hardening control',
+    '  <Triggers />' + #13#10,
+    '  <Principals>' + #13#10 +
+    '    <Principal id="Author">' + #13#10 +
+    '      <LogonType>InteractiveToken</LogonType>' + #13#10 +
+    '      <RunLevel>HighestAvailable</RunLevel>' + #13#10 +
+    '    </Principal>' + #13#10 +
+    '  </Principals>' + #13#10), False);
 
   if not Exec('schtasks.exe',
       '/Create /F /TN "' + TaskName + '" /XML "' + XmlPath + '"',
@@ -146,8 +165,57 @@ begin
   DeleteFile(XmlPath);
 end;
 
+// Task pembaruan otomatis: berjalan sebagai SYSTEM saat boot (+2 menit), tanpa
+// prompt UAC. Kiosk hanya mengunduh & menaruh manifest; task inilah yang
+// memasang installer secara senyap (ditunda bila kiosk/sesi sedang berjalan).
+procedure CreateAutoUpdateTask();
+var
+  XmlPath: string;
+  Args: string;
+  ResultCode: Integer;
+begin
+  Args := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &quot;' +
+          ExpandConstant('{app}') + '\apply-update.ps1&quot;';
+
+  XmlPath := ExpandConstant('{tmp}\BALILogAutoUpdate.xml');
+  SaveStringToFile(XmlPath, BuildTaskXml(Args,
+    'BALI-LOG auto update - senyap saat boot',
+    '  <Triggers>' + #13#10 +
+    '    <BootTrigger>' + #13#10 +
+    '      <Enabled>true</Enabled>' + #13#10 +
+    '      <Delay>PT2M</Delay>' + #13#10 +
+    '    </BootTrigger>' + #13#10 +
+    '  </Triggers>' + #13#10,
+    '  <Principals>' + #13#10 +
+    '    <Principal id="Author">' + #13#10 +
+    '      <UserId>S-1-5-18</UserId>' + #13#10 +
+    '      <RunLevel>HighestAvailable</RunLevel>' + #13#10 +
+    '    </Principal>' + #13#10 +
+    '  </Principals>' + #13#10), False);
+
+  if not Exec('schtasks.exe',
+      '/Create /F /TN "BALILogAutoUpdate" /XML "' + XmlPath + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Log('BALI-LOG: gagal menjalankan schtasks untuk BALILogAutoUpdate');
+  end
+  else if ResultCode <> 0 then
+  begin
+    Log('BALI-LOG: schtasks BALILogAutoUpdate keluar dengan kode ' + IntToStr(ResultCode));
+  end;
+
+  DeleteFile(XmlPath);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
+  if CurStep = ssPostInstall then
+  begin
+    // Selalu dibuat (interaktif maupun senyap) agar pembaruan berikutnya
+    // tetap berjalan walau instalasi awal tidak mencentang opsi hardening.
+    CreateAutoUpdateTask();
+  end;
+
   if (CurStep = ssPostInstall) and WizardIsTaskSelected('hardening') then
   begin
     CreateHardeningTask(SuspendTaskName, '-Suspend');

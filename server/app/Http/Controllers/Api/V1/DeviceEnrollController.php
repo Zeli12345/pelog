@@ -20,7 +20,8 @@ class DeviceEnrollController extends Controller
             'device_uuid' => ['required', 'uuid'],
             'hostname' => ['required', 'string', 'max:100'],
             'label' => ['nullable', 'string', 'max:40'],
-            'mac_list' => ['nullable', 'array'],
+            'mac_list' => ['nullable', 'array', 'max:32'],
+            'mac_list.*' => ['string', 'max:32'],
             'device_type' => ['nullable', 'in:pc,laptop'],
             'agent_version' => ['nullable', 'string', 'max:30'],
             'windows_version' => ['nullable', 'string', 'max:100'],
@@ -93,12 +94,12 @@ class DeviceEnrollController extends Controller
             'agent_version' => $data['agent_version'] ?? null,
             'windows_version' => $data['windows_version'] ?? null,
             'last_seen_at' => now(),
-            'is_active' => true,
         ]);
 
         if ($isNew) {
             $device->enrolled_at = now();
             $device->status = 'available';
+            $device->is_active = true;
         }
 
         $device->save();

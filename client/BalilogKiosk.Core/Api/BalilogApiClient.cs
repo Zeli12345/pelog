@@ -122,8 +122,9 @@ public sealed class BalilogApiClient
     {
         try
         {
+            using var request = CreateRequest(HttpMethod.Get, url);
             using var response = await _http.SendAsync(
-                CreateRequest(HttpMethod.Get, url),
+                request,
                 HttpCompletionOption.ResponseHeadersRead,
                 cancellationToken);
 
@@ -194,6 +195,10 @@ public sealed class BalilogApiClient
         if (authenticate && !string.IsNullOrEmpty(DeviceToken))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", DeviceToken);
+
+            // Dilaporkan ke server (kolom agent_version perangkat) agar dashboard
+            // dapat menampilkan versi aplikasi tiap laptop.
+            request.Headers.TryAddWithoutValidation("X-App-Version", AppInfo.Version);
         }
 
         if (body is not null)
@@ -208,6 +213,8 @@ public sealed class BalilogApiClient
     {
         try
         {
+            var requestStartedAt = _clock.LocalNow;
+
             using (request)
             using (var response = await _http.SendAsync(request, cancellationToken))
             {
@@ -237,7 +244,7 @@ public sealed class BalilogApiClient
                     return ApiResult<T>.Fail("parse_error", $"Respons server tidak dapat dibaca (HTTP {status}). {snippet}", status);
                 }
 
-                _clock.Sync(envelope.ServerTime);
+                _clock.Sync(envelope.ServerTime, requestStartedAt);
 
                 if (envelope.Ok && envelope.Data is not null)
                 {

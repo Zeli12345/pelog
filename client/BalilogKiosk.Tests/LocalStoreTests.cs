@@ -1,5 +1,6 @@
 using BalilogKiosk.Core.Data;
 using BalilogKiosk.Core.Models;
+using Microsoft.Data.Sqlite;
 using Xunit;
 
 namespace BalilogKiosk.Tests;
@@ -181,5 +182,126 @@ public class LocalStoreTests : IDisposable
 
         _store.MarkScreenshotSynced(session.SessionUuid);
         Assert.Empty(_store.GetPendingScreenshots());
+    }
+
+    [Fact]
+    public void ReplaceStudents_Preserves_Local_Pin_Lockout()
+    {
+        _store.ReplaceStudents([
+            new CachedStudent { Nisn = "0051234567", Name = "Budi", ClassName = "X RPL 1", HasPin = true },
+        ]);
+
+        var lockedUntil = DateTimeOffset.UtcNow.AddMinutes(5);
+        _store.SavePinState("0051234567", 4, lockedUntil);
+
+        // Refresh bootstrap berikutnya: data siswa diperbarui, tapi status lockout
+        // lokal (hitungan gagal + masa kunci) tidak boleh ikut tereset.
+        _store.ReplaceStudents([
+            new CachedStudent { Nisn = "0051234567", Name = "Budi Pratama", ClassName = "X RPL 2", HasPin = true },
+            new CachedStudent { Nisn = "0059999999", Name = "Siswa Baru", ClassName = "X TKJ 1", HasPin = false },
+        ]);
+
+        var (failed, locked) = _store.GetPinState("0051234567");
+
+        Assert.Equal(4, failed);
+        Assert.NotNull(locked);
+        Assert.Equal(lockedUntil.ToUnixTimeSeconds(), locked!.Value.ToUnixTimeSeconds());
+        Assert.Equal("Budi Pratama", _store.GetStudent("0051234567")!.Name);
+        Assert.Equal(0, _store.GetPinState("0059999999").Failed);
+        Assert.Equal(2, _store.CountStudents());
+    }
+
+    [Fact]
+    public void Opening_Old_Database_Upgrades_Session_Columns()
+    {
+        var databasePath = Path.Combine(_directory, "legacy.db");
+
+        using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                CREATE TABLE sessions (
+                    session_uuid TEXT PRIMARY KEY,
+                    user_type TEXT NOT NULL,
+                    nisn TEXT,
+                    nip_id TEXT,
+                    subject_id INTEGER,
+                    purpose TEXT NOT NULL,
+                    started_at_client TEXT,
+                    last_heartbeat_at TEXT,
+                    ended_at_client TEXT,
+                    feedback TEXT,
+                    comprehension TEXT,
+                    close_reason TEXT NOT NULL DEFAULT 'normal',
+                    state TEXT NOT NULL DEFAULT 'open',
+                    screenshot_path TEXT,
+                    screenshot_state TEXT NOT NULL DEFAULT 'none',
+                    created_at TEXT NOT NULL
+                )";
+            command.ExecuteNonQuery();
+        }
+
+        using var store = new LocalStore(databasePath);
+        var uuid = "77777777-7777-4777-8777-777777777777";
+        var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
+
+        store.SaveSession(new LocalSessionRecord
+        {
+            SessionUuid = uuid,
+            UserType = "student",
+            Nisn = "0051234567",
+            UsagePurpose = "Praktikum",
+            StartedAtClient = DateTimeOffset.UtcNow,
+            ScreenshotPath = "C:\\temp\\shot.webp",
+            ScreenshotState = "pending",
+            ScreenshotCapturedAt = capturedAt,
+        });
+
+        var record = store.GetSession(uuid);
+
+        Assert.NotNull(record);
+        Assert.NotNull(record!.ScreenshotCapturedAt);
+        Assert.Equal(capturedAt.ToUnixTimeSeconds(), record.ScreenshotCapturedAt!.Value.ToUnixTimeSeconds());
+        Assert.Equal(0, record!.SyncFailedAttempts);
+    }
+
+    [Fact]
+    public void Screenshot_Capture_Time_And_Sync_Attempts_Roundtrip()
+    {
+        var uuid = "33333333-3333-4333-8333-333333333333";
+        var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-7);
+
+        _store.SaveSession(new LocalSessionRecord
+        {
+            SessionUuid = uuid,
+            UserType = "student",
+            Nisn = "0051234567",
+            UsagePurpose = "Praktikum",
+            StartedAtClient = DateTimeOffset.UtcNow.AddMinutes(-30),
+            LastHeartbeatAt = DateTimeOffset.UtcNow,
+            EndedAtClient = DateTimeOffset.UtcNow,
+            CloseReason = "recovery",
+            State = "closed",
+            ScreenshotPath = "C:\\temp\\shot.webp",
+            ScreenshotState = "pending",
+            ScreenshotCapturedAt = capturedAt,
+        });
+
+        var queued = _store.GetPendingScreenshots()[0];
+
+        Assert.NotNull(queued.ScreenshotCapturedAt);
+        Assert.Equal(capturedAt.ToUnixTimeSeconds(), queued.ScreenshotCapturedAt!.Value.ToUnixTimeSeconds());
+
+        Assert.Single(_store.GetPendingSessions());
+        Assert.Equal(1, _store.IncrementSyncAttempts(uuid));
+        Assert.Equal(2, _store.IncrementSyncAttempts(uuid));
+        Assert.Equal(2, _store.GetSession(uuid)!.SyncFailedAttempts);
+
+        _store.MarkSessionSyncFailed(uuid);
+
+        Assert.Equal("failed", _store.GetSession(uuid)!.State);
+        Assert.Empty(_store.GetPendingSessions());
     }
 }

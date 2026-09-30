@@ -113,4 +113,57 @@ class DeviceEnrollTest extends TestCase
             'hostname' => '',
         ])->assertStatus(422)->assertJsonPath('error.code', 'validation_error');
     }
+
+    public function test_re_enroll_does_not_reactivate_device_disabled_by_admin(): void
+    {
+        $device = Device::factory()->create([
+            'hostname' => 'LAB-BL-06',
+            'is_active' => false,
+        ]);
+
+        $token = $this->postJson('/api/v1/devices/enroll', [
+            'enrollment_code' => self::CODE,
+            'device_uuid' => $device->uuid,
+            'hostname' => 'LAB-BL-06',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.device.uuid', $device->uuid)
+            ->json('data.device_token');
+
+        $device->refresh();
+
+        $this->assertFalse($device->is_active, 'Re-enroll tidak boleh mengaktifkan ulang perangkat.');
+        $this->assertSame(hash('sha256', $token), $device->device_token_hash);
+
+        // Token hasil re-enroll tetap tidak berguna selama admin menonaktifkan perangkat.
+        $this->getJson('/api/v1/bootstrap', ['Authorization' => 'Bearer '.$token])
+            ->assertStatus(401)
+            ->assertJsonPath('error.code', 'device_token_invalid');
+    }
+
+    public function test_enroll_rejects_mac_list_longer_than_32_entries(): void
+    {
+        $macs = [];
+
+        for ($i = 0; $i <= 32; $i++) {
+            $macs[] = sprintf('AA:BB:CC:DD:EE:%02X', $i);
+        }
+
+        $this->postJson('/api/v1/devices/enroll', [
+            'enrollment_code' => self::CODE,
+            'device_uuid' => (string) Str::uuid(),
+            'hostname' => 'LAB-BL-07',
+            'mac_list' => $macs,
+        ])->assertStatus(422)->assertJsonPath('error.code', 'validation_error');
+    }
+
+    public function test_enroll_rejects_non_string_mac_list_entries(): void
+    {
+        $this->postJson('/api/v1/devices/enroll', [
+            'enrollment_code' => self::CODE,
+            'device_uuid' => (string) Str::uuid(),
+            'hostname' => 'LAB-BL-08',
+            'mac_list' => ['AA:BB:CC:DD:EE:01', 12345],
+        ])->assertStatus(422)->assertJsonPath('error.code', 'validation_error');
+    }
 }

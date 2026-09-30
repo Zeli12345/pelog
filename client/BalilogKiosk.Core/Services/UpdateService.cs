@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using BalilogKiosk.Core.Api;
@@ -56,7 +57,7 @@ public sealed class UpdateService
         static int[] Parse(string version) =>
             version.Trim().TrimStart('v', 'V').Split('-', '+')[0]
                 .Split('.')
-                .Select(part => int.TryParse(part, out var value) ? value : 0)
+                .Select(part => int.TryParse(part, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : 0)
                 .ToArray();
 
         var left = Parse(candidate);
@@ -84,25 +85,70 @@ public sealed class UpdateService
         return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
     }
 
-    public string? GetStagedVersion() => _store.GetKv("update_staged_version");
+    /// <summary>
+    /// Membersihkan sisa staging yang sudah tidak relevan - mis. setelah update
+    /// diterapkan oleh task SYSTEM saat boot: manifest + installer dihapus agar
+    /// tidak menumpuk. Aman dipanggil kapan saja.
+    /// </summary>
+    public void CleanupStaleStaging()
+    {
+        var staged = _store.GetKv("update_staged_version");
+
+        if (string.IsNullOrEmpty(staged) || IsNewer(staged, AppInfo.Version))
+        {
+            return;
+        }
+
+        ClearStagedState();
+    }
+
+    /// <summary>Menghapus manifest, installer, dan penanda staging yang tidak valid.</summary>
+    private void ClearStagedState()
+    {
+        var manifestPath = Path.Combine(_configDirectory, "update.json");
+
+        try
+        {
+            if (File.Exists(manifestPath))
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(manifestPath));
+
+                if (document.RootElement.TryGetProperty("installer_path", out var installerPath))
+                {
+                    TryDelete(installerPath.GetString() ?? string.Empty);
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Manifest rusak / tidak terbaca - berkas manifest tetap dihapus di bawah.
+        }
+
+        TryDelete(manifestPath);
+        _store.SetKv("update_staged_version", "");
+    }
 
     public async Task<UpdateCheckResult> CheckAndStageAsync(int intervalHours, CancellationToken cancellationToken = default)
     {
+        CleanupStaleStaging();
+
         var lastCheck = _store.GetKv("update_last_check");
 
-        if (DateTimeOffset.TryParse(lastCheck, out var lastAt) &&
+        if (DateTimeOffset.TryParse(lastCheck, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var lastAt) &&
             _now() - lastAt < TimeSpan.FromHours(Math.Max(1, intervalHours)))
         {
             return new UpdateCheckResult(UpdateCheckOutcome.Skipped);
         }
 
         var result = await _api.GetLatestAppAsync(cancellationToken);
-        _store.SetKv("update_last_check", _now().ToString("o"));
 
         if (!result.Ok || result.Data is null)
         {
+            // Jangan simpan waktu cek saat gagal: tick berikutnya harus mencoba lagi.
             return new UpdateCheckResult(UpdateCheckOutcome.Failed, null, result.ErrorMessage);
         }
+
+        _store.SetKv("update_last_check", _now().ToString("o"));
 
         var release = result.Data;
 
@@ -114,7 +160,14 @@ public sealed class UpdateService
 
         if (_store.GetKv("update_staged_version") == release.Version)
         {
-            return new UpdateCheckResult(UpdateCheckOutcome.Staged, release.Version);
+            if (IsStagingIntact(release.Version))
+            {
+                return new UpdateCheckResult(UpdateCheckOutcome.Staged, release.Version);
+            }
+
+            // Staging lama sudah tidak lengkap (mis. installer sudah diterapkan):
+            // bersihkan agar versi ini diunduh ulang, bukan macet selamanya.
+            ClearStagedState();
         }
 
         var updatesDirectory = Path.Combine(_dataDirectory, "updates");
@@ -153,15 +206,73 @@ public sealed class UpdateService
         return new UpdateCheckResult(UpdateCheckOutcome.Staged, release.Version);
     }
 
+    /// <summary>
+    /// Memastikan staging untuk <paramref name="version"/> masih benar-benar ada:
+    /// manifest cocok, installer ada, dan hash-nya sesuai.
+    /// </summary>
+    private bool IsStagingIntact(string version)
+    {
+        var manifestPath = Path.Combine(_configDirectory, "update.json");
+
+        if (!File.Exists(manifestPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            var root = document.RootElement;
+
+            if (!root.TryGetProperty("version", out var manifestVersion) ||
+                !string.Equals(manifestVersion.GetString(), version, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!root.TryGetProperty("installer_path", out var installerPathElement))
+            {
+                return false;
+            }
+
+            var installerPath = installerPathElement.GetString();
+
+            if (string.IsNullOrWhiteSpace(installerPath) || !File.Exists(installerPath))
+            {
+                return false;
+            }
+
+            if (!root.TryGetProperty("sha256", out var sha256Element))
+            {
+                return false;
+            }
+
+            var sha256 = sha256Element.GetString();
+
+            return !string.IsNullOrWhiteSpace(sha256) &&
+                   ComputeSha256(installerPath).Equals(sha256, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            // Manifest rusak / installer tidak terbaca -> staging dianggap tidak valid.
+            return false;
+        }
+    }
+
     private static void TryDelete(string path)
     {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
         try
         {
             File.Delete(path);
         }
-        catch (IOException)
+        catch (Exception)
         {
-            // abaikan
+            // abaikan - pembersihan bersifat opsional
         }
     }
 }

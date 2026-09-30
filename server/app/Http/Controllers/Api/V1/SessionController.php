@@ -15,6 +15,7 @@ use App\Support\Audit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SessionController extends Controller
 {
@@ -104,27 +105,48 @@ class SessionController extends Controller
             }
         }
 
-        $session = UsageSession::query()->create([
-            'session_uuid' => $data['session_uuid'],
-            'device_id' => $device->id,
-            'user_type' => $data['user_type'],
-            'student_id' => $student?->id,
-            'staff_id' => $staff?->id,
-            'subject_id' => $data['subject_id'] ?? null,
-            'usage_purpose' => $data['usage_purpose'],
-            'started_at_client' => isset($data['started_at_client'])
-                ? Carbon::parse($data['started_at_client'])
-                : null,
-            'started_at_server' => now(),
-            'last_heartbeat_at' => now(),
-            'sync_source' => 'online',
-        ]);
+        $session = DB::transaction(function () use ($device, $data, $student, $staff) {
+            $lockedDevice = Device::query()
+                ->whereKey($device->id)
+                ->lockForUpdate()
+                ->first();
 
-        $device->forceFill([
-            'status' => 'in_use',
-            'storage_total_gb' => $data['storage_total_gb'] ?? $device->storage_total_gb,
-            'storage_used_gb' => $data['storage_used_gb'] ?? $device->storage_used_gb,
-        ])->save();
+            if ($lockedDevice === null || $lockedDevice->sessions()->active()->exists()) {
+                return null;
+            }
+
+            $session = UsageSession::query()->create([
+                'session_uuid' => $data['session_uuid'],
+                'device_id' => $lockedDevice->id,
+                'user_type' => $data['user_type'],
+                'student_id' => $student?->id,
+                'staff_id' => $staff?->id,
+                'subject_id' => $data['subject_id'] ?? null,
+                'usage_purpose' => $data['usage_purpose'],
+                'started_at_client' => isset($data['started_at_client'])
+                    ? Carbon::parse($data['started_at_client'])
+                    : null,
+                'started_at_server' => now(),
+                'last_heartbeat_at' => now(),
+                'sync_source' => 'online',
+            ]);
+
+            $lockedDevice->forceFill([
+                'status' => 'in_use',
+                'storage_total_gb' => $data['storage_total_gb'] ?? $lockedDevice->storage_total_gb,
+                'storage_used_gb' => $data['storage_used_gb'] ?? $lockedDevice->storage_used_gb,
+            ])->save();
+
+            return $session;
+        });
+
+        if ($session === null) {
+            return ApiResponse::error(
+                'device_busy',
+                'Perangkat ini masih memiliki sesi aktif. Selesaikan atau tutup sesi tersebut dulu.',
+                409,
+            );
+        }
 
         Audit::log(
             action: 'session_started',
@@ -183,7 +205,6 @@ class SessionController extends Controller
 
         return ApiResponse::ok([
             'active' => true,
-            'commands' => [],
         ]);
     }
 
@@ -211,8 +232,18 @@ class SessionController extends Controller
 
         if ($session->isActive()) {
             $reason = CloseReason::tryFrom($data['close_reason'] ?? '') ?? CloseReason::Normal;
-            $closedAt = now();
             $startedAt = $session->started_at_server ?? $session->started_at_client ?? $session->created_at;
+            $closedAt = isset($data['ended_at_client'])
+                ? Carbon::parse($data['ended_at_client'])
+                : now();
+
+            if ($startedAt !== null && $closedAt->lessThan($startedAt)) {
+                $closedAt = $startedAt;
+            }
+
+            if ($closedAt->greaterThan(now())) {
+                $closedAt = now();
+            }
 
             $session->forceFill([
                 'closed_at' => $closedAt,
@@ -224,7 +255,9 @@ class SessionController extends Controller
                     : 0,
             ])->save();
 
-            $device->forceFill(['status' => 'available'])->saveQuietly();
+            if ($device->status === DeviceStatus::InUse) {
+                $device->forceFill(['status' => 'available'])->saveQuietly();
+            }
 
             Audit::log(
                 action: 'session_ended',

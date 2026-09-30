@@ -36,6 +36,30 @@ if (-not (Test-Path $exe)) {
     throw "Executable tidak ditemukan: $exe"
 }
 
+$corePdb = Join-Path $publishDir "BalilogKiosk.Core.pdb"
+
+if (-not (Test-Path $corePdb)) {
+    throw "Symbol file tidak ditemukan: $corePdb"
+}
+
+# Tampilkan versi rilis dari konstanta AppInfo.Version (file tidak diubah).
+$appInfoPath = Join-Path $root "client\BalilogKiosk.Core\AppInfo.cs"
+
+if (-not (Test-Path $appInfoPath)) {
+    throw "AppInfo.cs tidak ditemukan: $appInfoPath"
+}
+
+$appInfoText = Get-Content -Path $appInfoPath -Raw
+$versionMatch = [regex]::Match($appInfoText, 'const\s+string\s+Version\s*=\s*"([^"]+)"')
+
+if (-not $versionMatch.Success) {
+    throw "Tidak bisa membaca AppInfo.Version dari: $appInfoPath"
+}
+
+$appVersion = $versionMatch.Groups[1].Value
+
+Write-Host "[build] Versi aplikasi (AppInfo.Version): $appVersion" -ForegroundColor Cyan
+
 $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
 
 Write-Host "[build] Selesai: $exe ($size MB)" -ForegroundColor Green

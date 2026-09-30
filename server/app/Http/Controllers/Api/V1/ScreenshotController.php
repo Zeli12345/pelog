@@ -36,9 +36,10 @@ class ScreenshotController extends Controller
             return ApiResponse::error('session_not_found', 'Sesi tidak ditemukan.', 404);
         }
 
+        // Idempotensi dibatasi pada sesi ini; uuid milik sesi/perangkat lain tidak
+        // boleh dianggap sebagai ringkasan milik sesi ini.
         $existing = Screenshot::query()
             ->where('usage_session_id', $session->id)
-            ->orWhere('screenshot_uuid', $data['screenshot_uuid'])
             ->first();
 
         if ($existing !== null) {

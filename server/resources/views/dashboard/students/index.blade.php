@@ -82,14 +82,14 @@
                                                 <x-icon name="pencil" size="h-3.5 w-3.5" />
                                             </a>
                                             @if ($student->hasPin())
-                                                <form method="POST" action="{{ route('students.reset-pin', $student) }}" onsubmit="return confirm('Reset PIN {{ $student->name }}? Siswa akan diminta membuat PIN baru.')">
+                                                <form method="POST" action="{{ route('students.reset-pin', $student) }}" data-confirm="Reset PIN {{ $student->name }}? Siswa akan diminta membuat PIN baru.">
                                                     @csrf
                                                     <button type="submit" class="btn-secondary !px-2 !py-1 text-xs" title="Reset PIN">
                                                         <x-icon name="refresh" size="h-3.5 w-3.5" />
                                                     </button>
                                                 </form>
                                             @endif
-                                            <form method="POST" action="{{ route('students.destroy', $student) }}" onsubmit="return confirm('Hapus {{ $student->name }}? Data sesi historis tetap tersimpan.')">
+                                            <form method="POST" action="{{ route('students.destroy', $student) }}" data-confirm="Hapus {{ $student->name }}? Data sesi historis tetap tersimpan.">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn-secondary !px-2 !py-1 text-xs text-brick-600" title="Hapus">
@@ -108,4 +108,14 @@
             @endif
         </section>
     </div>
+
+    <script>
+        document.addEventListener('submit', (event) => {
+            const form = event.target.closest('form[data-confirm]');
+
+            if (form && ! confirm(form.dataset.confirm)) {
+                event.preventDefault();
+            }
+        });
+    </script>
 </x-dashboard-layout>

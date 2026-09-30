@@ -1,3 +1,4 @@
+using BalilogKiosk.App.Services;
 using BalilogKiosk.Core.Api;
 using BalilogKiosk.Core.Config;
 using BalilogKiosk.Core.Data;
@@ -108,6 +109,37 @@ public sealed class AppServices : IDisposable
         }
 
         Api.DeviceToken = token;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Memeriksa token perangkat ke server lewat panggilan ringan terautentikasi.
+    /// Bila server menolak token (device_token_invalid), token lokal dihapus agar
+    /// perangkat dapat didaftarkan ulang. Gangguan jaringan tidak menghapus token —
+    /// kiosk tetap berjalan dengan data lokal. Mengembalikan false bila token tidak
+    /// lagi dapat dipakai.
+    /// </summary>
+    public async Task<bool> VerifyDeviceTokenAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(Api.DeviceToken))
+        {
+            return false;
+        }
+
+        var result = await Api.GetLatestAppAsync(cancellationToken);
+
+        if (result.ErrorCode == "device_token_invalid")
+        {
+            Store.SetKv("device_token", string.Empty);
+            Api.DeviceToken = null;
+
+            LocalLog.Write(
+                DataDirectory,
+                "token perangkat ditolak server (device_token_invalid) — token dihapus, perlu pendaftaran ulang.");
+
+            return false;
+        }
 
         return true;
     }

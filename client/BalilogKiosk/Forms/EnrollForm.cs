@@ -1,4 +1,5 @@
 using System.Net.NetworkInformation;
+using BalilogKiosk.Core;
 using BalilogKiosk.Core.Models;
 using BalilogKiosk.Core.Security;
 
@@ -175,7 +176,7 @@ public sealed class EnrollForm : Form
                 Label = _labelInput.Text.Trim(),
                 MacList = GetMacAddresses(),
                 DeviceType = "laptop",
-                AgentVersion = "1.0.0",
+                AgentVersion = AppInfo.Version,
                 WindowsVersion = Environment.OSVersion.VersionString,
                 StorageTotalGb = GetStorageTotalGb(),
                 StorageUsedGb = GetStorageUsedGb(),

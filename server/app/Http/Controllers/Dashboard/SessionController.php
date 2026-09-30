@@ -54,7 +54,7 @@ class SessionController extends Controller
         ]);
     }
 
-    public function close(UsageSession $session): RedirectResponse
+    public function close(Request $request, UsageSession $session): RedirectResponse
     {
         if (! $session->isActive()) {
             return back()->with('status', 'Sesi sudah selesai.');
@@ -82,7 +82,8 @@ class SessionController extends Controller
                 'device_id' => $session->device_id,
             ],
             actorType: 'user',
-            actorId: auth()->id(),
+            actorId: $request->user()->id,
+            request: $request,
         );
 
         return back()->with('status', 'Sesi berhasil ditutup.');

@@ -42,8 +42,6 @@ public sealed class ClientConfig
 
     public int BootstrapRefreshMinutes { get; set; } = 15;
 
-    public bool PinSetupRequiresOnline { get; set; } = true;
-
     public int PinLength { get; set; } = 4;
 
     public int PinMaxAttempts { get; set; } = 5;
@@ -67,7 +65,7 @@ public sealed class EnrollRequest
 
     public string DeviceType { get; set; } = "laptop";
 
-    public string? AgentVersion { get; set; }
+    public string? AgentVersion { get; set; } = AppInfo.Version;
 
     public string? WindowsVersion { get; set; }
 

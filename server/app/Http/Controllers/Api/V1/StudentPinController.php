@@ -12,6 +12,7 @@ use App\Support\Audit;
 use App\Support\StudentPayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class StudentPinController extends Controller
 {
@@ -51,15 +52,33 @@ class StudentPinController extends Controller
 
         $hashed = PinHasher::make($data['pin']);
 
-        $student->forceFill([
-            'pin_algo' => $hashed['algo'],
-            'pin_salt' => $hashed['salt'],
-            'pin_iterations' => $hashed['iterations'],
-            'pin_hash' => $hashed['hash'],
-            'pin_set_at' => now(),
-            'pin_failed_attempts' => 0,
-            'pin_locked_until' => null,
-        ])->save();
+        $pinSet = DB::transaction(function () use ($student, $hashed) {
+            $locked = Student::query()->whereKey($student->id)->lockForUpdate()->first();
+
+            if ($locked === null || $locked->hasPin()) {
+                return false;
+            }
+
+            $locked->forceFill([
+                'pin_algo' => $hashed['algo'],
+                'pin_salt' => $hashed['salt'],
+                'pin_iterations' => $hashed['iterations'],
+                'pin_hash' => $hashed['hash'],
+                'pin_set_at' => now(),
+                'pin_failed_attempts' => 0,
+                'pin_locked_until' => null,
+            ])->save();
+
+            return true;
+        });
+
+        if (! $pinSet) {
+            return ApiResponse::error(
+                'pin_already_set',
+                'PIN sudah pernah dibuat. Masukkan PIN yang pernah di-set, atau minta admin melakukan reset.',
+                409,
+            );
+        }
 
         Audit::log(
             action: 'pin_set',

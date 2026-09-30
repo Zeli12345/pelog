@@ -18,7 +18,9 @@ internal static class KioskHardening
 
     public const string ApplyTaskName = "BALILogHardeningApply";
 
-    private const string SystemPolicyKey = @"Software\Policies\Microsoft\Windows\System";
+    // Lokasi kanonik DisableTaskMgr/DisableRegistryTools (lihat hardening.ps1
+    // $polSystem) — bukan Software\Policies\... yang hanya dipakai DisableCMD.
+    private const string SystemPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\System";
 
     private const string ExplorerPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";
 

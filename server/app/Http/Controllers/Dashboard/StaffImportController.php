@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Imports\StaffImport;
 use App\Support\Audit;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
@@ -17,10 +18,17 @@ class StaffImportController extends Controller
         return view('dashboard.staff.import', ['result' => null]);
     }
 
-    public function import(Request $request): View
+    public function import(Request $request): View|RedirectResponse
     {
         $request->validate([
-            'file' => ['required', 'file', 'max:5120'],
+            'file' => [
+                'required',
+                'file',
+                'max:5120',
+                'mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ],
+        ], [
+            'file.mimetypes' => 'Isi berkas tidak dikenali sebagai CSV/Excel. Pastikan berkas asli, bukan hasil ubah nama.',
         ]);
 
         $file = $request->file('file');
@@ -33,7 +41,14 @@ class StaffImportController extends Controller
         }
 
         $import = new StaffImport;
-        Excel::import($import, $file);
+
+        try {
+            Excel::import($import, $file);
+        } catch (\Throwable) {
+            return back()->withErrors([
+                'file' => 'Berkas gagal diproses. Pastikan format CSV/Excel sesuai template dan tidak rusak.',
+            ]);
+        }
 
         Audit::log(
             action: 'staff_imported',

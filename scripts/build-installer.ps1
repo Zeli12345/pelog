@@ -1,9 +1,10 @@
 # BALI-LOG - Build installer (Inno Setup) memakai hasil publish di E:
-# Pakai: .\scripts\build-installer.ps1 -BaseUrl "http://192.168.1.10:8000" -EnrollmentCode "BLG-XXXX-XXXX"
+# Pakai: .\scripts\build-installer.ps1 -BaseUrl "http://192.168.1.10:8000" -EnrollmentCode "BLG-XXXX-XXXX" [-UpdateCheckHours 6]
 
 param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
-    [string]$EnrollmentCode = ""
+    [string]$EnrollmentCode = "",
+    [int]$UpdateCheckHours = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,12 +16,19 @@ if (-not (Test-Path "E:\balilog-build\publish\BalilogKiosk.exe")) {
 }
 
 # Konfigurasi awal aplikasi client (dibaca dari C:\ProgramData\BALI-LOG\balilog.json)
+# update_check_hours hanya ditulis bila diminta (> 0) agar output default tidak berubah.
 $clientConfig = [ordered]@{
     base_url          = $BaseUrl
     enrollment_code   = ""
     test_mode         = $false
     hardening_enabled = $true
-} | ConvertTo-Json
+}
+
+if ($UpdateCheckHours -gt 0) {
+    $clientConfig['update_check_hours'] = $UpdateCheckHours
+}
+
+$clientConfig = $clientConfig | ConvertTo-Json
 
 [System.IO.File]::WriteAllText((Join-Path $installerDir "balilog.client.json"), $clientConfig)
 

@@ -22,8 +22,19 @@ internal static class Program
         {
             var services = AppServices.Create();
 
-            // Muat token perangkat; kalau belum ada, tampilkan dialog enrollment.
-            if (!services.TryLoadDeviceToken())
+            // Muat token perangkat; kalau belum ada atau ditolak server (mis.
+            // perangkat dicabut), tampilkan dialog enrollment.
+            var hasDeviceToken = services.TryLoadDeviceToken();
+
+            if (hasDeviceToken)
+            {
+                // Batas singkat: jaringan yang tidak merespons jangan menahan start kiosk.
+                using var verifyTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+                hasDeviceToken = services.VerifyDeviceTokenAsync(verifyTimeout.Token).GetAwaiter().GetResult();
+            }
+
+            if (!hasDeviceToken)
             {
                 using var enroll = new EnrollForm(services);
 
