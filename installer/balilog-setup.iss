@@ -82,6 +82,9 @@ Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogAutoUpdate"""; Fl
 ; Bersihkan sisa file sementara Inno Setup dari instalasi sebelumnya
 ; (mis. is-UW44ZX2FLC.tmp yang tertinggal). Pola dibatasi agar aman.
 Type: files; Name: "{app}\is-*.tmp"
+; Buang file debug (.pdb) dari instalasi lama - rilis 1.0.3+ tidak lagi
+; menyertakan .pdb sehingga sisa lama (~130 MB) harus dibersihkan saat upgrade.
+Type: files; Name: "{app}\*.pdb"
 
 [Code]
 // Tugas elevated untuk MODE ADMIN (suspend/apply kebijakan) TANPA prompt UAC.
