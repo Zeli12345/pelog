@@ -131,7 +131,7 @@ class SettingsController extends Controller
             ->with('enrollment_code', $code);
     }
 
-    /// <summary>Unggah installer client baru untuk pembaruan otomatis.</summary>
+    // / <summary>Unggah installer client baru untuk pembaruan otomatis.</summary>
     public function uploadClientInstaller(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -156,17 +156,33 @@ class SettingsController extends Controller
 
         $absolutePath = Storage::disk('local')->path(ClientDownloadController::INSTALLER_PATH);
 
+        // Sekaligus publikasikan sebagai rilis auto-update. Tanpa langkah ini
+        // installer hanya tersedia untuk unduhan manual (penyebab umum keluhan
+        // "pembaruan otomatis tidak jalan" karena agen kiosk membaca app_*).
+        $releaseTarget = 'releases/BALI-LOG_Setup_'.$data['client_latest_version'].'.exe';
+        Storage::disk('local')->makeDirectory('releases');
+        Storage::disk('local')->copy(ClientDownloadController::INSTALLER_PATH, $releaseTarget);
+        $releasePath = Storage::disk('local')->path($releaseTarget);
+
         Setting::setValue('client_latest_version', $data['client_latest_version']);
         Setting::setValue('client_installer_sha256', hash_file('sha256', $absolutePath));
         Setting::setValue('client_installer_size', filesize($absolutePath));
         Setting::setValue('client_update_notes', $data['client_update_notes'] ?? null);
         Setting::setValue('client_installer_uploaded_at', now()->toIso8601String());
 
+        Setting::setValue('app_version', $data['client_latest_version']);
+        Setting::setValue('app_installer_file', $releaseTarget);
+        Setting::setValue('app_installer_sha256', hash_file('sha256', $releasePath));
+        Setting::setValue('app_installer_size', filesize($releasePath));
+        Setting::setValue('app_update_notes', $data['client_update_notes'] ?? null);
+        Setting::setValue('app_updater_enabled', true);
+
         Audit::log(
             action: 'client_installer_uploaded',
             metadata: [
                 'version' => $data['client_latest_version'],
                 'size' => filesize($absolutePath),
+                'release' => $releaseTarget,
             ],
             actorType: 'user',
             actorId: $request->user()->id,
@@ -174,6 +190,8 @@ class SettingsController extends Controller
         );
 
         return redirect()->route('settings.index')
-            ->with('status', 'Installer client v'.$data['client_latest_version'].' tersimpan. Laptop akan memperbarui otomatis (agen cek tiap jam / saat boot).');
+            ->with('status', 'Installer client v'.$data['client_latest_version'].
+                ' tersimpan dan dipublikasikan sebagai rilis auto-update. '.
+                'Laptop akan memperbarui otomatis (agen cek tiap jam / saat boot).');
     }
 }
