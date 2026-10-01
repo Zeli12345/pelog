@@ -10,3 +10,6 @@ Desktop.ini
 
 # Log lokal
 *.local.log
+
+# Artefak build installer (berisi kode enrollment aktif)
+installer/enrollment.txt
