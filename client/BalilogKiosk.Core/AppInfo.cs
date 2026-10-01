@@ -6,5 +6,5 @@ namespace BalilogKiosk.Core;
 /// </summary>
 public static class AppInfo
 {
-    public const string Version = "1.0.6";
+    public const string Version = "1.0.7";
 }

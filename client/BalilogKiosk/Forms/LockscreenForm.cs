@@ -43,6 +43,7 @@ public sealed class LockscreenForm : Form
     private readonly Label _clockLabel;
     private readonly Label _serverLabel;
     private readonly Button _wifiButton;
+    private WifiForm? _wifiDialog;
 
     private readonly Button _studentModeButton;
     private readonly Button _staffModeButton;
@@ -581,22 +582,32 @@ public sealed class LockscreenForm : Form
     /// </summary>
     private void OpenWifiDialog()
     {
-        // Jendela kiosk selalu TopMost; lepas sementara supaya dialog modal
-        // (juga TopMost) pasti tampil di DEPAN, bukan tertutup jendela kiosk.
-        var wasTopMost = TopMost;
-        TopMost = false;
-
-        try
+        // Dialog TIDAK memakai ShowDialog: jendela kiosk selalu TopMost sehingga
+        // dialog modal bisa kalah z-order / tidak tampil. Pakai Show() (non-modal)
+        // + nonaktifkan jendela kiosk sendiri supaya efeknya tetap modal.
+        if (_wifiDialog is not null)
         {
-            using var dialog = new WifiForm(_services.Config.AllowedWifiSsids);
+            _wifiDialog.Activate();
 
-            dialog.ShowDialog(this);
+            return;
         }
-        finally
+
+        var dialog = new WifiForm(_services.Config.AllowedWifiSsids);
+
+        _wifiDialog = dialog;
+        Enabled = false;
+
+        dialog.FormClosed += (_, _) =>
         {
-            TopMost = wasTopMost;
+            _wifiDialog = null;
+            Enabled = true;
             Activate();
-        }
+            BringToFront();
+        };
+
+        dialog.Show();
+        dialog.Activate();
+        dialog.BringToFront();
     }
 
     private Button CreateModeButton(string text)
