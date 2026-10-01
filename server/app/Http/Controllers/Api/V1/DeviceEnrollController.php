@@ -20,6 +20,7 @@ class DeviceEnrollController extends Controller
             'device_uuid' => ['required', 'uuid'],
             'hostname' => ['required', 'string', 'max:100'],
             'label' => ['nullable', 'string', 'max:40'],
+            'location' => ['nullable', 'string', 'max:60'],
             'mac_list' => ['nullable', 'array', 'max:32'],
             'mac_list.*' => ['string', 'max:32'],
             'device_type' => ['nullable', 'in:pc,laptop'],
@@ -43,37 +44,75 @@ class DeviceEnrollController extends Controller
             return ApiResponse::error('invalid_enrollment_code', 'Kode enrollment salah.', 401);
         }
 
-        $existingByHostname = Device::query()
+        // Perangkat yang sudah dihapus admin (soft delete) dipulihkan saat kiosk
+        // meng-enroll ulang — mis. laptop yang di-wipe lalu diinstal ulang.
+        // Baris lama dipakai kembali agar unique hostname/uuid tidak bentrok dan
+        // sesi historis tetap menempel; token dirotasi di bawah.
+        $trashedByUuid = Device::onlyTrashed()
+            ->where('uuid', $data['device_uuid'])
+            ->first();
+
+        $existingByHostname = Device::withTrashed()
             ->where('hostname', $data['hostname'])
             ->where('uuid', '!=', $data['device_uuid'])
             ->first();
 
-        if ($existingByHostname !== null) {
-            $hasActiveSession = $existingByHostname->sessions()->active()->exists();
-            $recentlySeen = $existingByHostname->last_seen_at !== null
-                && $existingByHostname->last_seen_at->diffInMinutes(now()) < 10;
+        if ($trashedByUuid !== null && $existingByHostname !== null) {
+            // Dua baris berbeda mengklaim uuid & hostname yang sama (mis. hostname
+            // sudah dipakai perangkat aktif lain). Jangan menebak; minta admin.
+            return ApiResponse::error(
+                'hostname_taken',
+                'Hostname sudah terdaftar untuk perangkat lain. Hubungi admin IT.',
+                409,
+            );
+        }
 
-            if ($hasActiveSession || $recentlySeen) {
-                return ApiResponse::error(
-                    'hostname_taken',
-                    'Hostname sudah terdaftar untuk perangkat lain. Hubungi admin IT.',
-                    409,
+        $restoredFromTrash = false;
+
+        if ($trashedByUuid !== null) {
+            $trashedByUuid->restore();
+            $trashedByUuid->forceFill([
+                'uuid' => $data['device_uuid'],
+                'hostname' => $data['hostname'],
+            ])->save();
+
+            $restoredFromTrash = true;
+        } elseif ($existingByHostname !== null) {
+            if ($existingByHostname->trashed()) {
+                $existingByHostname->restore();
+                $existingByHostname->forceFill([
+                    'uuid' => $data['device_uuid'],
+                    'hostname' => $data['hostname'],
+                ])->save();
+
+                $restoredFromTrash = true;
+            } else {
+                $hasActiveSession = $existingByHostname->sessions()->active()->exists();
+                $recentlySeen = $existingByHostname->last_seen_at !== null
+                    && $existingByHostname->last_seen_at->diffInMinutes(now()) < 10;
+
+                if ($hasActiveSession || $recentlySeen) {
+                    return ApiResponse::error(
+                        'hostname_taken',
+                        'Hostname sudah terdaftar untuk perangkat lain. Hubungi admin IT.',
+                        409,
+                    );
+                }
+
+                // Adopsi perangkat lama yang sudah tidak aktif (mis. laptop di-reimage).
+                $oldUuid = $existingByHostname->uuid;
+                $existingByHostname->forceFill(['uuid' => $data['device_uuid']])->save();
+
+                Audit::log(
+                    action: 'device_adopted',
+                    entityType: Device::class,
+                    entityId: $existingByHostname->id,
+                    metadata: ['hostname' => $data['hostname'], 'old_uuid' => $oldUuid],
+                    actorType: 'device',
+                    actorId: $existingByHostname->id,
+                    request: $request,
                 );
             }
-
-            // Adopsi perangkat lama yang sudah tidak aktif (mis. laptop di-reimage).
-            $oldUuid = $existingByHostname->uuid;
-            $existingByHostname->forceFill(['uuid' => $data['device_uuid']])->save();
-
-            Audit::log(
-                action: 'device_adopted',
-                entityType: Device::class,
-                entityId: $existingByHostname->id,
-                metadata: ['hostname' => $data['hostname'], 'old_uuid' => $oldUuid],
-                actorType: 'device',
-                actorId: $existingByHostname->id,
-                request: $request,
-            );
         }
 
         $token = bin2hex(random_bytes(32));
@@ -82,10 +121,12 @@ class DeviceEnrollController extends Controller
         $isNew = ! $device->exists;
 
         $label = trim((string) ($data['label'] ?? ''));
+        $location = trim((string) ($data['location'] ?? ''));
 
         $device->fill([
             'hostname' => $data['hostname'],
             'label' => $label !== '' ? $label : $device->label,
+            'location_label' => $location !== '' ? $location : $device->location_label,
             'device_token_hash' => hash('sha256', $token),
             'mac_list' => $data['mac_list'] ?? null,
             'device_type' => $data['device_type'] ?? 'laptop',
@@ -105,10 +146,14 @@ class DeviceEnrollController extends Controller
         $device->save();
 
         Audit::log(
-            action: $isNew ? 'device_enrolled' : 'device_re_enrolled',
+            action: match (true) {
+                $isNew => 'device_enrolled',
+                $restoredFromTrash => 'device_reenrolled',
+                default => 'device_re_enrolled',
+            },
             entityType: Device::class,
             entityId: $device->id,
-            metadata: ['hostname' => $device->hostname],
+            metadata: ['hostname' => $device->hostname, 'restored_from_trash' => $restoredFromTrash],
             actorType: 'device',
             actorId: $device->id,
             request: $request,

@@ -1,10 +1,13 @@
 # BALI-LOG - Build installer (Inno Setup) memakai hasil publish di E:
 # Pakai: .\scripts\build-installer.ps1 -BaseUrl "http://192.168.1.10:8000" -EnrollmentCode "BLG-XXXX-XXXX" [-UpdateCheckHours 6]
+#        [-DeviceLabel "LAB-BL-09"] [-Location "Lab RPL 1"]
 
 param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
     [string]$EnrollmentCode = "",
-    [int]$UpdateCheckHours = 0
+    [int]$UpdateCheckHours = 0,
+    [string]$DeviceLabel = "",
+    [string]$Location = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,12 +19,21 @@ if (-not (Test-Path "E:\balilog-build\publish\BalilogKiosk.exe")) {
 }
 
 # Konfigurasi awal aplikasi client (dibaca dari C:\ProgramData\BALI-LOG\balilog.json)
-# update_check_hours hanya ditulis bila diminta (> 0) agar output default tidak berubah.
+# device_label/device_location hanya ditulis bila diisi, dan update_check_hours
+# hanya bila diminta (> 0), agar output default tidak berubah.
 $clientConfig = [ordered]@{
     base_url          = $BaseUrl
     enrollment_code   = ""
     test_mode         = $false
     hardening_enabled = $true
+}
+
+if ($DeviceLabel -ne "") {
+    $clientConfig['device_label'] = $DeviceLabel
+}
+
+if ($Location -ne "") {
+    $clientConfig['device_location'] = $Location
 }
 
 if ($UpdateCheckHours -gt 0) {

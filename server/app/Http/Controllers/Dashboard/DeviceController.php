@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\CloseReason;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\Setting;
@@ -9,6 +10,7 @@ use App\Support\Audit;
 use App\Support\DeviceStatusResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DeviceController extends Controller
@@ -18,8 +20,9 @@ class DeviceController extends Controller
         $onlineWindow = (int) Setting::getValue('device_online_window_seconds', 300);
         $search = trim((string) $request->query('q', ''));
         $statusFilter = (string) $request->query('status', '');
+        $trashed = $request->boolean('trashed');
 
-        $devices = Device::query()
+        $devices = ($trashed ? Device::onlyTrashed() : Device::query())
             ->with(['sessions' => fn ($query) => $query->active()->with(['student', 'staff', 'subject'])])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
@@ -48,6 +51,7 @@ class DeviceController extends Controller
             'search' => $search,
             'statusFilter' => $statusFilter,
             'onlineWindow' => $onlineWindow,
+            'trashed' => $trashed,
             'latestVersion' => (string) Setting::getValue('app_version', config('balilog.version')),
         ]);
     }
@@ -116,5 +120,162 @@ class DeviceController extends Controller
         );
 
         return back()->with('status', 'Perangkat diperbarui.');
+    }
+
+    public function destroy(Request $request, Device $device): RedirectResponse
+    {
+        $closedSessions = $this->forceCloseActiveSessions($device);
+
+        Audit::log(
+            action: 'device_deleted',
+            entityType: Device::class,
+            entityId: $device->id,
+            metadata: [
+                'hostname' => $device->hostname,
+                'label' => $device->label,
+                'closed_sessions' => $closedSessions,
+            ],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        $device->delete();
+
+        return redirect()->route('devices.index')->with(
+            'status',
+            "Perangkat {$device->hostname} dihapus. Kiosk akan menghapus dirinya sendiri saat boot berikutnya."
+        );
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $data = $this->validatedIds($request);
+
+        $devices = Device::query()->whereKey($data['ids'])->get();
+
+        if ($devices->isEmpty()) {
+            return redirect()->route('devices.index')->with('status', 'Tidak ada perangkat yang cocok untuk dihapus.');
+        }
+
+        DB::transaction(function () use ($devices, $request) {
+            $closedSessions = 0;
+
+            foreach ($devices as $device) {
+                $closedSessions += $this->forceCloseActiveSessions($device);
+                $device->delete();
+            }
+
+            Audit::log(
+                action: 'devices_bulk_deleted',
+                entityType: Device::class,
+                metadata: [
+                    'ids' => $devices->pluck('id')->all(),
+                    'count' => $devices->count(),
+                    'closed_sessions' => $closedSessions,
+                ],
+                actorType: 'user',
+                actorId: $request->user()->id,
+                request: $request,
+            );
+        });
+
+        return redirect()->route('devices.index')->with(
+            'status',
+            "{$devices->count()} perangkat dihapus. Kiosk akan menghapus dirinya sendiri saat boot berikutnya."
+        );
+    }
+
+    public function restore(Request $request, int $device): RedirectResponse
+    {
+        $device = Device::onlyTrashed()->findOrFail($device);
+        $device->restore();
+
+        Audit::log(
+            action: 'device_restored',
+            entityType: Device::class,
+            entityId: $device->id,
+            metadata: ['hostname' => $device->hostname],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return redirect()->route('devices.index', ['trashed' => 1])
+            ->with('status', "Perangkat {$device->hostname} dipulihkan. Token lama berlaku kembali.");
+    }
+
+    public function bulkRestore(Request $request): RedirectResponse
+    {
+        $data = $this->validatedIds($request);
+
+        $devices = Device::onlyTrashed()->whereKey($data['ids'])->get();
+
+        if ($devices->isEmpty()) {
+            return redirect()->route('devices.index', ['trashed' => 1])->with('status', 'Tidak ada perangkat yang cocok untuk dipulihkan.');
+        }
+
+        DB::transaction(function () use ($devices, $request) {
+            foreach ($devices as $device) {
+                $device->restore();
+            }
+
+            Audit::log(
+                action: 'devices_bulk_restored',
+                entityType: Device::class,
+                metadata: [
+                    'ids' => $devices->pluck('id')->all(),
+                    'count' => $devices->count(),
+                ],
+                actorType: 'user',
+                actorId: $request->user()->id,
+                request: $request,
+            );
+        });
+
+        return redirect()->route('devices.index', ['trashed' => 1])
+            ->with('status', "{$devices->count()} perangkat dipulihkan.");
+    }
+
+    /**
+     * Menutup paksa sesi aktif saat perangkat dihapus agar dashboard tidak
+     * menampilkan sesi hantu. Alasan penutupan memakai CloseReason::Admin,
+     * sama seperti penutupan paksa dari halaman Sesi.
+     */
+    private function forceCloseActiveSessions(Device $device): int
+    {
+        $closed = 0;
+        $closedAt = now();
+
+        foreach ($device->sessions()->active()->get() as $session) {
+            $startedAt = $session->started_at_server ?? $session->started_at_client ?? $session->created_at;
+
+            $session->forceFill([
+                'closed_at' => $closedAt,
+                'close_reason' => CloseReason::Admin,
+                'duration_minutes' => $startedAt !== null
+                    ? max(0, (int) $startedAt->diffInMinutes($closedAt))
+                    : 0,
+            ])->save();
+
+            $closed++;
+        }
+
+        if ($closed > 0) {
+            $device->forceFill(['status' => 'available'])->saveQuietly();
+        }
+
+        return $closed;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatedIds(Request $request): array
+    {
+        return $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['integer'],
+        ]);
     }
 }

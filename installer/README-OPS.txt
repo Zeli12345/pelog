@@ -132,4 +132,44 @@ SMK Negeri 1 Mas Ubud
    - Bila muncul "Tidak ada jaringan Wi-Fi terdeteksi": periksa adaptor /
      tombol Wi-Fi laptop, lalu tekan "Muat ulang".
 
+11. MENGHAPUS PERANGKAT DARI DASHBOARD (WIPE OTOMATIS)
+   - Buka dashboard > menu Perangkat > pilih perangkat yang akan dihapus >
+     tekan tombol Hapus, lalu konfirmasi. Perangkat langsung hilang dari
+     daftar dashboard dan tidak bisa lagi login/check-in.
+   - Saat laptop tersebut terhubung kembali ke server (sinkronisasi berkala
+     atau boot berikutnya), kiosk menerima status bahwa perangkat sudah
+     dihapus dan menjalankan Scheduled Task "BALILogSelfWipe" (hak admin,
+     TANPA prompt UAC).
+   - Tugas self-wipe menjalankan hardening.ps1 -Wipe dengan tahapan:
+     1) menghentikan BalilogKiosk.exe,
+     2) menghapus semua Scheduled Task & autostart BALI-LOG,
+     3) menjalankan uninstaller secara senyap (VERYSILENT, tanpa UAC),
+     4) menghapus folder data C:\ProgramData\BALI-LOG.
+   - PENTING - TIDAK DAPAT DIBATALKAN (IRREVERSIBLE): aplikasi, konfigurasi,
+     database lokal, token perangkat, dan screenshot tertunda ikut terhapus.
+     Laptop harus DIINSTAL ULANG (BALI-LOG_Setup.exe) dan DI-ENROLL ULANG
+     dengan kode enrollment baru sebelum bisa dipakai lagi.
+   - Log wipe ada di laptop:  C:\Users\Public\balilog-wipe.log
+     Baris terakhir "wipe selesai" menandakan proses tuntas. Bila laptop
+     sempat mati di tengah proses, jalankan installer ulang atau ulangi wipe
+     secara manual (dari akun admin):
+       powershell -ExecutionPolicy Bypass -File "C:\Program Files\BALI-LOG Kiosk\hardening.ps1" -Wipe
+   - Wipe hanya menghapus aplikasi & data BALI-LOG; akun Windows siswa dan
+     Windows itu sendiri TIDAK dihapus.
+
+   Mengatur nama/lokasi perangkat saat membangun installer:
+   - Saat enrolment, isi kolom "Nama perangkat (label)" pada dialog
+     Pendaftaran Perangkat (default: nama komputer Windows).
+   - Dari dashboard kapan saja: Perangkat > pilih perangkat > panel
+     "Pengaturan Perangkat" > ubah "Nama perangkat" dan "Lokasi" > Simpan.
+   - Saat build installer (Admin IT), pakai parameter baru:
+       .\scripts\build-installer.ps1 -DeviceLabel "LAB-BL-09" -Location "Lab RPL 1"
+     Nilai ini ditulis ke balilog.client.json di folder installer dan
+     disalin ke C:\ProgramData\BALI-LOG\balilog.json saat instalasi (hanya
+     bila file tujuan belum ada). Contoh isi:
+       "device_label": "LAB-BL-09",
+       "device_location": "Lab RPL 1"
+   - Bisa juga mengedit langsung C:\ProgramData\BALI-LOG\balilog.json lalu
+     menjalankan ulang aplikasi kiosk.
+
 ====================================================================

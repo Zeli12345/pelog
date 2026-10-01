@@ -17,6 +17,8 @@ public sealed class EnrollForm : Form
 
     private readonly TextBox _labelInput;
 
+    private readonly TextBox _locationInput;
+
     private readonly Label _statusLabel;
 
     private readonly Button _enrollButton;
@@ -32,7 +34,7 @@ public sealed class EnrollForm : Form
         MinimizeBox = false;
         BackColor = Color.FromArgb(15, 34, 55);
         ForeColor = Color.White;
-        ClientSize = new Size(520, 462);
+        ClientSize = new Size(520, 528);
         Font = new Font("Segoe UI", 10F);
 
         var logo = new PictureBox
@@ -100,7 +102,29 @@ public sealed class EnrollForm : Form
             Width = ClientSize.Width - 80,
             Height = 32,
             Font = new Font("Segoe UI", 12F),
-            Text = Environment.MachineName,
+            Text = string.IsNullOrWhiteSpace(_services.Config.DeviceLabel)
+                ? Environment.MachineName
+                : _services.Config.DeviceLabel.Trim(),
+            BorderStyle = BorderStyle.FixedSingle,
+        };
+
+        var locationCaption = new Label
+        {
+            Text = "Lokasi perangkat (ruang/lab)",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(200, 215, 230),
+            Location = new Point(40, 344),
+            AutoSize = true,
+        };
+
+        _locationInput = new TextBox
+        {
+            Location = new Point(40, 368),
+            Width = ClientSize.Width - 80,
+            Height = 32,
+            Font = new Font("Segoe UI", 12F),
+            MaxLength = 60,
+            Text = _services.Config.DeviceLocation ?? string.Empty,
             BorderStyle = BorderStyle.FixedSingle,
         };
 
@@ -109,7 +133,7 @@ public sealed class EnrollForm : Form
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleCenter,
             Size = new Size(ClientSize.Width - 80, 24),
-            Location = new Point(40, 344),
+            Location = new Point(40, 410),
             Font = new Font("Segoe UI", 9F),
             ForeColor = Color.FromArgb(255, 210, 120),
             Text = "Laptop: " + Environment.MachineName,
@@ -118,7 +142,7 @@ public sealed class EnrollForm : Form
         _enrollButton = new Button
         {
             Text = "D A F T A R K A N",
-            Location = new Point(40, 380),
+            Location = new Point(40, 446),
             Size = new Size(ClientSize.Width - 80, 48),
             Font = new Font("Segoe UI", 11F, FontStyle.Bold),
             BackColor = Color.FromArgb(201, 162, 39),
@@ -130,7 +154,10 @@ public sealed class EnrollForm : Form
         _enrollButton.FlatAppearance.BorderSize = 0;
         _enrollButton.Click += async (_, _) => await EnrollAsync();
 
-        Controls.AddRange([logo, title, subtitle, codeLabel, _codeInput, labelCaption, _labelInput, _statusLabel, _enrollButton]);
+        Controls.AddRange([
+            logo, title, subtitle, codeLabel, _codeInput, labelCaption, _labelInput,
+            locationCaption, _locationInput, _statusLabel, _enrollButton,
+        ]);
 
         AcceptButton = _enrollButton;
         ActiveControl = _codeInput;
@@ -174,6 +201,7 @@ public sealed class EnrollForm : Form
                 DeviceUuid = _services.GetOrCreateDeviceUuid(),
                 Hostname = Environment.MachineName,
                 Label = _labelInput.Text.Trim(),
+                Location = _locationInput.Text.Trim(),
                 MacList = GetMacAddresses(),
                 DeviceType = "laptop",
                 AgentVersion = AppInfo.Version,

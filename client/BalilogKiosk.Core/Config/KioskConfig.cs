@@ -8,6 +8,18 @@ public sealed class KioskConfig
 
     public string EnrollmentCode { get; set; } = string.Empty;
 
+    /// <summary>Nama perangkat (label dashboard) — nilai awal dialog pendaftaran.</summary>
+    public string DeviceLabel { get; set; } = string.Empty;
+
+    /// <summary>Lokasi/ruang perangkat (maks. 60 karakter) — nilai awal dialog pendaftaran.</summary>
+    public string DeviceLocation { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Wipe total saat perangkat DIHAPUS dari dashboard (HTTP 410 device_revoked).
+    /// Bila dimatikan, kejadian hanya dicatat di log dan instalasi dibiarkan.
+    /// </summary>
+    public bool SelfWipeOnRevoke { get; set; } = true;
+
     /// <summary>Mode uji: mempercepat timer screenshot (dipakai di VM/QA saja).</summary>
     public bool TestMode { get; set; }
 

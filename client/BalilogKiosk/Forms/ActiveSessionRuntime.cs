@@ -77,6 +77,8 @@ public sealed class ActiveSessionRuntime : Form
 
     private bool _shutdownDialogRunning;
 
+    private bool _revokedHandled;
+
     public ActiveSessionRuntime(
         AppServices services,
         LocalSessionRecord record,
@@ -318,19 +320,52 @@ public sealed class ActiveSessionRuntime : Form
 
         _services.Sessions.Heartbeat(_record);
 
-        var data = await _services.Sessions.TryRemoteHeartbeatAsync(_record);
+        var result = await _services.Sessions.TryRemoteHeartbeatAsync(_record);
 
-        if (data is { Active: false })
+        if (SelfWipeService.IsRevoked(result))
+        {
+            HandleDeviceRevoked("heartbeat sesi aktif");
+
+            return;
+        }
+
+        if (result.Data is { Active: false })
         {
             // Sesi ditutup dari sisi server (mis. oleh admin).
             _record.LastHeartbeatAt = _services.Clock.Now;
             _record.EndedAtClient ??= _services.Clock.Now;
-            _record.CloseReason = data.CloseReason ?? "admin";
+            _record.CloseReason = result.Data.CloseReason ?? "admin";
             _record.State = "synced";
             _services.Store.SaveSession(_record);
 
             ShutdownRuntime();
         }
+    }
+
+    /// <summary>
+    /// Perangkat dihapus dari dashboard (410 device_revoked): jalankan wipe total
+    /// tanpa menutup sesi secara normal. Bila SelfWipeOnRevoke dimatikan, kejadian
+    /// hanya dicatat sekali. Timer WinForms memanggil ini di UI thread.
+    /// </summary>
+    private void HandleDeviceRevoked(string reason)
+    {
+        if (_revokedHandled)
+        {
+            return;
+        }
+
+        _revokedHandled = true;
+
+        if (!_services.Config.SelfWipeOnRevoke)
+        {
+            LocalLog.Write(
+                _services.DataDirectory,
+                $"device_revoked ({reason}) — SelfWipeOnRevoke=false, wipe tidak dijalankan.");
+
+            return;
+        }
+
+        SelfWipeService.Trigger($"sesi aktif: {reason}");
     }
 
     private async void OnSyncTick(object? sender, EventArgs e)

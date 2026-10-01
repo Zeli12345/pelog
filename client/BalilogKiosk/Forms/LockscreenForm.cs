@@ -85,6 +85,7 @@ public sealed class LockscreenForm : Form
     private bool _allowExit;
     private bool _busy;
     private bool _enrollmentRecoveryOpen;
+    private bool _revokedHandled;
 
     public LockscreenForm(AppServices services)
     {
@@ -666,7 +667,18 @@ public sealed class LockscreenForm : Form
         {
             // Token yang dicabut server tidak boleh membuat kiosk offline
             // selamanya: token dihapus dan pendaftaran ulang ditawarkan.
-            if (!await _services.VerifyDeviceTokenAsync())
+            // Perangkat yang DIHAPUS dari dashboard (device_revoked) berbeda:
+            // tidak ada pendaftaran ulang — jalur wipe total yang dipakai.
+            var tokenStatus = await _services.VerifyDeviceTokenAsync();
+
+            if (tokenStatus == DeviceTokenStatus.Revoked)
+            {
+                HandleDeviceRevoked("sinkronisasi layar kunci");
+
+                return;
+            }
+
+            if (tokenStatus == DeviceTokenStatus.Invalid)
             {
                 RecoverEnrollment();
 
@@ -726,6 +738,39 @@ public sealed class LockscreenForm : Form
         {
             _enrollmentRecoveryOpen = false;
         }
+    }
+
+    /// <summary>
+    /// Perangkat dihapus dari dashboard (410 device_revoked): jalankan wipe total
+    /// di UI thread, tanpa jalur pendaftaran ulang. Bila SelfWipeOnRevoke dimatikan,
+    /// kejadian hanya dicatat sekali agar tidak membanjiri log tiap timer.
+    /// </summary>
+    private void HandleDeviceRevoked(string reason)
+    {
+        if (IsDisposed || Disposing || _revokedHandled)
+        {
+            return;
+        }
+
+        if (InvokeRequired)
+        {
+            BeginInvoke(new Action(() => HandleDeviceRevoked(reason)));
+
+            return;
+        }
+
+        _revokedHandled = true;
+
+        if (!_services.Config.SelfWipeOnRevoke)
+        {
+            LocalLog.Write(
+                _services.DataDirectory,
+                $"device_revoked ({reason}) — SelfWipeOnRevoke=false, wipe tidak dijalankan.");
+
+            return;
+        }
+
+        SelfWipeService.Trigger($"layar kunci: {reason}");
     }
 
     private async Task RefreshBootstrapQuietlyAsync()

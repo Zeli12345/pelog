@@ -21,8 +21,18 @@
         </div>
 
         <section class="card overflow-hidden">
+            <form id="students-bulk-delete-form" method="POST" action="{{ route('students.bulk-delete') }}" data-confirm="Hapus siswa terpilih? Riwayat sesi mereka tetap tersimpan.">
+                @csrf
+            </form>
+            <form id="students-bulk-restore-form" method="POST" action="{{ route('students.bulk-restore') }}" data-confirm="Pulihkan siswa terpilih?">
+                @csrf
+            </form>
+
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <form method="GET" action="{{ route('students.index') }}" class="flex flex-wrap items-center gap-2">
+                    @if ($trashed)
+                        <input type="hidden" name="trashed" value="1">
+                    @endif
                     <input type="text" name="q" value="{{ $search }}" placeholder="Cari nama / NISN…" class="input !w-44 py-1.5 text-xs lg:!w-56">
                     <select name="class" class="input !w-36 py-1.5 text-xs" onchange="this.form.submit()">
                         <option value="">Semua kelas</option>
@@ -32,15 +42,43 @@
                     </select>
                     <button type="submit" class="btn-primary !py-1.5 text-xs">Cari</button>
                     @if ($search !== '' || $classFilter !== '')
-                        <a href="{{ route('students.index') }}" class="btn-secondary !py-1.5 text-xs">Reset</a>
+                        <a href="{{ route('students.index', $trashed ? ['trashed' => 1] : []) }}" class="btn-secondary !py-1.5 text-xs">Reset</a>
                     @endif
                 </form>
                 <span class="font-mono text-xs text-ink-faint">{{ $students->total() }} siswa</span>
             </header>
 
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-navy-50/40 px-4 py-2 text-xs">
+                <div class="flex flex-wrap items-center gap-3">
+                    <label class="flex items-center gap-1.5 text-ink-soft">
+                        <input type="checkbox" data-bulk-select-all class="rounded border-line text-navy-700 focus:ring-navy-500">
+                        Pilih semua
+                    </label>
+                    <span class="text-ink-faint"><span data-bulk-count>0</span> dipilih</span>
+                    @if ($trashed)
+                        <span class="badge-danger">Tampilan terhapus</span>
+                    @endif
+                </div>
+                <div class="flex items-center gap-2">
+                    @if ($trashed)
+                        <button type="submit" form="students-bulk-restore-form" data-bulk-submit disabled class="btn-secondary !py-1.5 text-xs">Pulihkan terpilih</button>
+                        <a href="{{ route('students.index', request()->except('trashed')) }}" class="btn-secondary !py-1.5 text-xs">
+                            <x-icon name="arrow-left" size="h-3.5 w-3.5" />
+                            Kembali ke daftar aktif
+                        </a>
+                    @else
+                        <button type="submit" form="students-bulk-delete-form" data-bulk-submit disabled class="btn-secondary !py-1.5 text-xs text-brick-600">Hapus terpilih</button>
+                        <a href="{{ route('students.index', array_merge(request()->query(), ['trashed' => 1])) }}" class="btn-secondary !py-1.5 text-xs">
+                            <x-icon name="trash" size="h-3.5 w-3.5" />
+                            Tampilkan yang terhapus
+                        </a>
+                    @endif
+                </div>
+            </div>
+
             @if ($students->isEmpty())
                 <div class="px-4 py-12 text-center">
-                    <p class="text-sm font-medium text-ink-soft">Tidak ada siswa yang cocok.</p>
+                    <p class="text-sm font-medium text-ink-soft">{{ $trashed ? 'Tidak ada siswa terhapus.' : 'Tidak ada siswa yang cocok.' }}</p>
                     <p class="mt-1 text-xs text-ink-faint">Tambahkan manual atau impor dari Excel/CSV.</p>
                 </div>
             @else
@@ -48,6 +86,7 @@
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
                             <tr class="table-head">
+                                <th class="w-8 px-4 py-2.5"></th>
                                 <th class="px-4 py-2.5 font-semibold">NISN</th>
                                 <th class="px-4 py-2.5 font-semibold">Nama</th>
                                 <th class="px-4 py-2.5 font-semibold">Kelas</th>
@@ -59,6 +98,11 @@
                         <tbody class="divide-y divide-line/70">
                             @foreach ($students as $student)
                                 <tr class="table-row {{ ! $student->is_active ? 'opacity-60' : '' }}">
+                                    <td class="px-4 py-2.5">
+                                        <input type="checkbox" name="ids[]" value="{{ $student->id }}"
+                                            form="{{ $trashed ? 'students-bulk-restore-form' : 'students-bulk-delete-form' }}"
+                                            data-bulk-checkbox class="rounded border-line text-navy-700 focus:ring-navy-500">
+                                    </td>
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $student->nisn }}</td>
                                     <td class="px-4 py-2.5 font-medium text-ink">{{ $student->name }}</td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $student->class }}</td>
@@ -70,7 +114,9 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-2.5">
-                                        @if ($student->is_active)
+                                        @if ($trashed)
+                                            <span class="badge-danger">Terhapus</span>
+                                        @elseif ($student->is_active)
                                             <span class="badge-muted">Aktif</span>
                                         @else
                                             <span class="badge-danger">Nonaktif</span>
@@ -78,24 +124,33 @@
                                     </td>
                                     <td class="px-4 py-2.5">
                                         <div class="flex items-center justify-end gap-1.5">
-                                            <a href="{{ route('students.edit', $student) }}" class="btn-secondary !px-2 !py-1 text-xs" title="Edit">
-                                                <x-icon name="pencil" size="h-3.5 w-3.5" />
-                                            </a>
-                                            @if ($student->hasPin())
-                                                <form method="POST" action="{{ route('students.reset-pin', $student) }}" data-confirm="Reset PIN {{ $student->name }}? Siswa akan diminta membuat PIN baru.">
+                                            @if ($trashed)
+                                                <form method="POST" action="{{ route('students.restore', $student) }}" data-confirm="Pulihkan siswa {{ $student->name }}?">
                                                     @csrf
-                                                    <button type="submit" class="btn-secondary !px-2 !py-1 text-xs" title="Reset PIN">
+                                                    <button type="submit" class="btn-secondary !px-2 !py-1 text-xs text-moss-700" title="Pulihkan">
                                                         <x-icon name="refresh" size="h-3.5 w-3.5" />
                                                     </button>
                                                 </form>
+                                            @else
+                                                <a href="{{ route('students.edit', $student) }}" class="btn-secondary !px-2 !py-1 text-xs" title="Edit">
+                                                    <x-icon name="pencil" size="h-3.5 w-3.5" />
+                                                </a>
+                                                @if ($student->hasPin())
+                                                    <form method="POST" action="{{ route('students.reset-pin', $student) }}" data-confirm="Reset PIN {{ $student->name }}? Siswa akan diminta membuat PIN baru.">
+                                                        @csrf
+                                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-xs" title="Reset PIN">
+                                                            <x-icon name="refresh" size="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                                <form method="POST" action="{{ route('students.destroy', $student) }}" data-confirm="Hapus {{ $student->name }}? Data sesi historis tetap tersimpan.">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn-secondary !px-2 !py-1 text-xs text-brick-600" title="Hapus">
+                                                        <x-icon name="trash" size="h-3.5 w-3.5" />
+                                                    </button>
+                                                </form>
                                             @endif
-                                            <form method="POST" action="{{ route('students.destroy', $student) }}" data-confirm="Hapus {{ $student->name }}? Data sesi historis tetap tersimpan.">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn-secondary !px-2 !py-1 text-xs text-brick-600" title="Hapus">
-                                                    <x-icon name="trash" size="h-3.5 w-3.5" />
-                                                </button>
-                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -117,5 +172,28 @@
                 event.preventDefault();
             }
         });
+
+        (() => {
+            const boxes = () => Array.from(document.querySelectorAll('[data-bulk-checkbox]'));
+
+            const updateBulkState = () => {
+                const count = boxes().filter((box) => box.checked).length;
+
+                document.querySelectorAll('[data-bulk-count]').forEach((el) => { el.textContent = count; });
+                document.querySelectorAll('[data-bulk-submit]').forEach((el) => { el.disabled = count === 0; });
+            };
+
+            document.addEventListener('change', (event) => {
+                if (event.target.matches('[data-bulk-select-all]')) {
+                    boxes().forEach((box) => { box.checked = event.target.checked; });
+                }
+
+                if (event.target.matches('[data-bulk-select-all], [data-bulk-checkbox]')) {
+                    updateBulkState();
+                }
+            });
+
+            updateBulkState();
+        })();
     </script>
 </x-dashboard-layout>

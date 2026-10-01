@@ -24,6 +24,24 @@ class EnsureDeviceToken
             ->first();
 
         if ($device === null) {
+            // Kontrak dengan client: HTTP 410 + code "device_revoked" berarti
+            // perangkat sudah dihapus admin dari dashboard. Saat menerima respons
+            // ini, kiosk wajib menghapus dirinya sendiri (self-wipe) pada boot
+            // berikutnya lalu enroll ulang. Perangkat yang hanya dinonaktifkan
+            // admin TIDAK termasuk kasus ini dan tetap menerima 401
+            // "device_token_invalid" agar kiosk tidak ikut menghapus data.
+            $revoked = Device::onlyTrashed()
+                ->where('device_token_hash', hash('sha256', $token))
+                ->exists();
+
+            if ($revoked) {
+                return ApiResponse::error(
+                    'device_revoked',
+                    'Perangkat ini sudah dihapus dari dashboard. Kiosk akan menghapus dirinya sendiri saat terhubung.',
+                    410,
+                );
+            }
+
             return ApiResponse::error('device_token_invalid', 'Token perangkat tidak valid.', 401);
         }
 

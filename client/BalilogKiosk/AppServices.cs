@@ -8,6 +8,19 @@ using BalilogKiosk.Core.Time;
 
 namespace BalilogKiosk.App;
 
+/// <summary>Hasil pemeriksaan token perangkat ke server.</summary>
+public enum DeviceTokenStatus
+{
+    /// <summary>Token diterima server. Gangguan jaringan juga dianggap valid agar kiosk tetap jalan dengan data lokal.</summary>
+    Valid,
+
+    /// <summary>Token ditolak (device_token_invalid): token lokal dihapus, perlu pendaftaran ulang.</summary>
+    Invalid,
+
+    /// <summary>Perangkat dihapus dari dashboard (410 device_revoked): kiosk harus wipe total.</summary>
+    Revoked,
+}
+
 /// <summary>
 /// Kumpulan layanan aplikasi kiosk (DI sederhana).
 /// </summary>
@@ -116,18 +129,24 @@ public sealed class AppServices : IDisposable
     /// <summary>
     /// Memeriksa token perangkat ke server lewat panggilan ringan terautentikasi.
     /// Bila server menolak token (device_token_invalid), token lokal dihapus agar
-    /// perangkat dapat didaftarkan ulang. Gangguan jaringan tidak menghapus token —
-    /// kiosk tetap berjalan dengan data lokal. Mengembalikan false bila token tidak
-    /// lagi dapat dipakai.
+    /// perangkat dapat didaftarkan ulang. Bila perangkat DIHAPUS dari dashboard
+    /// (device_revoked), hasil <see cref="DeviceTokenStatus.Revoked"/> dikembalikan
+    /// tanpa tindakan — pemanggil yang memutuskan wipe total. Gangguan jaringan
+    /// tidak mengubah apa pun — kiosk tetap berjalan dengan data lokal.
     /// </summary>
-    public async Task<bool> VerifyDeviceTokenAsync(CancellationToken cancellationToken = default)
+    public async Task<DeviceTokenStatus> VerifyDeviceTokenAsync(CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(Api.DeviceToken))
         {
-            return false;
+            return DeviceTokenStatus.Invalid;
         }
 
         var result = await Api.GetLatestAppAsync(cancellationToken);
+
+        if (SelfWipeService.IsRevoked(result))
+        {
+            return DeviceTokenStatus.Revoked;
+        }
 
         if (result.ErrorCode == "device_token_invalid")
         {
@@ -138,10 +157,10 @@ public sealed class AppServices : IDisposable
                 DataDirectory,
                 "token perangkat ditolak server (device_token_invalid) — token dihapus, perlu pendaftaran ulang.");
 
-            return false;
+            return DeviceTokenStatus.Invalid;
         }
 
-        return true;
+        return DeviceTokenStatus.Valid;
     }
 
     public string GetOrCreateDeviceUuid()

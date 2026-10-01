@@ -1,4 +1,5 @@
 using BalilogKiosk.App.Forms;
+using BalilogKiosk.App.Services;
 
 namespace BalilogKiosk.App;
 
@@ -31,7 +32,31 @@ internal static class Program
                 // Batas singkat: jaringan yang tidak merespons jangan menahan start kiosk.
                 using var verifyTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-                hasDeviceToken = services.VerifyDeviceTokenAsync(verifyTimeout.Token).GetAwaiter().GetResult();
+                var tokenStatus = services.VerifyDeviceTokenAsync(verifyTimeout.Token).GetAwaiter().GetResult();
+
+                if (tokenStatus == DeviceTokenStatus.Revoked)
+                {
+                    // Perangkat dihapus dari dashboard: jangan tawarkan pendaftaran
+                    // ulang. Jalankan wipe total bila diizinkan konfigurasi.
+                    if (services.Config.SelfWipeOnRevoke)
+                    {
+                        SelfWipeService.Trigger("startup: perangkat dihapus dari dashboard");
+                    }
+                    else
+                    {
+                        LocalLog.Write(
+                            services.DataDirectory,
+                            "device_revoked saat startup — SelfWipeOnRevoke=false, wipe tidak dijalankan.");
+
+                        // Token tetap tersimpan: kiosk berjalan dengan layar kunci,
+                        // bukan menawarkan pendaftaran ulang perangkat yang dihapus.
+                        hasDeviceToken = true;
+                    }
+                }
+                else
+                {
+                    hasDeviceToken = tokenStatus == DeviceTokenStatus.Valid;
+                }
             }
 
             if (!hasDeviceToken)

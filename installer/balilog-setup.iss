@@ -73,6 +73,7 @@ Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALI-LOG Kiosk (Watchdog
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogHardeningSuspend"""; Flags: runhidden; RunOnceId: "DelTaskSuspend"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogHardeningApply"""; Flags: runhidden; RunOnceId: "DelTaskApply"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogAutoUpdate"""; Flags: runhidden; RunOnceId: "DelTaskAutoUpdate"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogSelfWipe"""; Flags: runhidden; RunOnceId: "DelTaskSelfWipe"
 
 [UninstallDelete]
 ; Catatan: data (SQLite, screenshot tertunda) & konfigurasi di ProgramData sengaja TIDAK dihapus
@@ -93,6 +94,7 @@ Type: files; Name: "{app}\*.pdb"
 const
   SuspendTaskName = 'BALILogHardeningSuspend';
   ApplyTaskName = 'BALILogHardeningApply';
+  SelfWipeTaskName = 'BALILogSelfWipe';
 
 function NotSilent(): Boolean;
 begin
@@ -168,6 +170,44 @@ begin
   DeleteFile(XmlPath);
 end;
 
+// Task self-wipe: dipicu dashboard (perangkat dihapus) via
+// "schtasks /run /tn BALILogSelfWipe". Elevated tanpa prompt UAC
+// (InteractiveToken + HighestAvailable), TANPA trigger (manual saja).
+// hardening.ps1 -Wipe menghapus instalasi + data memakai uninstaller senyap.
+procedure CreateSelfWipeTask();
+var
+  XmlPath: string;
+  Args: string;
+  ResultCode: Integer;
+begin
+  Args := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &quot;' +
+          ExpandConstant('{app}') + '\hardening.ps1&quot; -Wipe';
+
+  XmlPath := ExpandConstant('{tmp}\' + SelfWipeTaskName + '.xml');
+  SaveStringToFile(XmlPath, BuildTaskXml(Args,
+    'BALI-LOG self wipe perangkat (dipicu dari dashboard)',
+    '  <Triggers />' + #13#10,
+    '  <Principals>' + #13#10 +
+    '    <Principal id="Author">' + #13#10 +
+    '      <LogonType>InteractiveToken</LogonType>' + #13#10 +
+    '      <RunLevel>HighestAvailable</RunLevel>' + #13#10 +
+    '    </Principal>' + #13#10 +
+    '  </Principals>' + #13#10), False);
+
+  if not Exec('schtasks.exe',
+      '/Create /F /TN "' + SelfWipeTaskName + '" /XML "' + XmlPath + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Log('BALI-LOG: gagal menjalankan schtasks untuk ' + SelfWipeTaskName);
+  end
+  else if ResultCode <> 0 then
+  begin
+    Log('BALI-LOG: schtasks ' + SelfWipeTaskName + ' keluar dengan kode ' + IntToStr(ResultCode));
+  end;
+
+  DeleteFile(XmlPath);
+end;
+
 // Task pembaruan otomatis: berjalan sebagai SYSTEM saat boot (+2 menit), tanpa
 // prompt UAC. Kiosk hanya mengunduh & menaruh manifest; task inilah yang
 // memasang installer secara senyap (ditunda bila kiosk/sesi sedang berjalan).
@@ -217,6 +257,9 @@ begin
     // Selalu dibuat (interaktif maupun senyap) agar pembaruan berikutnya
     // tetap berjalan walau instalasi awal tidak mencentang opsi hardening.
     CreateAutoUpdateTask();
+    // Task self-wipe juga selalu dibuat supaya penghapusan perangkat dari
+    // dashboard dapat memicu wipe penuh tanpa prompt UAC.
+    CreateSelfWipeTask();
   end;
 
   if (CurStep = ssPostInstall) and WizardIsTaskSelected('hardening') then

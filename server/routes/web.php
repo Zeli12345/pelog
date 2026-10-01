@@ -48,6 +48,13 @@ Route::middleware('auth')->group(function () {
         // Perangkat: ubah nama/lokasi/status (mode perawatan)
         Route::put('/devices/{device}', [DeviceController::class, 'update'])->name('devices.update');
 
+        // Perangkat: hapus/pulihkan (soft delete) + aksi massal. Menghapus
+        // perangkat memberi sinyal self-wipe ke kiosk saat boot berikutnya.
+        Route::post('/devices/bulk-delete', [DeviceController::class, 'bulkDestroy'])->name('devices.bulk-delete');
+        Route::post('/devices/bulk-restore', [DeviceController::class, 'bulkRestore'])->name('devices.bulk-restore');
+        Route::post('/devices/{device}/restore', [DeviceController::class, 'restore'])->whereNumber('device')->name('devices.restore');
+        Route::delete('/devices/{device}', [DeviceController::class, 'destroy'])->name('devices.destroy');
+
         // Sesi: tutup paksa sesi aktif
         Route::post('/sessions/{session}/close', [SessionController::class, 'close'])->name('sessions.close');
 
@@ -56,12 +63,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/students/import', [StudentImportController::class, 'import'])->name('students.import');
         Route::get('/students/import/template', [StudentImportController::class, 'template'])->name('students.import.template');
         Route::post('/students/{student}/reset-pin', [StudentController::class, 'resetPin'])->name('students.reset-pin');
+        Route::post('/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
+        Route::post('/students/bulk-restore', [StudentController::class, 'bulkRestore'])->name('students.bulk-restore');
+        Route::post('/students/{student}/restore', [StudentController::class, 'restore'])->whereNumber('student')->name('students.restore');
         Route::resource('students', StudentController::class)->except(['show']);
 
         // Guru / Pegawai
         Route::get('/staff/import', [StaffImportController::class, 'form'])->name('staff.import.form');
         Route::post('/staff/import', [StaffImportController::class, 'import'])->name('staff.import');
         Route::get('/staff/import/template', [StaffImportController::class, 'template'])->name('staff.import.template');
+        Route::post('/staff/bulk-delete', [StaffController::class, 'bulkDestroy'])->name('staff.bulk-delete');
+        Route::post('/staff/bulk-restore', [StaffController::class, 'bulkRestore'])->name('staff.bulk-restore');
+        Route::post('/staff/{staff}/restore', [StaffController::class, 'restore'])->whereNumber('staff')->name('staff.restore');
         Route::resource('staff', StaffController::class)->except(['show']);
 
         // Mata pelajaran

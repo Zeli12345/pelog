@@ -16,8 +16,10 @@ class StudentController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
         $classFilter = (string) $request->query('class', '');
+        $trashed = $request->boolean('trashed');
 
         $students = Student::query()
+            ->when($trashed, fn ($query) => $query->onlyTrashed())
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name', 'like', "%{$search}%")
@@ -31,6 +33,7 @@ class StudentController extends Controller
             ->withQueryString();
 
         $classes = Student::query()
+            ->when($trashed, fn ($query) => $query->onlyTrashed())
             ->select('class')
             ->distinct()
             ->orderBy('class')
@@ -41,6 +44,7 @@ class StudentController extends Controller
             'classes' => $classes,
             'search' => $search,
             'classFilter' => $classFilter,
+            'trashed' => $trashed,
             'stats' => [
                 'total' => Student::query()->count(),
                 'with_pin' => Student::query()->whereNotNull('pin_set_at')->count(),
@@ -112,7 +116,90 @@ class StudentController extends Controller
 
         $student->delete();
 
-        return redirect()->route('students.index')->with('status', "Siswa {$student->name} berhasil dihapus (soft delete).");
+        return redirect()->route('students.index')->with('status', "Siswa {$student->name} berhasil dihapus (soft delete). Riwayat sesi tetap tersimpan.");
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $data = $this->validatedIds($request);
+
+        $students = Student::query()->whereKey($data['ids'])->get();
+
+        if ($students->isEmpty()) {
+            return redirect()->route('students.index')->with('status', 'Tidak ada siswa yang cocok untuk dihapus.');
+        }
+
+        foreach ($students as $student) {
+            $student->delete();
+        }
+
+        Audit::log(
+            action: 'students_bulk_deleted',
+            entityType: Student::class,
+            metadata: [
+                'ids' => $students->pluck('id')->all(),
+                'count' => $students->count(),
+                'nisns' => $students->pluck('nisn')->all(),
+            ],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return redirect()->route('students.index')->with(
+            'status',
+            "{$students->count()} siswa berhasil dihapus (soft delete). Riwayat sesi tetap tersimpan."
+        );
+    }
+
+    public function restore(Request $request, int $student): RedirectResponse
+    {
+        $student = Student::onlyTrashed()->findOrFail($student);
+        $student->restore();
+
+        Audit::log(
+            action: 'student_restored',
+            entityType: Student::class,
+            entityId: $student->id,
+            metadata: ['nisn' => $student->nisn, 'name' => $student->name],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return redirect()->route('students.index', ['trashed' => 1])
+            ->with('status', "Siswa {$student->name} berhasil dipulihkan.");
+    }
+
+    public function bulkRestore(Request $request): RedirectResponse
+    {
+        $data = $this->validatedIds($request);
+
+        $students = Student::onlyTrashed()->whereKey($data['ids'])->get();
+
+        if ($students->isEmpty()) {
+            return redirect()->route('students.index', ['trashed' => 1])->with('status', 'Tidak ada siswa yang cocok untuk dipulihkan.');
+        }
+
+        foreach ($students as $student) {
+            $student->restore();
+        }
+
+        Audit::log(
+            action: 'students_bulk_restored',
+            entityType: Student::class,
+            metadata: [
+                'ids' => $students->pluck('id')->all(),
+                'count' => $students->count(),
+                'nisns' => $students->pluck('nisn')->all(),
+            ],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return redirect()->route('students.index', ['trashed' => 1])
+            ->with('status', "{$students->count()} siswa berhasil dipulihkan.");
     }
 
     public function resetPin(Request $request, Student $student): RedirectResponse
@@ -157,5 +244,16 @@ class StudentController extends Controller
         $data['is_active'] = $request->boolean('is_active', true);
 
         return $data;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validatedIds(Request $request): array
+    {
+        return $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['integer'],
+        ]);
     }
 }

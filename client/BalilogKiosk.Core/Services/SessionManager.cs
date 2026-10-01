@@ -133,11 +133,9 @@ public sealed class SessionManager
         _store.SaveSession(record);
     }
 
-    public async Task<HeartbeatData?> TryRemoteHeartbeatAsync(LocalSessionRecord record, CancellationToken cancellationToken = default)
+    public Task<ApiResult<HeartbeatData>> TryRemoteHeartbeatAsync(LocalSessionRecord record, CancellationToken cancellationToken = default)
     {
-        var result = await _api.HeartbeatAsync(record.SessionUuid, cancellationToken);
-
-        return result.Ok ? result.Data : null;
+        return _api.HeartbeatAsync(record.SessionUuid, cancellationToken);
     }
 
     public LocalSessionRecord Close(LocalSessionRecord record, string? feedback, string? comprehension, string reason = "normal")

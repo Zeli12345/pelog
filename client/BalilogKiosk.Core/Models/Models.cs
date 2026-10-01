@@ -61,6 +61,8 @@ public sealed class EnrollRequest
 
     public string? Label { get; set; }
 
+    public string? Location { get; set; }
+
     public List<string>? MacList { get; set; }
 
     public string DeviceType { get; set; } = "laptop";
