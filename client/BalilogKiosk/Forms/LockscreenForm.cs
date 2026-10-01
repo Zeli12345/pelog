@@ -581,9 +581,22 @@ public sealed class LockscreenForm : Form
     /// </summary>
     private void OpenWifiDialog()
     {
-        using var dialog = new WifiForm(_services.Config.AllowedWifiSsids);
+        // Jendela kiosk selalu TopMost; lepas sementara supaya dialog modal
+        // (juga TopMost) pasti tampil di DEPAN, bukan tertutup jendela kiosk.
+        var wasTopMost = TopMost;
+        TopMost = false;
 
-        dialog.ShowDialog(this);
+        try
+        {
+            using var dialog = new WifiForm(_services.Config.AllowedWifiSsids);
+
+            dialog.ShowDialog(this);
+        }
+        finally
+        {
+            TopMost = wasTopMost;
+            Activate();
+        }
     }
 
     private Button CreateModeButton(string text)
@@ -728,6 +741,11 @@ public sealed class LockscreenForm : Form
 
         _enrollmentRecoveryOpen = true;
 
+        // Sama seperti dialog Wi-Fi: jendela kiosk TopMost harus dilepas
+        // sementara supaya dialog enrollment tampil di depan.
+        var wasTopMost = TopMost;
+        TopMost = false;
+
         try
         {
             using var enroll = new EnrollForm(_services);
@@ -736,6 +754,8 @@ public sealed class LockscreenForm : Form
         }
         finally
         {
+            TopMost = wasTopMost;
+            Activate();
             _enrollmentRecoveryOpen = false;
         }
     }
@@ -1412,14 +1432,29 @@ public sealed class LockscreenForm : Form
 
         _keyboardBlocker.SetEnabled(false);
 
-        using (var unlock = new AdminUnlockForm(_services))
-        {
-            if (unlock.ShowDialog(this) != DialogResult.OK)
-            {
-                _keyboardBlocker.SetEnabled(true);
+        // Dialog kunci admin juga harus tampil di depan jendela kiosk TopMost.
+        var wasTopMost = TopMost;
+        TopMost = false;
 
-                return;
-            }
+        DialogResult unlockResult;
+
+        try
+        {
+            using var unlock = new AdminUnlockForm(_services);
+
+            unlockResult = unlock.ShowDialog(this);
+        }
+        finally
+        {
+            TopMost = wasTopMost;
+            Activate();
+        }
+
+        if (unlockResult != DialogResult.OK)
+        {
+            _keyboardBlocker.SetEnabled(true);
+
+            return;
         }
 
         // Menangguhkan kebijakan kiosk lewat Scheduled Task elevated yang dibuat
