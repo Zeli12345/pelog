@@ -65,6 +65,8 @@ public sealed class ActiveSessionRuntime : Form
 
     private readonly Timer _sessionEndingFallback = new() { Interval = 2_000 };
 
+    private readonly PowerButtonForm _powerButton;
+
     private bool _screenshotTaken;
 
     private bool _allowClose;
@@ -119,6 +121,12 @@ public sealed class ActiveSessionRuntime : Form
 
         // Paksa pembuatan handle agar hotkey & timer langsung aktif tanpa menampilkan jendela.
         _ = Handle;
+
+        // Tombol "Matikan / Selesai" selama sesi berjalan: jalur shutdown yang andal
+        // (layar shutdown Windows menutupi form refleksi kita - lihat RequestShutdownFromKiosk).
+        _powerButton = new PowerButtonForm();
+        _powerButton.PowerRequested += (_, _) => RequestShutdownFromKiosk();
+        _powerButton.Show();
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -233,6 +241,25 @@ public sealed class ActiveSessionRuntime : Form
         BeginInvoke(new Action(RunShutdownFeedbackAsync));
 
         return true;
+    }
+
+    /// <summary>
+    /// Shutdown/restart lewat tombol kiosk selama sesi berjalan. Jalur ini andal:
+    /// tidak melewati layar "Closing apps" Windows yang menutupi form refleksi.
+    /// </summary>
+    private void RequestShutdownFromKiosk()
+    {
+        if (_shutdownDialogRunning || _finishing)
+        {
+            return;
+        }
+
+        _shutdownDialogRunning = true;
+        _services.Store.SetKv("shutdown_pending", _record.SessionUuid);
+
+        LogShutdown("kiosk-power-button");
+
+        RunShutdownFeedbackAsync();
     }
 
     private async void RunShutdownFeedbackAsync()
@@ -677,6 +704,16 @@ public sealed class ActiveSessionRuntime : Form
         StopTimers();
         _sessionEndingFallback.Stop();
         _allowClose = true;
+
+        try
+        {
+            _powerButton.Close();
+            _powerButton.Dispose();
+        }
+        catch (Exception)
+        {
+            // Tombol opsional.
+        }
 
         SystemEvents.SessionEnding -= OnSystemSessionEnding;
 
