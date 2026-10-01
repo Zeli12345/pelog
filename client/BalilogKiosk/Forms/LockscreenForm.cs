@@ -42,6 +42,7 @@ public sealed class LockscreenForm : Form
 
     private readonly Label _clockLabel;
     private readonly Label _serverLabel;
+    private readonly Button _wifiButton;
 
     private readonly Button _studentModeButton;
     private readonly Button _staffModeButton;
@@ -170,8 +171,32 @@ public sealed class LockscreenForm : Form
             Anchor = AnchorStyles.Top | AnchorStyles.Right,
         };
 
-        footer.Controls.AddRange([_serverLabel, deviceLabel]);
-        footer.Resize += (_, _) => deviceLabel.Location = new Point(footer.Width - 456, 10);
+        // Tombol Wi-Fi: agar perangkat dapat disambungkan ke jaringan sekolah
+        // langsung dari layar kunci, tanpa keluar dari kiosk.
+        _wifiButton = new Button
+        {
+            Text = "📶  Wi-Fi",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.White,
+            BackColor = Navy,
+            FlatStyle = FlatStyle.Flat,
+            Size = new Size(118, 28),
+            Location = new Point(600, 6),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Cursor = Cursors.Hand,
+            TabStop = false,
+        };
+
+        _wifiButton.FlatAppearance.BorderSize = 1;
+        _wifiButton.FlatAppearance.BorderColor = Gold;
+        _wifiButton.Click += (_, _) => OpenWifiDialog();
+
+        footer.Controls.AddRange([_serverLabel, deviceLabel, _wifiButton]);
+        footer.Resize += (_, _) =>
+        {
+            _wifiButton.Location = new Point(footer.Width - 596, 6);
+            deviceLabel.Location = new Point(footer.Width - 456, 10);
+        };
 
         // ---------- Mode toggle ----------
         _studentModeButton = CreateModeButton("Siswa");
@@ -547,6 +572,17 @@ public sealed class LockscreenForm : Form
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Dialog Wi-Fi di layar kunci, dipakai bila laptop belum tersambung ke
+    /// jaringan sekolah (mis. setelah dipindah ruangan atau ganti SSID).
+    /// </summary>
+    private void OpenWifiDialog()
+    {
+        using var dialog = new WifiForm(_services.Config.AllowedWifiSsids);
+
+        dialog.ShowDialog(this);
     }
 
     private Button CreateModeButton(string text)

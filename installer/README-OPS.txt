@@ -116,4 +116,20 @@ SMK Negeri 1 Mas Ubud
      maintenance berkala untuk pembaruan sistem.
    - Screenshot disimpan di server dengan retensi sesuai Pengaturan dashboard.
 
+10. MENYAMBUNGKAN WI-FI DARI LAYAR KUNCI
+   - Di layar kunci kiosk terdapat tombol "Wi-Fi" pada baris status bawah.
+   - Tekan tombol tersebut untuk melihat daftar jaringan, memilih jaringan
+     sekolah, mengisi password bila diminta, lalu tekan "Hubungkan".
+   - Jaringan yang sudah pernah tersimpan dapat disambungkan lewat daftar
+     "profil tersimpan" - tidak perlu mengetik password lagi.
+   - Tidak memerlukan hak administrator: profil baru dibuat sebagai profil
+     pengguna Windows (user=current).
+   - Bila hanya jaringan tertentu yang boleh dipakai siswa, isi daftar SSID
+     pada C:\ProgramData\BALI-LOG\balilog.json, contoh:
+       "allowed_wifi_ssids": ["SMKN1-UBUD", "LAB-RPL"]
+     Kosongkan ([]) agar semua jaringan tampil. Perubahan berlaku setelah
+     aplikasi kiosk dijalankan ulang.
+   - Bila muncul "Tidak ada jaringan Wi-Fi terdeteksi": periksa adaptor /
+     tombol Wi-Fi laptop, lalu tekan "Muat ulang".
+
 ====================================================================

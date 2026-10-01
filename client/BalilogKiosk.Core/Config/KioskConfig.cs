@@ -23,6 +23,12 @@ public sealed class KioskConfig
     /// <summary>Interval pemeriksaan auto-update (jam).</summary>
     public int UpdateCheckHours { get; set; } = 6;
 
+    /// <summary>
+    /// Bila diisi, hanya SSID ini yang ditampilkan/diizinkan pada dialog Wi-Fi
+    /// di layar kunci (mis. ["SMKN1-UBUD", "LAB-RPL"]). Kosong = semua jaringan.
+    /// </summary>
+    public string[] AllowedWifiSsids { get; set; } = [];
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
