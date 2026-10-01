@@ -5,7 +5,7 @@
 [Setup]
 AppId={{8F1A2C64-3B7E-4F3A-9C21-BALI0G000001}
 AppName=BALI-LOG Kiosk
-AppVersion=1.0.4
+AppVersion=1.0.5
 AppPublisher=SMK Negeri 1 Mas Ubud
 AppPublisherURL=https://balilog.smkn1mas.sch.id
 DefaultDirName={autopf}\BALI-LOG Kiosk
