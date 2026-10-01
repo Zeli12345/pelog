@@ -4,10 +4,18 @@ namespace BalilogKiosk.App.Forms;
 
 /// <summary>
 /// Form refleksi belajar siswa di akhir sesi (teks + tingkat pemahaman).
+///
+/// WAJIB diisi: teks minimal <see cref="MinFeedbackLength"/> huruf dan tingkat
+/// pemahaman harus dipilih. Tombol X sengaja dimatikan (ControlBox = false) agar
+/// siswa tidak bisa menutup form tanpa memilih SIMPAN atau BATAL.
 /// </summary>
 public sealed class FeedbackForm : Form
 {
+    private const int MinFeedbackLength = 10;
+
     private readonly TextBox _feedbackInput;
+
+    private readonly Label _errorLabel;
 
     private readonly Dictionary<string, RadioButton> _levels = [];
 
@@ -23,11 +31,12 @@ public sealed class FeedbackForm : Form
 
         Text = "Refleksi Hasil Belajar";
         FormBorderStyle = FormBorderStyle.FixedDialog;
+        ControlBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         MinimizeBox = false;
         BackColor = Color.FromArgb(247, 245, 241);
-        ClientSize = new Size(620, 560);
+        ClientSize = new Size(620, 596);
         Font = new Font("Segoe UI", 10F);
 
         var title = new Label
@@ -53,7 +62,7 @@ public sealed class FeedbackForm : Form
 
         var feedbackLabel = new Label
         {
-            Text = "Apa yang telah kamu pelajari / selesaikan hari ini?",
+            Text = $"Apa yang telah kamu pelajari / selesaikan hari ini? (minimal {MinFeedbackLength} huruf)",
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             ForeColor = Color.FromArgb(40, 44, 52),
             Location = new Point(32, 104),
@@ -72,7 +81,7 @@ public sealed class FeedbackForm : Form
 
         var levelLabel = new Label
         {
-            Text = "Tingkat pemahaman materi hari ini:",
+            Text = "Tingkat pemahaman materi hari ini: (wajib dipilih)",
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             ForeColor = Color.FromArgb(40, 44, 52),
             Location = new Point(32, 300),
@@ -100,24 +109,29 @@ public sealed class FeedbackForm : Form
                 ForeColor = Color.FromArgb(40, 44, 52),
             };
 
-            if (option.Key == "paham")
-            {
-                radio.Checked = true;
-            }
-
+            // Sengaja TIDAK ada pilihan tercentang otomatis - siswa harus memilih.
             _levels[option.Key] = radio;
             Controls.Add(radio);
 
             y += 34;
         }
 
+        _errorLabel = new Label
+        {
+            Text = string.Empty,
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(178, 58, 46),
+            Location = new Point(32, 500),
+            Size = new Size(556, 34),
+        };
+
         var saveButton = new Button
         {
             Text = shutdownMode
                 ? "S I M P A N   &   M A T I K A N"
                 : "S I M P A N   &   K U N C I   L A P T O P",
-            Location = shutdownMode ? new Point(232, 486) : new Point(32, 486),
-            Size = shutdownMode ? new Size(356, 52) : new Size(556, 52),
+            Location = new Point(232, 536),
+            Size = new Size(356, 52),
             Font = new Font("Segoe UI", 11F, FontStyle.Bold),
             BackColor = Color.FromArgb(27, 58, 92),
             ForeColor = Color.White,
@@ -128,40 +142,59 @@ public sealed class FeedbackForm : Form
         saveButton.FlatAppearance.BorderSize = 0;
         saveButton.Click += (_, _) =>
         {
-            Feedback = string.IsNullOrWhiteSpace(_feedbackInput.Text) ? null : _feedbackInput.Text.Trim();
-            Comprehension = _levels.FirstOrDefault(pair => pair.Value.Checked).Key ?? "paham";
+            var text = _feedbackInput.Text.Trim();
+
+            if (text.Length < MinFeedbackLength)
+            {
+                _errorLabel.Text = $"Refleksi wajib diisi - tulis minimal {MinFeedbackLength} huruf.";
+                _feedbackInput.Focus();
+
+                return;
+            }
+
+            var level = _levels.FirstOrDefault(pair => pair.Value.Checked).Key;
+
+            if (string.IsNullOrEmpty(level))
+            {
+                _errorLabel.Text = "Pilih dulu tingkat pemahaman materi hari ini.";
+                _levels["sangat_paham"].Focus();
+
+                return;
+            }
+
+            Feedback = text;
+            Comprehension = level;
 
             DialogResult = DialogResult.OK;
             Close();
         };
 
-        Controls.AddRange([title, subtitle, feedbackLabel, _feedbackInput, levelLabel, saveButton]);
+        Controls.AddRange([title, subtitle, feedbackLabel, _feedbackInput, levelLabel, _errorLabel, saveButton]);
 
-        if (shutdownMode)
+        // Tombol BATAL selalu ada: pada mode shutdown membatalkan pemadaman,
+        // pada mode biasa kembali ke sesi (refleksi tidak tersimpan).
+        var cancelButton = new Button
         {
-            var cancelButton = new Button
-            {
-                Text = "B A T A L",
-                Location = new Point(32, 486),
-                Size = new Size(180, 52),
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-                BackColor = Color.FromArgb(228, 231, 235),
-                ForeColor = Color.FromArgb(40, 44, 52),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand,
-            };
+            Text = "B A T A L",
+            Location = new Point(32, 536),
+            Size = new Size(180, 52),
+            Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+            BackColor = Color.FromArgb(228, 231, 235),
+            ForeColor = Color.FromArgb(40, 44, 52),
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand,
+        };
 
-            cancelButton.FlatAppearance.BorderSize = 0;
-            cancelButton.Click += (_, _) =>
-            {
-                DialogResult = DialogResult.Cancel;
-                Close();
-            };
+        cancelButton.FlatAppearance.BorderSize = 0;
+        cancelButton.Click += (_, _) =>
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        };
 
-            Controls.Add(cancelButton);
+        Controls.Add(cancelButton);
 
-            CancelButton = cancelButton;
-        }
+        CancelButton = cancelButton;
 
         AcceptButton = saveButton;
         ActiveControl = _feedbackInput;
