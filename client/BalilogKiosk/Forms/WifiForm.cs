@@ -415,7 +415,7 @@ internal sealed class WifiForm : Form
             {
                 var success = saved
                     ? WifiService.ConnectProfile(network.Ssid, out var text)
-                    : WifiService.ConnectNew(network.Ssid, password, out text);
+                    : WifiService.ConnectNew(network.Ssid, password, network.Security, out text);
 
                 return (success, text);
             });

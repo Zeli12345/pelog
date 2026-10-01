@@ -169,16 +169,35 @@ internal static class WifiService
         return false;
     }
 
-    /// <summary>Membuat profil baru (terbuka atau WPA2-PSK) lalu menyambung.</summary>
-    public static bool ConnectNew(string ssid, string? password, out string message)
+    /// <summary>
+    /// Membuat profil baru (terbuka / WPA / WPA2 / WPA3) lalu menyambung.
+    /// Jenis autentikasi dipilih otomatis dari hasil pemindaian.
+    /// </summary>
+    public static bool ConnectNew(string ssid, string? password, string security, out string message)
     {
         var profilePath = Path.Combine(Path.GetTempPath(), "balilog-wifi-" + Guid.NewGuid().ToString("N") + ".xml");
+        var authentication = DetectAuthentication(security, password, out var encryption);
+
+        if (authentication.Length == 0)
+        {
+            message = $"Jaringan \"{ssid}\" memakai autentikasi enterprise/802.1X. " +
+                      "Sambungkan lewat mode admin Windows (Ctrl+Alt+Shift+B).";
+            return false;
+        }
 
         try
         {
-            File.WriteAllText(profilePath, BuildProfileXml(ssid, password), new UTF8Encoding(false));
+            File.WriteAllText(profilePath, BuildProfileXml(ssid, password, authentication, encryption), new UTF8Encoding(false));
 
             RunNetsh($"wlan add profile filename=\"{profilePath}\" user=current");
+
+            // Perangkat/Windows lama mungkin menolak WPA3SAE -> coba WPA2PSK.
+            if (authentication == "WPA3SAE" &&
+                !SavedProfiles().Contains(ssid, StringComparer.OrdinalIgnoreCase))
+            {
+                File.WriteAllText(profilePath, BuildProfileXml(ssid, password, "WPA2PSK", "AES"), new UTF8Encoding(false));
+                RunNetsh($"wlan add profile filename=\"{profilePath}\" user=current");
+            }
 
             if (!SavedProfiles().Contains(ssid, StringComparer.OrdinalIgnoreCase))
             {
@@ -234,16 +253,67 @@ internal static class WifiService
         return false;
     }
 
-    private static string BuildProfileXml(string ssid, string? password)
+    /// <summary>
+    /// Menentukan autentikasi profil dari teks keamanan hasil pemindaian
+    /// (mis. "WPA3-Personal", "WPA2-Personal", "WPA-Personal", "Open").
+    /// Mengembalikan string kosong bila jenisnya tidak didukung (enterprise/802.1X).
+    /// </summary>
+    private static string DetectAuthentication(string security, string? password, out string encryption)
+    {
+        var text = security ?? string.Empty;
+
+        if (text.Contains("enterprise", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("802.1", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("eap", StringComparison.OrdinalIgnoreCase))
+        {
+            encryption = "AES";
+            return string.Empty;
+        }
+
+        if (string.IsNullOrEmpty(password))
+        {
+            encryption = "none";
+            return "open";
+        }
+
+        if (text.Contains("WPA3", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("SAE", StringComparison.OrdinalIgnoreCase))
+        {
+            encryption = "AES";
+            return "WPA3SAE";
+        }
+
+        if (text.Contains("WPA2", StringComparison.OrdinalIgnoreCase))
+        {
+            encryption = "AES";
+            return "WPA2PSK";
+        }
+
+        if (text.Contains("WPA", StringComparison.OrdinalIgnoreCase))
+        {
+            encryption = "TKIP";
+            return "WPAPSK";
+        }
+
+        // Tidak terbaca (mis. istilah sistem lokal) - WPA2 sebagai default paling umum.
+        encryption = "AES";
+        return "WPA2PSK";
+    }
+
+    private static string BuildProfileXml(string ssid, string? password, string authentication, string encryption)
     {
         var name = System.Security.SecurityElement.Escape(ssid) ?? ssid;
 
-        var security = string.IsNullOrEmpty(password)
-            ? "<authEncryption><authentication>open</authentication><encryption>none</encryption><useOneX>false</useOneX></authEncryption>"
-            : "<authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption>" +
-              "<sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>" +
-              (System.Security.SecurityElement.Escape(password) ?? string.Empty) +
-              "</keyMaterial></sharedKey>";
+        var security = "<authEncryption><authentication>" + authentication +
+                       "</authentication><encryption>" + encryption +
+                       "</encryption><useOneX>false</useOneX></authEncryption>";
+
+        if (!string.IsNullOrEmpty(password) && !authentication.Equals("open", StringComparison.OrdinalIgnoreCase))
+        {
+            security += "<sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>" +
+                        (System.Security.SecurityElement.Escape(password) ?? string.Empty) +
+                        "</keyMaterial></sharedKey>";
+        }
 
         return "<?xml version=\"1.0\"?>" +
                "<WLANProfile xmlns=\"http://www.microsoft.com/networking/WLAN/profile/v1\">" +
