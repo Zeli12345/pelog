@@ -50,7 +50,7 @@ function Remove-Value($path, $name) {
 # ---------------------------------------------------------------------------
 # SELF-WIPE: menghapus seluruh instalasi PELOG + data tanpa prompt UAC.
 # Dipicu dari dashboard (perangkat dihapus) lewat Scheduled Task
-# "BALILogSelfWipe" -> hardening.ps1 -Wipe. Semua langkah best-effort:
+# "PelogSelfWipe" -> hardening.ps1 -Wipe. Semua langkah best-effort:
 # tidak pernah melempar error dan setiap tahap dicatat ke log publik.
 # ---------------------------------------------------------------------------
 if ($Wipe) {
@@ -78,10 +78,10 @@ if ($Wipe) {
     $wipeTasks = @(
         'PELOG Kiosk (Watchdog)',
         'PELOG Kiosk (Logon)',
-        'BALILogAutoUpdate',
-        'BALILogHardeningApply',
-        'BALILogHardeningSuspend',
-        'BALILogSelfWipe'
+        'PelogAutoUpdate',
+        'PelogHardeningApply',
+        'PelogHardeningSuspend',
+        'PelogSelfWipe'
     )
 
     foreach ($taskName in $wipeTasks) {
@@ -96,8 +96,8 @@ if ($Wipe) {
 
     # 3) Hapus autostart HKLM.
     try {
-        Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'BALILogKiosk' -ErrorAction SilentlyContinue
-        Write-WipeLog 'nilai autostart BALILogKiosk (HKLM Run) dihapus.'
+        Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'PelogKiosk' -ErrorAction SilentlyContinue
+        Write-WipeLog 'nilai autostart PelogKiosk (HKLM Run) dihapus.'
     } catch {
         Write-WipeLog ('GAGAL menghapus autostart: ' + $_.Exception.Message)
     }

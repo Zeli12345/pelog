@@ -215,13 +215,13 @@ Fitur yang ditambahkan/diperbaiki: nama perangkat saat enroll, mode perawatan pe
 | 20 | Run dialog (Win+R) + `cmd` saat MODE ADMIN | Lulus - dialog terbuka, cmd berjalan |
 | 21 | Shell (explorer) dimuat ulang otomatis setelah penangguhan (anti-cache kebijakan) | Lulus - shell baru tanpa kebijakan lama; tersedia juga tombol manual "Muat Ulang Shell" |
 | 22 | "Keluar Aplikasi" melepas penguncian (mesin kembali normal) | Lulus - kebijakan ditangguhkan saat keluar aplikasi |
-| 23 | Hardening dipasang ulang otomatis setiap aplikasi kiosk dijalankan | Lulus - `Last Run Time` task `BALILogHardeningApply` = waktu start aplikasi, `Last Result: 0` |
+| 23 | Hardening dipasang ulang otomatis setiap aplikasi kiosk dijalankan | Lulus - `Last Run Time` task `PelogHardeningApply` = waktu start aplikasi, `Last Result: 0` |
 | 24 | Sesi murid aktif: Run dialog (Win+R) + `cmd` | Lulus - dialog terbuka, Command Prompt berjalan normal |
 | 25 | Sesi murid aktif: Task Manager (Ctrl+Shift+Esc) | Lulus - Task Manager terbuka |
-| 26 | Sesi berakhir -> penguncian kiosk dipasang ulang otomatis | Lulus - `Last Run Time` task `BALILogHardeningApply` = detik sesi berakhir (3:35:26), `Last Result: 0`; kiosk kembali terkunci |
+| 26 | Sesi berakhir -> penguncian kiosk dipasang ulang otomatis | Lulus - `Last Run Time` task `PelogHardeningApply` = detik sesi berakhir (3:35:26), `Last Result: 0`; kiosk kembali terkunci |
 | 27 | Mode dinamis: layar kunci TERKUNCI, sesi murid/guru BEBAS penuh | Lulus - sesi `id=40` ditutup `normal` + feedback; semua alur di atas konsisten (mekanisme sama untuk semua tipe pengguna) |
 
-Catatan teknis: task elevated dibuat lewat XML (`schtasks /TR` tidak bisa menangani path ber-spasi + kutip - "Invalid argument/option"). Task: `BALILogHardeningSuspend` / `BALILogHardeningApply` (InteractiveToken + HighestAvailable, tanpa trigger), dibuat installer saat opsi "Terapkan penguncian kiosk" dicentang.
+Catatan teknis: task elevated dibuat lewat XML (`schtasks /TR` tidak bisa menangani path ber-spasi + kutip - "Invalid argument/option"). Task: `PelogHardeningSuspend` / `PelogHardeningApply` (InteractiveToken + HighestAvailable, tanpa trigger), dibuat installer saat opsi "Terapkan penguncian kiosk" dicentang.
 
 Hook shutdown ganda: `SystemEvents.SessionEnding` + pesan Windows `WM_QUERYENDSESSION`/`WM_ENDSESSION` pada jendela runtime (idempoten, tidak pernah menghambat shutdown). Urutan: tulis penutupan ke DB lokal -> upaya lapor server maks 2 detik -> sisa antrean tersinkron saat aplikasi jalan kembali.
 

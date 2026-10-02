@@ -14,9 +14,9 @@ namespace PelogKiosk.App.Services;
 /// </summary>
 internal static class KioskHardening
 {
-    public const string SuspendTaskName = "BALILogHardeningSuspend";
+    public const string SuspendTaskName = "PelogHardeningSuspend";
 
-    public const string ApplyTaskName = "BALILogHardeningApply";
+    public const string ApplyTaskName = "PelogHardeningApply";
 
     // Lokasi kanonik DisableTaskMgr/DisableRegistryTools (lihat hardening.ps1
     // $polSystem) â€” bukan Software\Policies\... yang hanya dipakai DisableCMD.

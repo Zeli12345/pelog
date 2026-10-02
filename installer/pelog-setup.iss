@@ -5,7 +5,7 @@
 [Setup]
 AppId={{8F1A2C64-3B7E-4F3A-9C21-BALI0G000001}
 AppName=PELOG Kiosk
-AppVersion=1.2.0
+AppVersion=1.2.1
 AppPublisher=SMK Negeri 1 Mas Ubud
 AppPublisherURL=https://pelog.smkn1mas.sch.id
 DefaultDirName={autopf}\PELOG Kiosk
@@ -51,7 +51,7 @@ Name: "{autodesktop}\PELOG Kiosk"; Filename: "{app}\PelogKiosk.exe"; Tasks: desk
 
 [Registry]
 ; Autostart untuk semua pengguna Windows (kiosk langsung tampil setelah login)
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "BALILogKiosk"; ValueData: """{app}\PelogKiosk.exe"""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "PelogKiosk"; ValueData: """{app}\PelogKiosk.exe"""; Flags: uninsdeletevalue
 
 [Run]
 ; Izin akses data untuk semua akun (kiosk berjalan sebagai akun siswa, installer sebagai Admin)
@@ -70,10 +70,10 @@ Filename: "{app}\PelogKiosk.exe"; Description: "Jalankan PELOG sekarang"; Flags:
 [UninstallRun]
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PELOG Kiosk (Logon)"""; Flags: runhidden; RunOnceId: "DelTaskLogon"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PELOG Kiosk (Watchdog)"""; Flags: runhidden; RunOnceId: "DelTaskWatchdog"
-Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogHardeningSuspend"""; Flags: runhidden; RunOnceId: "DelTaskSuspend"
-Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogHardeningApply"""; Flags: runhidden; RunOnceId: "DelTaskApply"
-Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogAutoUpdate"""; Flags: runhidden; RunOnceId: "DelTaskAutoUpdate"
-Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""BALILogSelfWipe"""; Flags: runhidden; RunOnceId: "DelTaskSelfWipe"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogHardeningSuspend"""; Flags: runhidden; RunOnceId: "DelTaskSuspend"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogHardeningApply"""; Flags: runhidden; RunOnceId: "DelTaskApply"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogAutoUpdate"""; Flags: runhidden; RunOnceId: "DelTaskAutoUpdate"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogSelfWipe"""; Flags: runhidden; RunOnceId: "DelTaskSelfWipe"
 
 [UninstallDelete]
 ; Catatan: data (SQLite, screenshot tertunda) & konfigurasi di ProgramData sengaja TIDAK dihapus
@@ -92,9 +92,9 @@ Type: files; Name: "{app}\*.pdb"
 // Dibuat lewat XML karena schtasks /TR tidak bisa menerima path ber-spasi
 // dengan kutip di dalamnya ("Invalid argument/option").
 const
-  SuspendTaskName = 'BALILogHardeningSuspend';
-  ApplyTaskName = 'BALILogHardeningApply';
-  SelfWipeTaskName = 'BALILogSelfWipe';
+  SuspendTaskName = 'PelogHardeningSuspend';
+  ApplyTaskName = 'PelogHardeningApply';
+  SelfWipeTaskName = 'PelogSelfWipe';
 
 function NotSilent(): Boolean;
 begin
@@ -171,7 +171,7 @@ begin
 end;
 
 // Task self-wipe: dipicu dashboard (perangkat dihapus) via
-// "schtasks /run /tn BALILogSelfWipe". Elevated tanpa prompt UAC
+// "schtasks /run /tn PelogSelfWipe". Elevated tanpa prompt UAC
 // (InteractiveToken + HighestAvailable), TANPA trigger (manual saja).
 // hardening.ps1 -Wipe menghapus instalasi + data memakai uninstaller senyap.
 procedure CreateSelfWipeTask();
@@ -220,7 +220,7 @@ begin
   Args := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &quot;' +
           ExpandConstant('{app}') + '\apply-update.ps1&quot;';
 
-  XmlPath := ExpandConstant('{tmp}\BALILogAutoUpdate.xml');
+  XmlPath := ExpandConstant('{tmp}\PelogAutoUpdate.xml');
   SaveStringToFile(XmlPath, BuildTaskXml(Args,
     'PELOG auto update - senyap saat boot',
     '  <Triggers>' + #13#10 +
@@ -237,14 +237,14 @@ begin
     '  </Principals>' + #13#10), False);
 
   if not Exec('schtasks.exe',
-      '/Create /F /TN "BALILogAutoUpdate" /XML "' + XmlPath + '"',
+      '/Create /F /TN "PelogAutoUpdate" /XML "' + XmlPath + '"',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
   begin
-    Log('PELOG: gagal menjalankan schtasks untuk BALILogAutoUpdate');
+    Log('PELOG: gagal menjalankan schtasks untuk PelogAutoUpdate');
   end
   else if ResultCode <> 0 then
   begin
-    Log('PELOG: schtasks BALILogAutoUpdate keluar dengan kode ' + IntToStr(ResultCode));
+    Log('PELOG: schtasks PelogAutoUpdate keluar dengan kode ' + IntToStr(ResultCode));
   end;
 
   DeleteFile(XmlPath);

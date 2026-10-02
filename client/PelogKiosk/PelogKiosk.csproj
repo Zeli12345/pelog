@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Samakan dengan AppInfo.Version (client/PelogKiosk.Core/AppInfo.cs)
          dan AppVersion di installer/pelog-setup.iss saat merilis versi baru. -->
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
   </PropertyGroup>
 
   <ItemGroup>

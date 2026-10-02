@@ -35,15 +35,15 @@ Write-Host '[unlock] Log off / log in ulang agar perubahan berlaku penuh.' -Fore
 if ($FullUninstall) {
     schtasks /Delete /F /TN "PELOG Kiosk (Logon)" | Out-Null
     schtasks /Delete /F /TN "PELOG Kiosk (Watchdog)" | Out-Null
-    schtasks /Delete /F /TN "BALILogHardeningSuspend" | Out-Null
-    schtasks /Delete /F /TN "BALILogHardeningApply" | Out-Null
-    schtasks /Delete /F /TN "BALILogAutoUpdate" | Out-Null
+    schtasks /Delete /F /TN "PelogHardeningSuspend" | Out-Null
+    schtasks /Delete /F /TN "PelogHardeningApply" | Out-Null
+    schtasks /Delete /F /TN "PelogAutoUpdate" | Out-Null
 
-    Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'BALILogKiosk' -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'PelogKiosk' -ErrorAction SilentlyContinue
 
     Write-Host '[unlock] Autostart & scheduled task PELOG telah dihapus (full uninstall).' -ForegroundColor Green
 }
 
 Write-Host ''
 Write-Host 'Catatan: aplikasi PELOG tetap terpasang. Uninstall lewat Settings > Apps,'
-Write-Host 'atau hentikan proses BALILogKiosk lalu hapus foldernya bila ingin bersih total.'
+Write-Host 'atau hentikan proses PelogKiosk lalu hapus foldernya bila ingin bersih total.'

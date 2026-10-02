@@ -1,5 +1,5 @@
 # PELOG - Agen pembaruan otomatis.
-# Dijalankan sebagai SYSTEM oleh Scheduled Task "BALILogAutoUpdate" (trigger: boot + delay).
+# Dijalankan sebagai SYSTEM oleh Scheduled Task "PelogAutoUpdate" (trigger: boot + delay).
 #
 # Alur: kiosk mengunduh installer + menulis update.json (staging). Saat boot,
 # skrip ini memverifikasi SHA-256 lalu memasang installer secara SENYAP

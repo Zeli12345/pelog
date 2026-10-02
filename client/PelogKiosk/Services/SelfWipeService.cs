@@ -5,14 +5,14 @@ namespace PelogKiosk.App.Services;
 
 /// <summary>
 /// Wipe total saat perangkat DIHAPUS dari dashboard (HTTP 410 device_revoked).
-/// Menjalankan Scheduled Task elevated "BALILogSelfWipe" yang dibuat installer
-/// (seperti task BALILogHardening*) supaya uninstaller berjalan tanpa UAC,
+/// Menjalankan Scheduled Task elevated "PelogSelfWipe" yang dibuat installer
+/// (seperti task PelogHardening*) supaya uninstaller berjalan tanpa UAC,
 /// lalu keluar agar task dapat membersihkan sisa instalasi.
 /// Semua langkah best effort â€” jalur ini tidak pernah melempar exception.
 /// </summary>
 internal static class SelfWipeService
 {
-    public const string TaskName = "BALILogSelfWipe";
+    public const string TaskName = "PelogSelfWipe";
 
     private const string LogPath = @"C:\Users\Public\pelog-wipe.log";
 
@@ -47,7 +47,7 @@ internal static class SelfWipeService
 
             if (!RunSelfWipeTask())
             {
-                WriteLog("task BALILogSelfWipe GAGAL dijalankan â€” wipe total tidak berjalan, perlu perhatian Admin IT.");
+                WriteLog("task PelogSelfWipe GAGAL dijalankan â€” wipe total tidak berjalan, perlu perhatian Admin IT.");
             }
 
             // Beri kesempatan task elevated menutup/membersihkan aplikasi ini

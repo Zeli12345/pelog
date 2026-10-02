@@ -8,7 +8,7 @@ SMK Negeri 1 Mas Ubud
    - Masukkan password admin kiosk (diatur saat pertama kali diminta).
    - Mode Admin aktif: jendela kiosk DISEMBUNYIKAN, desktop bisa dipakai;
      penguncian kiosk ditangguhkan sementara lewat Scheduled Task
-     "BALILogHardeningSuspend" (tanpa prompt UAC), lalu shell (explorer)
+     "PelogHardeningSuspend" (tanpa prompt UAC), lalu shell (explorer)
      dimuat ulang otomatis agar kebijakan lama tidak tersisa.
    - Form admin menyediakan pintasan: Buka CMD, Task Manager, Pengaturan,
      Regedit, PowerShell, Explorer, dan MUAT ULANG SHELL (bila masih ada
@@ -128,7 +128,7 @@ SMK Negeri 1 Mas Ubud
      daftar dashboard dan tidak bisa lagi login/check-in.
    - Saat laptop tersebut terhubung kembali ke server (sinkronisasi berkala
      atau boot berikutnya), kiosk menerima status bahwa perangkat sudah
-     dihapus dan menjalankan Scheduled Task "BALILogSelfWipe" (hak admin,
+     dihapus dan menjalankan Scheduled Task "PelogSelfWipe" (hak admin,
      TANPA prompt UAC).
    - Tugas self-wipe menjalankan hardening.ps1 -Wipe dengan tahapan:
      1) menghentikan PelogKiosk.exe,

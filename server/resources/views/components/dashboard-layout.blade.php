@@ -45,7 +45,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ? $title.' — ' : '' }}BALI-LOG</title>
+    <title>{{ $title ? $title.' — ' : '' }}PELOG</title>
     <link rel="icon" type="image/png" href="{{ asset('images/logo_sekolah.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -64,7 +64,7 @@
         <div class="flex items-center gap-3 border-b border-white/10 px-4 py-4">
             <img src="{{ asset('images/logo_sekolah.png') }}" alt="Logo SMKN 1 Mas Ubud" class="h-10 w-10 rounded-full bg-white object-contain p-0.5 ring-1 ring-white/20">
             <div class="min-w-0">
-                <p class="text-sm font-extrabold tracking-wide text-white">BALI-LOG</p>
+                <p class="text-sm font-extrabold tracking-wide text-white">PELOG</p>
                 <p class="truncate text-[11px] text-navy-300">SMK Negeri 1 Mas Ubud</p>
             </div>
         </div>
