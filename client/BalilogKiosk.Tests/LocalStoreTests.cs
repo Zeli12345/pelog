@@ -191,6 +191,59 @@ public class LocalStoreTests : IDisposable
     }
 
     [Fact]
+    public void Session_Nisn_Is_Encrypted_At_Rest_And_Decrypted_On_Read()
+    {
+        var uuid = "55555555-5555-4555-8555-555555555555";
+
+        _store.SaveSession(new LocalSessionRecord
+        {
+            SessionUuid = uuid,
+            UserType = "student",
+            Nisn = "0051234567",
+            UsagePurpose = "Praktikum",
+            StartedAtClient = DateTimeOffset.UtcNow,
+        });
+
+        var raw = ReadRawSessionNisn(uuid);
+
+        Assert.NotNull(raw);
+        Assert.StartsWith(StudentDataProtector.Prefix, raw);
+        Assert.DoesNotContain("0051234567", raw);
+
+        var stored = _store.GetSession(uuid);
+
+        Assert.NotNull(stored);
+        Assert.Equal("0051234567", stored!.Nisn);
+
+        Assert.Equal("0051234567", Assert.Single(_store.GetOpenSessions()).Nisn);
+    }
+
+    [Fact]
+    public void Legacy_Plaintext_Session_Nisn_Remains_Readable()
+    {
+        var uuid = "66666666-6666-4666-8666-666666666666";
+
+        using (var connection = new SqliteConnection($"Data Source={Path.Combine(_directory, "local.db")}"))
+        {
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO sessions (session_uuid, user_type, nisn, purpose, state, created_at)
+                VALUES ($uuid, 'student', '0051234567', 'Praktikum', 'open', $created)";
+            command.Parameters.AddWithValue("$uuid", uuid);
+            command.Parameters.AddWithValue("$created", DateTimeOffset.UtcNow.ToString("o"));
+            command.ExecuteNonQuery();
+        }
+
+        var record = _store.GetSession(uuid);
+
+        Assert.NotNull(record);
+        Assert.Equal("0051234567", record!.Nisn);
+        Assert.Equal("Praktikum", record.UsagePurpose);
+    }
+
+    [Fact]
     public void Screenshot_Queue_Flow()
     {
         var session = new LocalSessionRecord
@@ -369,6 +422,18 @@ public class LocalStoreTests : IDisposable
 
         Assert.Equal("failed", _store.GetSession(uuid)!.State);
         Assert.Empty(_store.GetPendingSessions());
+    }
+
+    private string? ReadRawSessionNisn(string sessionUuid)
+    {
+        using var connection = new SqliteConnection($"Data Source={Path.Combine(_directory, "local.db")}");
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT nisn FROM sessions WHERE session_uuid = $uuid";
+        command.Parameters.AddWithValue("$uuid", sessionUuid);
+
+        return command.ExecuteScalar() as string;
     }
 
     private (string Nisn, string Name, string Class, string? BirthDate) ReadRawStudent()

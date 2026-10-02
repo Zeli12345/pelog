@@ -454,7 +454,8 @@ public sealed class LocalStore : IDisposable
                 screenshot_captured_at = excluded.screenshot_captured_at";
         command.Parameters.AddWithValue("$uuid", record.SessionUuid);
         command.Parameters.AddWithValue("$userType", record.UserType);
-        command.Parameters.AddWithValue("$nisn", (object?)record.Nisn ?? DBNull.Value);
+        // NISN sesi juga disimpan terenkripsi agar local.db tidak membocorkan NISN.
+        command.Parameters.AddWithValue("$nisn", (object?)_protector.Encrypt(record.Nisn) ?? DBNull.Value);
         command.Parameters.AddWithValue("$nip", (object?)record.NipId ?? DBNull.Value);
         command.Parameters.AddWithValue("$subjectId", (object?)record.SubjectId ?? DBNull.Value);
         command.Parameters.AddWithValue("$purpose", record.UsagePurpose);
@@ -585,7 +586,7 @@ public sealed class LocalStore : IDisposable
         return result;
     }
 
-    private static LocalSessionRecord MapSession(SqliteDataReader reader)
+    private LocalSessionRecord MapSession(SqliteDataReader reader)
     {
         string? GetNullable(string column) =>
             reader.IsDBNull(reader.GetOrdinal(column)) ? null : reader.GetString(reader.GetOrdinal(column));
@@ -594,7 +595,8 @@ public sealed class LocalStore : IDisposable
         {
             SessionUuid = reader.GetString(reader.GetOrdinal("session_uuid")),
             UserType = reader.GetString(reader.GetOrdinal("user_type")),
-            Nisn = GetNullable("nisn"),
+            // Nilai lama tanpa prefix "enc:v1:" dikembalikan apa adanya oleh protector.
+            Nisn = _protector.Decrypt(GetNullable("nisn")),
             NipId = GetNullable("nip_id"),
             SubjectId = reader.IsDBNull(reader.GetOrdinal("subject_id")) ? null : reader.GetInt64(reader.GetOrdinal("subject_id")),
             UsagePurpose = reader.GetString(reader.GetOrdinal("purpose")),
