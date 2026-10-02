@@ -210,8 +210,6 @@ public sealed class SyncService
             StartedAtClient = record.StartedAtClient,
             EndedAtClient = record.EndedAtClient,
             CloseReason = record.CloseReason,
-            StudentFeedback = record.Feedback,
-            ComprehensionLevel = record.Comprehension,
         };
     }
 

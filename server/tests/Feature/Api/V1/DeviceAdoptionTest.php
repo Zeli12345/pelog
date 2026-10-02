@@ -54,7 +54,7 @@ class DeviceAdoptionTest extends TestCase
             'last_seen_at' => now(),
         ]);
 
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234500']);
+        Student::factory()->create(['nisn' => '0051234500']);
 
         $this->postJson('/api/v1/sessions/start', [
             'session_uuid' => (string) Str::uuid(),

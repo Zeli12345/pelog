@@ -60,7 +60,7 @@ class DeviceAdminTest extends TestCase
     public function test_admin_can_force_close_active_session(): void
     {
         $device = Device::factory()->create(['status' => 'in_use']);
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         $session = UsageSession::query()->create([
             'session_uuid' => (string) Str::uuid(),
@@ -89,7 +89,7 @@ class DeviceAdminTest extends TestCase
     public function test_guru_cannot_force_close_session(): void
     {
         $device = Device::factory()->create(['status' => 'in_use']);
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         $session = UsageSession::query()->create([
             'session_uuid' => (string) Str::uuid(),
@@ -207,7 +207,7 @@ class DeviceAdminTest extends TestCase
     public function test_deleting_device_closes_active_session(): void
     {
         $device = Device::factory()->create(['status' => 'in_use']);
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         $session = UsageSession::query()->create([
             'session_uuid' => (string) Str::uuid(),

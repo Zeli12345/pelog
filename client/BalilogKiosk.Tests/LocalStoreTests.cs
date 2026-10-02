@@ -1,5 +1,6 @@
 using BalilogKiosk.Core.Data;
 using BalilogKiosk.Core.Models;
+using BalilogKiosk.Core.Security;
 using Microsoft.Data.Sqlite;
 using Xunit;
 
@@ -44,7 +45,7 @@ public class LocalStoreTests : IDisposable
     }
 
     [Fact]
-    public void Students_Cache_With_Pin_Data()
+    public void Students_Cache_Roundtrip_With_Birth_Date()
     {
         _store.ReplaceStudents([
             new CachedStudent
@@ -52,37 +53,28 @@ public class LocalStoreTests : IDisposable
                 Nisn = "0051234567",
                 Name = "Budi Pratama",
                 ClassName = "X RPL 1",
-                HasPin = true,
-                Pin = new PinData
-                {
-                    Algo = "pbkdf2-sha256",
-                    Salt = "ASNFZ4mrze8BI0VniavN7w==",
-                    Iterations = 100_000,
-                    Hash = "6kZ06H8QhrB5sp7U3GVttvbAULcRQqyOeecRKr80AH8=",
-                },
+                BirthDate = new DateOnly(2008, 7, 14),
             },
             new CachedStudent
             {
                 Nisn = "0059999999",
-                Name = "Tanpa Pin",
+                Name = "Ani Wijaya",
                 ClassName = "X TKJ 1",
-                HasPin = false,
             },
         ]);
 
         Assert.Equal(2, _store.CountStudents());
 
-        var withPin = _store.GetStudent("0051234567");
-        Assert.NotNull(withPin);
-        Assert.True(withPin!.HasPin);
-        Assert.Equal("Budi Pratama", withPin.Name);
-        Assert.Equal("pbkdf2-sha256", withPin.Pin!.Algo);
-        Assert.Equal(100_000, withPin.Pin.Iterations);
+        var budi = _store.GetStudent("0051234567");
+        Assert.NotNull(budi);
+        Assert.Equal("Budi Pratama", budi!.Name);
+        Assert.Equal("X RPL 1", budi.ClassName);
+        Assert.Equal(new DateOnly(2008, 7, 14), budi.BirthDate);
 
-        var withoutPin = _store.GetStudent("0059999999");
-        Assert.NotNull(withoutPin);
-        Assert.False(withoutPin!.HasPin);
-        Assert.Null(withoutPin.Pin);
+        var ani = _store.GetStudent("0059999999");
+        Assert.NotNull(ani);
+        Assert.Equal("Ani Wijaya", ani!.Name);
+        Assert.Null(ani.BirthDate);
 
         Assert.Null(_store.GetStudent("0000000000"));
     }
@@ -107,20 +99,59 @@ public class LocalStoreTests : IDisposable
     }
 
     [Fact]
-    public void Pin_State_Local_Lock_Tracking()
+    public void Students_Are_Encrypted_At_Rest_And_Decrypted_On_Read()
     {
         _store.ReplaceStudents([
-            new CachedStudent { Nisn = "0051234567", Name = "Budi", ClassName = "X RPL 1", HasPin = true },
+            new CachedStudent
+            {
+                Nisn = "0051234567",
+                Name = "Budi Pratama",
+                ClassName = "X RPL 1",
+                BirthDate = new DateOnly(2008, 7, 14),
+            },
         ]);
 
-        var lockedUntil = DateTimeOffset.UtcNow.AddMinutes(5);
-        _store.SavePinState("0051234567", 5, lockedUntil);
+        var raw = ReadRawStudent();
 
-        var (failed, locked) = _store.GetPinState("0051234567");
+        // Nilai mentah di basis data harus terenkripsi dan tidak memuat data asli.
+        Assert.StartsWith(StudentDataProtector.Prefix, raw.Nisn);
+        Assert.StartsWith(StudentDataProtector.Prefix, raw.Name);
+        Assert.StartsWith(StudentDataProtector.Prefix, raw.Class);
+        Assert.NotNull(raw.BirthDate);
+        Assert.StartsWith(StudentDataProtector.Prefix, raw.BirthDate!);
+        Assert.DoesNotContain("0051234567", raw.Nisn);
+        Assert.DoesNotContain("Budi Pratama", raw.Name);
+        Assert.DoesNotContain("2008-07-14", raw.BirthDate!);
 
-        Assert.Equal(5, failed);
-        Assert.NotNull(locked);
-        Assert.Equal(lockedUntil.ToUnixTimeSeconds(), locked!.Value.ToUnixTimeSeconds());
+        var student = _store.GetStudent("0051234567");
+
+        Assert.NotNull(student);
+        Assert.Equal("0051234567", student!.Nisn);
+        Assert.Equal("Budi Pratama", student.Name);
+        Assert.Equal("X RPL 1", student.ClassName);
+        Assert.Equal(new DateOnly(2008, 7, 14), student.BirthDate);
+    }
+
+    [Fact]
+    public void Legacy_Plaintext_Student_Rows_Remain_Readable()
+    {
+        using (var connection = new SqliteConnection($"Data Source={Path.Combine(_directory, "local.db")}"))
+        {
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                INSERT INTO students (nisn, name, class, birth_date)
+                VALUES ('0051234567', 'Budi Lama', 'X RPL 9', '2007-01-02')";
+            command.ExecuteNonQuery();
+        }
+
+        var student = _store.GetStudent("0051234567");
+
+        Assert.NotNull(student);
+        Assert.Equal("Budi Lama", student!.Name);
+        Assert.Equal("X RPL 9", student.ClassName);
+        Assert.Equal(new DateOnly(2007, 1, 2), student.BirthDate);
     }
 
     [Fact]
@@ -185,30 +216,65 @@ public class LocalStoreTests : IDisposable
     }
 
     [Fact]
-    public void ReplaceStudents_Preserves_Local_Pin_Lockout()
+    public void Opening_Old_Database_Upgrades_Student_Columns_And_Drops_Pin()
     {
-        _store.ReplaceStudents([
-            new CachedStudent { Nisn = "0051234567", Name = "Budi", ClassName = "X RPL 1", HasPin = true },
+        var databasePath = Path.Combine(_directory, "legacy-students.db");
+
+        using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            connection.Open();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
+                CREATE TABLE students (
+                    nisn TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    class TEXT NOT NULL,
+                    has_pin INTEGER NOT NULL DEFAULT 0,
+                    pin_algo TEXT,
+                    pin_salt TEXT,
+                    pin_iterations INTEGER,
+                    pin_hash TEXT,
+                    pin_failed INTEGER NOT NULL DEFAULT 0,
+                    pin_locked_until TEXT
+                )";
+            command.ExecuteNonQuery();
+        }
+
+        using var store = new LocalStore(databasePath);
+
+        store.ReplaceStudents([
+            new CachedStudent
+            {
+                Nisn = "0051234567",
+                Name = "Budi",
+                ClassName = "X RPL 1",
+                BirthDate = new DateOnly(2008, 7, 14),
+            },
         ]);
 
-        var lockedUntil = DateTimeOffset.UtcNow.AddMinutes(5);
-        _store.SavePinState("0051234567", 4, lockedUntil);
+        Assert.Equal(new DateOnly(2008, 7, 14), store.GetStudent("0051234567")!.BirthDate);
 
-        // Refresh bootstrap berikutnya: data siswa diperbarui, tapi status lockout
-        // lokal (hitungan gagal + masa kunci) tidak boleh ikut tereset.
-        _store.ReplaceStudents([
-            new CachedStudent { Nisn = "0051234567", Name = "Budi Pratama", ClassName = "X RPL 2", HasPin = true },
-            new CachedStudent { Nisn = "0059999999", Name = "Siswa Baru", ClassName = "X TKJ 1", HasPin = false },
-        ]);
+        using var check = new SqliteConnection($"Data Source={databasePath}");
+        check.Open();
 
-        var (failed, locked) = _store.GetPinState("0051234567");
+        using var columns = check.CreateCommand();
+        columns.CommandText = "PRAGMA table_info(students)";
 
-        Assert.Equal(4, failed);
-        Assert.NotNull(locked);
-        Assert.Equal(lockedUntil.ToUnixTimeSeconds(), locked!.Value.ToUnixTimeSeconds());
-        Assert.Equal("Budi Pratama", _store.GetStudent("0051234567")!.Name);
-        Assert.Equal(0, _store.GetPinState("0059999999").Failed);
-        Assert.Equal(2, _store.CountStudents());
+        var names = new List<string>();
+
+        using (var reader = columns.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                names.Add(reader.GetString(1));
+            }
+        }
+
+        Assert.Contains("birth_date", names);
+        Assert.DoesNotContain(names, name =>
+            name.StartsWith("pin_", StringComparison.Ordinal) ||
+            string.Equals(name, "has_pin", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -303,5 +369,23 @@ public class LocalStoreTests : IDisposable
 
         Assert.Equal("failed", _store.GetSession(uuid)!.State);
         Assert.Empty(_store.GetPendingSessions());
+    }
+
+    private (string Nisn, string Name, string Class, string? BirthDate) ReadRawStudent()
+    {
+        using var connection = new SqliteConnection($"Data Source={Path.Combine(_directory, "local.db")}");
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT nisn, name, class, birth_date FROM students LIMIT 1";
+
+        using var reader = command.ExecuteReader();
+        reader.Read();
+
+        return (
+            reader.GetString(0),
+            reader.GetString(1),
+            reader.GetString(2),
+            reader.IsDBNull(3) ? null : reader.GetString(3));
     }
 }

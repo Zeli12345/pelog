@@ -18,7 +18,7 @@ class ReportExportTest extends TestCase
     private function seedSession(array $attributes = []): void
     {
         $device = Device::factory()->create();
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         UsageSession::query()->create(array_merge([
             'session_uuid' => (string) Str::uuid(),
@@ -31,8 +31,6 @@ class ReportExportTest extends TestCase
             'closed_at' => now()->subMinutes(30),
             'close_reason' => 'normal',
             'duration_minutes' => 30,
-            'student_feedback' => 'Belajar ekspor laporan',
-            'comprehension_level' => 'paham',
         ], $attributes));
     }
 

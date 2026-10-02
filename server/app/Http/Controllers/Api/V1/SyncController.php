@@ -55,8 +55,6 @@ class SyncController extends Controller
             'started_at_client' => ['nullable', 'date'],
             'ended_at_client' => ['nullable', 'date'],
             'close_reason' => ['nullable', 'in:normal,recovery,shutdown,admin'],
-            'student_feedback' => ['nullable', 'string', 'max:2000'],
-            'comprehension_level' => ['nullable', 'in:sangat_paham,paham,cukup,kurang'],
         ]);
 
         if ($validator->fails()) {
@@ -82,11 +80,11 @@ class SyncController extends Controller
         if ($data['user_type'] === 'student') {
             $student = Student::query()->where('nisn', $data['nisn'])->first();
 
-            if ($student === null || ! $student->is_active || ! $student->hasPin()) {
+            if ($student === null || ! $student->is_active) {
                 return [
                     'session_uuid' => $data['session_uuid'],
                     'status' => 'error',
-                    'message' => 'Siswa tidak valid atau belum memiliki PIN.',
+                    'message' => 'Siswa tidak valid.',
                 ];
             }
         } else {
@@ -189,12 +187,8 @@ class SyncController extends Controller
         }
 
         // Lengkapi data akhir jika sesi masih terbuka dan payload membawa penutupan.
-        if ($existing->isActive()) {
-            if (isset($data['ended_at_client'])) {
-                $this->close($existing, $device, $data);
-            }
-        } else {
-            $this->applyOfflineReflection($existing, $data);
+        if ($existing->isActive() && isset($data['ended_at_client'])) {
+            $this->close($existing, $device, $data);
         }
 
         return [
@@ -202,40 +196,6 @@ class SyncController extends Controller
             'status' => 'skipped',
             'message' => 'Sesi sudah ada (idempoten).',
         ];
-    }
-
-    /**
-     * Sesi yang sudah ditutup server (mis. oleh balilog:close-stale-sessions) tetap
-     * menyimpan refleksi offline tanpa mengubah closed_at/started_at.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function applyOfflineReflection(UsageSession $session, array $data): void
-    {
-        $updates = [];
-
-        if ($session->student_feedback === null && isset($data['student_feedback'])) {
-            $updates['student_feedback'] = $data['student_feedback'];
-        }
-
-        if ($session->comprehension_level === null && isset($data['comprehension_level'])) {
-            $updates['comprehension_level'] = $data['comprehension_level'];
-        }
-
-        if (isset($data['ended_at_client'])) {
-            $startedAt = $session->started_at_client ?? $session->started_at_server ?? $session->created_at;
-
-            if ($startedAt !== null) {
-                $updates['duration_minutes'] = max(
-                    0,
-                    (int) $startedAt->diffInMinutes(Carbon::parse($data['ended_at_client'])),
-                );
-            }
-        }
-
-        if ($updates !== []) {
-            $session->forceFill($updates)->save();
-        }
     }
 
     /**
@@ -250,8 +210,6 @@ class SyncController extends Controller
         $session->forceFill([
             'closed_at' => $closedAt,
             'close_reason' => $reason,
-            'student_feedback' => $data['student_feedback'] ?? $session->student_feedback,
-            'comprehension_level' => $data['comprehension_level'] ?? $session->comprehension_level,
             'duration_minutes' => $startedAt !== null ? max(0, (int) $startedAt->diffInMinutes($closedAt)) : 0,
         ])->save();
 

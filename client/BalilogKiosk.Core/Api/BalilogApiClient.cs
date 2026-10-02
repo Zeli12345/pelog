@@ -78,13 +78,6 @@ public sealed class BalilogApiClient
         return SendAsync<CachedStudent>(CreateRequest(HttpMethod.Get, $"students/{Uri.EscapeDataString(nisn)}"), cancellationToken);
     }
 
-    public Task<ApiResult<CachedStudent>> SetPinAsync(string nisn, string pin, CancellationToken cancellationToken = default)
-    {
-        return SendAsync<CachedStudent>(
-            CreateRequest(HttpMethod.Post, $"students/{Uri.EscapeDataString(nisn)}/pin", new { pin }),
-            cancellationToken);
-    }
-
     public Task<ApiResult<SessionDto>> StartSessionAsync(StartSessionRequest request, CancellationToken cancellationToken = default)
     {
         return SendAsync<SessionDto>(CreateRequest(HttpMethod.Post, "sessions/start", request), cancellationToken);

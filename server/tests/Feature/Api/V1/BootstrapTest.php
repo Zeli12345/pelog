@@ -28,8 +28,8 @@ class BootstrapTest extends TestCase
     {
         [$device, $token] = $this->enrolledDevice();
 
-        $studentWithPin = Student::factory()->withPin('2468')->create(['name' => 'Budi Pratama']);
-        Student::factory()->create(['name' => 'Tanpa Pin']);
+        Student::factory()->create(['name' => 'Budi Pratama', 'birth_date' => '2008-07-14']);
+        Student::factory()->create(['name' => 'Ani Wijaya', 'birth_date' => '2008-11-02']);
         Student::factory()->inactive()->create(['name' => 'Non Aktif']);
         StaffMember::factory()->create(['name' => 'I Komang Purwata']);
         Subject::factory()->create(['code' => 'PWPB', 'name' => 'Pemrograman Web']);
@@ -43,21 +43,17 @@ class BootstrapTest extends TestCase
         $this->assertCount(2, $students);
         $this->assertFalse($students->contains('name', 'Non Aktif'));
 
-        $withPin = $students->firstWhere('name', 'Budi Pratama');
-        $this->assertTrue($withPin['has_pin']);
-        $this->assertSame('pbkdf2-sha256', $withPin['pin']['algo']);
-        $this->assertNotEmpty($withPin['pin']['salt']);
-        $this->assertNotEmpty($withPin['pin']['hash']);
+        $budi = $students->firstWhere('name', 'Budi Pratama');
+        $this->assertSame('2008-07-14', $budi['birth_date']);
 
-        $withoutPin = $students->firstWhere('name', 'Tanpa Pin');
-        $this->assertFalse($withoutPin['has_pin']);
-        $this->assertNull($withoutPin['pin']);
+        $ani = $students->firstWhere('name', 'Ani Wijaya');
+        $this->assertSame('2008-11-02', $ani['birth_date']);
 
         $this->assertCount(1, $response->json('data.staff'));
         $this->assertCount(1, $response->json('data.subjects'));
         $this->assertSame('PWPB', $response->json('data.subjects.0.code'));
 
-        $this->assertArrayHasKey('pin_length', $response->json('data.config'));
         $this->assertArrayHasKey('screenshot_enabled', $response->json('data.config'));
+        $this->assertArrayNotHasKey('pin_length', $response->json('data.config'));
     }
 }

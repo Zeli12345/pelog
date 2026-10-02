@@ -28,15 +28,7 @@ class SettingsSeeder extends Seeder
             'stale_session_minutes' => 15,  // sesi tanpa heartbeat > X menit dianggap menggantung
             'bootstrap_refresh_minutes' => 15,
             'device_online_window_seconds' => 300,
-
-            // PIN
-            'pin_setup_requires_online' => true,
-            'pin_length' => 4,
-            'pin_forbid_weak' => true,
-            'pin_max_attempts' => 5,
-            'pin_lock_minutes' => 5,
             'single_active_session' => false,
-            'pin_activation_required' => false,
 
             // Enrollment (hash diisi dari dashboard saat kode dibuat)
             'enrollment_code_hash' => null,

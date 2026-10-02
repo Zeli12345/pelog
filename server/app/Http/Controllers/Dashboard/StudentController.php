@@ -47,8 +47,7 @@ class StudentController extends Controller
             'trashed' => $trashed,
             'stats' => [
                 'total' => Student::query()->count(),
-                'with_pin' => Student::query()->whereNotNull('pin_set_at')->count(),
-                'without_pin' => Student::query()->whereNull('pin_set_at')->count(),
+                'active' => Student::query()->where('is_active', true)->count(),
                 'inactive' => Student::query()->where('is_active', false)->count(),
             ],
         ]);
@@ -202,31 +201,6 @@ class StudentController extends Controller
             ->with('status', "{$students->count()} siswa berhasil dipulihkan.");
     }
 
-    public function resetPin(Request $request, Student $student): RedirectResponse
-    {
-        $student->forceFill([
-            'pin_algo' => null,
-            'pin_salt' => null,
-            'pin_iterations' => null,
-            'pin_hash' => null,
-            'pin_set_at' => null,
-            'pin_failed_attempts' => 0,
-            'pin_locked_until' => null,
-        ])->save();
-
-        Audit::log(
-            action: 'pin_reset',
-            entityType: Student::class,
-            entityId: $student->id,
-            metadata: ['nisn' => $student->nisn],
-            actorType: 'user',
-            actorId: $request->user()->id,
-            request: $request,
-        );
-
-        return redirect()->back()->with('status', "PIN {$student->name} berhasil direset. Siswa akan diminta membuat PIN baru saat login.");
-    }
-
     /**
      * @return array<string, mixed>
      */
@@ -239,6 +213,7 @@ class StudentController extends Controller
             ],
             'name' => ['required', 'string', 'max:150'],
             'class' => ['required', 'string', 'max:50'],
+            'birth_date' => ['required', 'date'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);

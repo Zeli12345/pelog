@@ -28,6 +28,7 @@ class DemoDataSeeder extends Seeder
                 [
                     'name' => fake('id_ID')->name(),
                     'class' => $classes[($i - 1) % count($classes)],
+                    'birth_date' => now()->subYears(16)->subDays($i * 37)->toDateString(),
                     'is_active' => true,
                 ],
             );
@@ -92,27 +93,25 @@ class DemoDataSeeder extends Seeder
                 'uuid' => '00000000-0000-4000-8000-000000000001',
                 'hostname' => 'LAB-BL-01', 'user_type' => 'student', 'student' => $students->get(2), 'staff' => null,
                 'subject' => 'PWPB', 'purpose' => 'Praktikum membuat layout responsive dengan CSS Grid & Flexbox',
-                'started' => now()->subMinutes(42), 'closed' => null, 'reason' => null, 'feedback' => null, 'level' => null,
+                'started' => now()->subMinutes(42), 'closed' => null, 'reason' => null,
             ],
             [
                 'uuid' => '00000000-0000-4000-8000-000000000002',
                 'hostname' => 'LAB-BL-03', 'user_type' => 'staff', 'student' => null, 'staff' => $staffMembers->first(),
                 'subject' => null, 'purpose' => 'Pemeliharaan perangkat & pembaruan software lab',
-                'started' => now()->subMinutes(15), 'closed' => null, 'reason' => null, 'feedback' => null, 'level' => null,
+                'started' => now()->subMinutes(15), 'closed' => null, 'reason' => null,
             ],
             [
                 'uuid' => '00000000-0000-4000-8000-000000000003',
                 'hostname' => 'LAB-BL-04', 'user_type' => 'student', 'student' => $students->get(5), 'staff' => null,
                 'subject' => 'BD', 'purpose' => 'Latihan query SQL JOIN untuk tugas basis data',
                 'started' => now()->subHours(3), 'closed' => now()->subHours(2), 'reason' => 'normal',
-                'feedback' => 'Saya berhasil memahami cara menggabungkan dua tabel dengan JOIN.', 'level' => 'paham',
             ],
             [
                 'uuid' => '00000000-0000-4000-8000-000000000004',
                 'hostname' => 'LAB-BL-05', 'user_type' => 'student', 'student' => $students->get(8), 'staff' => null,
                 'subject' => 'JK', 'purpose' => 'Konfigurasi IP statis dan pengujian koneksi jaringan',
                 'started' => now()->subHour(), 'closed' => now()->subMinutes(35), 'reason' => 'normal',
-                'feedback' => 'Sudah bisa ping antar komputer, masih perlu belajar subnetting.', 'level' => 'cukup',
                 'screenshot' => true,
             ],
             [
@@ -120,7 +119,6 @@ class DemoDataSeeder extends Seeder
                 'hostname' => 'LAB-BL-06', 'user_type' => 'student', 'student' => $students->get(2), 'staff' => null,
                 'subject' => 'MTK', 'purpose' => 'Mengerjakan latihan soal matematika bab matriks',
                 'started' => now()->subDay()->setTime(9, 0), 'closed' => now()->subDay()->setTime(9, 45), 'reason' => 'recovery',
-                'feedback' => null, 'level' => null,
             ],
         ];
 
@@ -145,8 +143,6 @@ class DemoDataSeeder extends Seeder
                     'last_heartbeat_at' => $spec['closed'] ?? now(),
                     'closed_at' => $spec['closed'],
                     'close_reason' => $spec['reason'],
-                    'student_feedback' => $spec['feedback'],
-                    'comprehension_level' => $spec['level'],
                     'duration_minutes' => $spec['closed'] ? (int) $spec['started']->diffInMinutes($spec['closed']) : 0,
                     'sync_source' => 'online',
                 ],

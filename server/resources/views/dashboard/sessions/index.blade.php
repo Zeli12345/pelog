@@ -61,7 +61,6 @@
                                 <th class="px-4 py-2.5 font-semibold">Pengguna</th>
                                 <th class="px-4 py-2.5 font-semibold">Mapel &amp; Tujuan</th>
                                 <th class="px-4 py-2.5 font-semibold">Durasi</th>
-                                <th class="px-4 py-2.5 font-semibold">Refleksi</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
                                 @if (auth()->user()->isAdminIt())
                                     <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
@@ -91,16 +90,6 @@
                                         <p class="text-[11px] text-ink-faint">{{ $session->subject?->name ?? '—' }}</p>
                                     </td>
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $session->duration_minutes }} mnt</td>
-                                    <td class="max-w-[14rem] px-4 py-2.5">
-                                        @if ($session->student_feedback)
-                                            <p class="truncate text-xs text-ink-soft" title="{{ $session->student_feedback }}">{{ $session->student_feedback }}</p>
-                                            @if ($session->comprehension_level)
-                                                <p class="text-[11px] text-ink-faint">{{ $session->comprehension_level->label() }}</p>
-                                            @endif
-                                        @else
-                                            <span class="text-xs text-ink-faint">—</span>
-                                        @endif
-                                    </td>
                                     <td class="px-4 py-2.5">
                                         @if ($session->isActive())
                                             <span class="badge border-moss-200 bg-moss-50 text-moss-700">Aktif</span>

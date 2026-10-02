@@ -40,6 +40,14 @@
                 @enderror
             </div>
 
+            <div>
+                <label class="label" for="birth_date">Tanggal Lahir <span class="text-brick-600">*</span></label>
+                <input type="date" id="birth_date" name="birth_date" value="{{ old('birth_date', $student->birth_date?->format('Y-m-d')) }}" required class="input @error('birth_date') border-brick-400 @enderror">
+                @error('birth_date')
+                    <p class="mt-1 text-xs text-brick-600">{{ $message }}</p>
+                @enderror
+            </div>
+
             <label class="flex items-center gap-2 text-sm text-ink-soft">
                 <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $student->exists ? $student->is_active : true)) class="rounded border-line text-navy-700 focus:ring-navy-500">
                 Aktif (boleh login di kiosk)

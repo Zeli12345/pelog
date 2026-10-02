@@ -1,7 +1,6 @@
 using BalilogKiosk.Core.Api;
 using BalilogKiosk.Core.Imaging;
 using BalilogKiosk.Core.Models;
-using BalilogKiosk.Core.Security;
 using BalilogKiosk.Core.Time;
 using SkiaSharp;
 using Xunit;
@@ -71,29 +70,8 @@ public class ApiIntegrationTests
         Assert.NotEmpty(bootstrap.Data!.Students);
         Assert.NotEmpty(bootstrap.Data.Subjects);
 
-        // 3) Set PIN siswa (sekali) lalu pastikan hash dari server terverifikasi di C#
-        var candidate = bootstrap.Data.Students.FirstOrDefault(student => !student.HasPin)
-                        ?? bootstrap.Data.Students[0];
-
-        var setPin = await api.SetPinAsync(candidate.Nisn, "2468");
-
-        if (!setPin.Ok)
-        {
-            Assert.Equal("pin_already_set", setPin.ErrorCode);
-        }
-
-        var bootstrapAfterPin = await api.BootstrapAsync();
-        var student = bootstrapAfterPin.Data!.Students.First(item => item.Nisn == candidate.Nisn);
-
-        Assert.True(student.HasPin);
-        Assert.NotNull(student.Pin?.Salt);
-        Assert.NotNull(student.Pin?.Hash);
-
-        // Bukti kompatibilitas lintas bahasa: hash buatan server (PHP) terverifikasi di C#.
-        Assert.True(PinHasher.Verify("2468", student.Pin!.Salt!, student.Pin.Iterations, student.Pin.Hash!));
-        Assert.False(PinHasher.Verify("2469", student.Pin.Salt!, student.Pin.Iterations, student.Pin.Hash!));
-
-        // 4) Siklus sesi: start -> heartbeat -> screenshot -> end
+        // 3) Siklus sesi: start -> heartbeat -> screenshot -> end
+        var student = bootstrap.Data.Students[0];
         var sessionUuid = Guid.NewGuid().ToString();
 
         var start = await api.StartSessionAsync(new StartSessionRequest
@@ -101,7 +79,7 @@ public class ApiIntegrationTests
             SessionUuid = sessionUuid,
             UserType = "student",
             Nisn = student.Nisn,
-            SubjectId = bootstrapAfterPin.Data.Subjects.FirstOrDefault()?.Id,
+            SubjectId = bootstrap.Data.Subjects.FirstOrDefault()?.Id,
             UsagePurpose = "Uji integrasi otomatis dari klien C#",
             StartedAtClient = DateTimeOffset.UtcNow,
             StorageTotalGb = 256,
@@ -138,15 +116,13 @@ public class ApiIntegrationTests
         {
             SessionUuid = sessionUuid,
             CloseReason = "normal",
-            StudentFeedback = "Uji integrasi selesai dengan baik.",
-            ComprehensionLevel = "paham",
             EndedAtClient = DateTimeOffset.UtcNow,
         });
 
         Assert.True(end.Ok, end.ErrorMessage);
         Assert.False(end.Data!.Active);
 
-        // 5) Sinkronisasi batch sesi offline (jalur recovery)
+        // 4) Sinkronisasi batch sesi offline (jalur recovery)
         var offlineUuid = Guid.NewGuid().ToString();
         var sync = await api.SyncSessionsAsync([
             new SyncSessionItem
@@ -181,7 +157,7 @@ public class ApiIntegrationTests
         Assert.True(syncAgain.Ok);
         Assert.Equal("skipped", syncAgain.Data!.Results[0].Status);
 
-        // 6) Token salah harus ditolak
+        // 5) Token salah harus ditolak
         var wrongTokenApi = new BalilogApiClient(new HttpClient(), new ServerClock(), BaseUrl + "/api/v1")
         {
             DeviceToken = "token-palsu",

@@ -36,21 +36,52 @@ internal static class KioskHardening
         (CmdPolicyKey, "DisableCMD"),
     ];
 
+    // Serialisasi Apply/Suspend agar dua permintaan yang berdekatan tidak saling
+    // menimpa (mis. sesi dimulai saat Apply startup masih berjalan).
+    private static readonly SemaphoreSlim Gate = new(1, 1);
+
     public static bool Suspend()
     {
-        if (!RunTask(SuspendTaskName, policyShouldExist: false))
+        if (!Gate.Wait(TimeSpan.FromSeconds(30)))
         {
             return false;
         }
 
-        // Muat ulang shell di latar belakang agar kebijakan lama tidak tersisa
-        // di Explorer yang sedang berjalan.
-        Task.Run(RestartExplorer);
+        try
+        {
+            if (!RunTask(SuspendTaskName, policyShouldExist: false))
+            {
+                return false;
+            }
 
-        return true;
+            // Muat ulang shell di latar belakang agar kebijakan lama tidak tersisa
+            // di Explorer yang sedang berjalan.
+            Task.Run(RestartExplorer);
+
+            return true;
+        }
+        finally
+        {
+            Gate.Release();
+        }
     }
 
-    public static bool Apply() => RunTask(ApplyTaskName, policyShouldExist: true);
+    public static bool Apply()
+    {
+        if (!Gate.Wait(TimeSpan.FromSeconds(30)))
+        {
+            return false;
+        }
+
+        try
+        {
+            return RunTask(ApplyTaskName, policyShouldExist: true);
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
 
     /// <summary>
     /// Menjalankan ulang explorer.exe (normal, bukan elevated) dengan aman.

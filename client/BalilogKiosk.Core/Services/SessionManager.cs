@@ -157,8 +157,6 @@ public sealed class SessionManager
             {
                 SessionUuid = record.SessionUuid,
                 CloseReason = record.CloseReason,
-                StudentFeedback = record.Feedback,
-                ComprehensionLevel = record.Comprehension,
                 EndedAtClient = record.EndedAtClient,
             },
             cancellationToken);

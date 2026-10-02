@@ -16,7 +16,7 @@ class CloseStaleSessionsTest extends TestCase
     public function test_stale_session_is_closed_as_recovery_and_device_freed(): void
     {
         $device = Device::factory()->create(['status' => 'in_use', 'last_seen_at' => now()]);
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         $session = UsageSession::query()->create([
             'session_uuid' => (string) Str::uuid(),
@@ -41,7 +41,7 @@ class CloseStaleSessionsTest extends TestCase
     public function test_fresh_session_is_not_closed(): void
     {
         $device = Device::factory()->create(['status' => 'in_use']);
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         $session = UsageSession::query()->create([
             'session_uuid' => (string) Str::uuid(),

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use App\Enums\ComprehensionLevel;
 use App\Enums\UserType;
 use App\Exports\SessionsExport;
 use App\Http\Controllers\Controller;
@@ -30,12 +29,6 @@ class ReportController extends Controller
                 SUM(CASE WHEN user_type = "staff" THEN 1 ELSE 0 END) as staff_sessions
             ')->first();
 
-        $comprehension = (clone $query)
-            ->whereNotNull('comprehension_level')
-            ->selectRaw('comprehension_level, COUNT(*) as total')
-            ->groupBy('comprehension_level')
-            ->pluck('total', 'comprehension_level');
-
         $bySubject = (clone $query)
             ->join('subjects', 'subjects.id', '=', 'usage_sessions.subject_id')
             ->selectRaw('subjects.name as subject_name, COUNT(*) as total, COALESCE(SUM(usage_sessions.duration_minutes), 0) as total_minutes')
@@ -54,10 +47,8 @@ class ReportController extends Controller
         return view('dashboard.reports.index', [
             'filters' => $filters,
             'summary' => $summary,
-            'comprehension' => $comprehension,
             'bySubject' => $bySubject,
             'sessions' => $sessions,
-            'levels' => ComprehensionLevel::cases(),
             'devices' => Device::query()->orderByRaw('label IS NULL, label')->orderBy('hostname')->get(),
         ]);
     }
@@ -85,7 +76,7 @@ class ReportController extends Controller
             fputcsv($output, [
                 'Tanggal', 'Perangkat', 'Tipe Pengguna', 'Nama', 'Kelas/Unit',
                 'Mapel', 'Tujuan', 'Mulai', 'Selesai', 'Durasi (menit)',
-                'Pemahaman', 'Refleksi', 'Status Tutup',
+                'Status Tutup',
             ]);
 
             foreach ($sessions as $session) {
@@ -100,8 +91,6 @@ class ReportController extends Controller
                     ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('H:i') ?? '-',
                     $session->closed_at?->timezone('Asia/Makassar')->format('H:i') ?? '-',
                     $session->duration_minutes,
-                    $this->csvText($session->comprehension_level?->label()) ?? '-',
-                    $this->csvText($session->student_feedback) ?? '-',
                     $this->csvText($session->close_reason?->label()) ?? '-',
                 ]);
             }

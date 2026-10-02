@@ -18,7 +18,7 @@ class SessionLifecycleTest extends TestCase
     public function test_student_can_start_session(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        $student = Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        $student = Student::factory()->create(['nisn' => '0051234567']);
         $subject = Subject::factory()->create();
 
         $payload = [
@@ -52,7 +52,7 @@ class SessionLifecycleTest extends TestCase
     public function test_start_is_idempotent_for_same_uuid(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $payload = [
             'session_uuid' => (string) Str::uuid(),
@@ -70,7 +70,7 @@ class SessionLifecycleTest extends TestCase
     public function test_device_cannot_have_two_active_sessions(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $this->postJson('/api/v1/sessions/start', [
             'session_uuid' => (string) Str::uuid(),
@@ -87,21 +87,6 @@ class SessionLifecycleTest extends TestCase
         ], $this->deviceHeaders($token))
             ->assertStatus(409)
             ->assertJsonPath('error.code', 'device_busy');
-    }
-
-    public function test_student_without_pin_cannot_start(): void
-    {
-        [$device, $token] = $this->enrolledDevice();
-        Student::factory()->create(['nisn' => '0051234567']);
-
-        $this->postJson('/api/v1/sessions/start', [
-            'session_uuid' => (string) Str::uuid(),
-            'user_type' => 'student',
-            'nisn' => '0051234567',
-            'usage_purpose' => 'Coba',
-        ], $this->deviceHeaders($token))
-            ->assertStatus(422)
-            ->assertJsonPath('error.code', 'pin_not_set');
     }
 
     public function test_staff_session_requires_no_pin(): void
@@ -122,7 +107,7 @@ class SessionLifecycleTest extends TestCase
     public function test_heartbeat_and_end_flow(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $uuid = (string) Str::uuid();
 
@@ -151,8 +136,6 @@ class SessionLifecycleTest extends TestCase
         $this->postJson('/api/v1/sessions/end', [
             'session_uuid' => $uuid,
             'close_reason' => 'normal',
-            'student_feedback' => 'Belajar membuat layout dengan CSS Grid.',
-            'comprehension_level' => 'paham',
         ], $this->deviceHeaders($token))
             ->assertOk()
             ->assertJsonPath('data.active', false)
@@ -160,7 +143,6 @@ class SessionLifecycleTest extends TestCase
 
         $session->refresh();
         $this->assertFalse($session->isActive());
-        $this->assertSame('paham', $session->comprehension_level->value);
         $this->assertGreaterThanOrEqual(30, $session->duration_minutes);
         $this->assertSame('available', $device->refresh()->status->value);
 
@@ -173,7 +155,7 @@ class SessionLifecycleTest extends TestCase
     public function test_heartbeat_after_close_reports_inactive(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
         $uuid = (string) Str::uuid();
 
         $this->postJson('/api/v1/sessions/start', [
@@ -194,7 +176,7 @@ class SessionLifecycleTest extends TestCase
     {
         [$deviceA, $tokenA] = $this->enrolledDevice();
         [$deviceB, $tokenB] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $uuid = (string) Str::uuid();
 
@@ -223,7 +205,7 @@ class SessionLifecycleTest extends TestCase
     public function test_end_releases_in_use_device(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $uuid = (string) Str::uuid();
 
@@ -247,7 +229,7 @@ class SessionLifecycleTest extends TestCase
     public function test_end_keeps_maintenance_device_status(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $uuid = (string) Str::uuid();
 
@@ -278,7 +260,7 @@ class SessionLifecycleTest extends TestCase
     public function test_heartbeat_response_no_longer_includes_commands(): void
     {
         [$device, $token] = $this->enrolledDevice();
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
 
         $uuid = (string) Str::uuid();
 

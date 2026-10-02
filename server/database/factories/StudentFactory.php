@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Models\Student;
-use App\Services\PinHasher;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,23 +16,9 @@ class StudentFactory extends Factory
             'nisn' => '00'.fake()->unique()->numerify('########'),
             'name' => fake('id_ID')->name(),
             'class' => fake()->randomElement(['X RPL 1', 'X RPL 2', 'X TKJ 1', 'XI RPL 1', 'XI TKJ 1']),
+            'birth_date' => fake()->dateTimeBetween('-19 years', '-15 years')->format('Y-m-d'),
             'is_active' => true,
         ];
-    }
-
-    public function withPin(string $pin = '2468'): static
-    {
-        return $this->state(function () use ($pin) {
-            $hashed = PinHasher::make($pin);
-
-            return [
-                'pin_algo' => $hashed['algo'],
-                'pin_salt' => $hashed['salt'],
-                'pin_iterations' => $hashed['iterations'],
-                'pin_hash' => $hashed['hash'],
-                'pin_set_at' => now(),
-            ];
-        });
     }
 
     public function inactive(): static

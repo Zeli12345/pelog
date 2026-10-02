@@ -42,12 +42,6 @@ public sealed class ClientConfig
 
     public int BootstrapRefreshMinutes { get; set; } = 15;
 
-    public int PinLength { get; set; } = 4;
-
-    public int PinMaxAttempts { get; set; } = 5;
-
-    public int PinLockMinutes { get; set; } = 5;
-
     public int DeviceOnlineWindowSeconds { get; set; } = 300;
 }
 
@@ -125,22 +119,9 @@ public sealed class CachedStudent
     [JsonPropertyName("class")]
     public string ClassName { get; set; } = string.Empty;
 
-    public bool HasPin { get; set; }
-
-    public PinData? Pin { get; set; }
+    public DateOnly? BirthDate { get; set; }
 
     public DateTimeOffset? UpdatedAt { get; set; }
-}
-
-public sealed class PinData
-{
-    public string? Algo { get; set; }
-
-    public string? Salt { get; set; }
-
-    public int Iterations { get; set; }
-
-    public string? Hash { get; set; }
 }
 
 public sealed class CachedStaff
@@ -216,10 +197,6 @@ public sealed class EndSessionRequest
 
     public string? CloseReason { get; set; }
 
-    public string? StudentFeedback { get; set; }
-
-    public string? ComprehensionLevel { get; set; }
-
     public DateTimeOffset? EndedAtClient { get; set; }
 }
 
@@ -253,10 +230,6 @@ public sealed class SyncSessionItem
     public DateTimeOffset? EndedAtClient { get; set; }
 
     public string? CloseReason { get; set; }
-
-    public string? StudentFeedback { get; set; }
-
-    public string? ComprehensionLevel { get; set; }
 }
 
 public sealed class SyncSessionResult

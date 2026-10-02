@@ -81,14 +81,6 @@ class SessionController extends Controller
             if ($student === null || ! $student->is_active) {
                 return ApiResponse::error('student_not_found', 'NISN tidak terdaftar atau tidak aktif.', 422);
             }
-
-            if (! $student->hasPin()) {
-                return ApiResponse::error(
-                    'pin_not_set',
-                    'Siswa belum membuat PIN. PIN hanya dapat dibuat saat tersambung ke server.',
-                    422,
-                );
-            }
         } else {
             $staff = StaffMember::query()->where('nip_id', $data['nip_id'])->first();
 
@@ -213,8 +205,6 @@ class SessionController extends Controller
         $data = $request->validate([
             'session_uuid' => ['required', 'uuid'],
             'close_reason' => ['nullable', 'in:normal,recovery,shutdown,admin'],
-            'student_feedback' => ['nullable', 'string', 'max:2000'],
-            'comprehension_level' => ['nullable', 'in:sangat_paham,paham,cukup,kurang'],
             'ended_at_client' => ['nullable', 'date'],
         ]);
 
@@ -248,8 +238,6 @@ class SessionController extends Controller
             $session->forceFill([
                 'closed_at' => $closedAt,
                 'close_reason' => $reason,
-                'student_feedback' => $data['student_feedback'] ?? $session->student_feedback,
-                'comprehension_level' => $data['comprehension_level'] ?? $session->comprehension_level,
                 'duration_minutes' => $startedAt !== null
                     ? max(0, (int) $startedAt->diffInMinutes($closedAt))
                     : 0,

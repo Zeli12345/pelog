@@ -11,22 +11,22 @@ class StudentLookupTest extends TestCase
 {
     use InteractsWithDevice, RefreshDatabase;
 
-    public function test_lookup_returns_student_with_pin_data(): void
+    public function test_lookup_returns_student_data(): void
     {
         [$device, $token] = $this->enrolledDevice();
 
-        Student::factory()->withPin('2468')->create([
+        Student::factory()->create([
             'nisn' => '0051234567',
             'name' => 'Budi Pratama',
             'class' => 'X RPL 1',
+            'birth_date' => '2008-07-14',
         ]);
 
         $this->getJson('/api/v1/students/0051234567', $this->deviceHeaders($token))
             ->assertOk()
             ->assertJsonPath('data.name', 'Budi Pratama')
             ->assertJsonPath('data.class', 'X RPL 1')
-            ->assertJsonPath('data.has_pin', true)
-            ->assertJsonPath('data.pin.algo', 'pbkdf2-sha256');
+            ->assertJsonPath('data.birth_date', '2008-07-14');
     }
 
     public function test_lookup_returns_not_found_and_writes_audit(): void

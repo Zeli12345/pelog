@@ -69,7 +69,7 @@ class DeviceLabelAndMaintenanceTest extends TestCase
     public function test_session_start_rejected_for_maintenance_device(): void
     {
         $device = Device::factory()->create(['status' => 'maintenance']);
-        $student = Student::factory()->withPin('2468')->create();
+        $student = Student::factory()->create();
 
         $this->postJson('/api/v1/sessions/start', [
             'session_uuid' => (string) Str::uuid(),

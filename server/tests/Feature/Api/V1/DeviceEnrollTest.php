@@ -40,7 +40,7 @@ class DeviceEnrollTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('data.device.hostname', 'LAB-BL-01')
-            ->assertJsonStructure(['data' => ['device_token', 'config' => ['pin_length', 'screenshot_enabled']]]);
+            ->assertJsonStructure(['data' => ['device_token', 'config' => ['screenshot_enabled']]]);
 
         $token = $response->json('data.device_token');
 

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Enums\CloseReason;
-use App\Enums\ComprehensionLevel;
 use App\Enums\UserType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,8 +27,6 @@ class UsageSession extends Model
         'last_heartbeat_at',
         'closed_at',
         'close_reason',
-        'student_feedback',
-        'comprehension_level',
         'duration_minutes',
         'sync_source',
     ];
@@ -39,7 +36,6 @@ class UsageSession extends Model
         return [
             'user_type' => UserType::class,
             'close_reason' => CloseReason::class,
-            'comprehension_level' => ComprehensionLevel::class,
             'started_at_client' => 'datetime',
             'started_at_server' => 'datetime',
             'last_heartbeat_at' => 'datetime',

@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Siswa" subtitle="Master data siswa & status PIN">
+<x-dashboard-layout title="Siswa" subtitle="Master data siswa">
     <x-slot:actions>
         <div class="flex items-center gap-2">
             <a href="{{ route('students.import.form') }}" class="btn-secondary !py-1.5 text-xs">
@@ -13,10 +13,9 @@
     </x-slot:actions>
 
     <div class="space-y-4">
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
             <x-stat-card label="Total Siswa" :value="$stats['total']" icon="users" tone="navy" />
-            <x-stat-card label="Sudah Punya PIN" :value="$stats['with_pin']" icon="key" tone="moss" />
-            <x-stat-card label="Belum Set PIN" :value="$stats['without_pin']" icon="alert-triangle" tone="gold" />
+            <x-stat-card label="Aktif" :value="$stats['active']" icon="check" tone="moss" />
             <x-stat-card label="Nonaktif" :value="$stats['inactive']" icon="x" tone="brick" />
         </div>
 
@@ -90,7 +89,7 @@
                                 <th class="px-4 py-2.5 font-semibold">NISN</th>
                                 <th class="px-4 py-2.5 font-semibold">Nama</th>
                                 <th class="px-4 py-2.5 font-semibold">Kelas</th>
-                                <th class="px-4 py-2.5 font-semibold">PIN</th>
+                                <th class="px-4 py-2.5 font-semibold">Tanggal Lahir</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
                                 <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
                             </tr>
@@ -106,12 +105,8 @@
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $student->nisn }}</td>
                                     <td class="px-4 py-2.5 font-medium text-ink">{{ $student->name }}</td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $student->class }}</td>
-                                    <td class="px-4 py-2.5">
-                                        @if ($student->hasPin())
-                                            <span class="badge-ok"><x-icon name="key" size="h-3 w-3" /> Ada</span>
-                                        @else
-                                            <span class="badge-warn">Belum</span>
-                                        @endif
+                                    <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">
+                                        {{ $student->birth_date?->format('d/m/Y') ?? '—' }}
                                     </td>
                                     <td class="px-4 py-2.5">
                                         @if ($trashed)
@@ -135,14 +130,6 @@
                                                 <a href="{{ route('students.edit', $student) }}" class="btn-secondary !px-2 !py-1 text-xs" title="Edit">
                                                     <x-icon name="pencil" size="h-3.5 w-3.5" />
                                                 </a>
-                                                @if ($student->hasPin())
-                                                    <form method="POST" action="{{ route('students.reset-pin', $student) }}" data-confirm="Reset PIN {{ $student->name }}? Siswa akan diminta membuat PIN baru.">
-                                                        @csrf
-                                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-xs" title="Reset PIN">
-                                                            <x-icon name="refresh" size="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </form>
-                                                @endif
                                                 <form method="POST" action="{{ route('students.destroy', $student) }}" data-confirm="Hapus {{ $student->name }}? Data sesi historis tetap tersimpan.">
                                                     @csrf
                                                     @method('DELETE')

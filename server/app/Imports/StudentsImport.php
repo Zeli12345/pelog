@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Student;
+use DateTimeInterface;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\ToCollection;
@@ -29,6 +30,8 @@ class StudentsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
             $nisn = (string) preg_replace('/\D/', '', (string) ($row['nisn'] ?? ''));
             $name = trim((string) ($row['nama'] ?? $row['name'] ?? ''));
             $class = trim((string) ($row['kelas'] ?? $row['class'] ?? ''));
+            $birthDateRaw = $row['tanggal_lahir'] ?? $row['birth_date'] ?? null;
+            $birthDate = $this->parseBirthDate($birthDateRaw);
 
             if ($nisn === '' && $name === '' && $class === '') {
                 $this->skipped++;
@@ -66,6 +69,26 @@ class StudentsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 continue;
             }
 
+            if ($this->isEmptyBirthDate($birthDateRaw)) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nisn' => $nisn,
+                    'message' => 'Tanggal lahir wajib diisi.',
+                ];
+
+                continue;
+            }
+
+            if ($birthDate === null) {
+                $this->errors[] = [
+                    'row' => $rowNumber,
+                    'nisn' => $nisn,
+                    'message' => 'Tanggal lahir tidak valid. Gunakan format Y-m-d atau d/m/Y.',
+                ];
+
+                continue;
+            }
+
             if (mb_strlen($name) > 150) {
                 $this->errors[] = [
                     'row' => $rowNumber,
@@ -91,6 +114,7 @@ class StudentsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 
             $student->name = $name;
             $student->class = $class;
+            $student->birth_date = $birthDate;
 
             if ($isNew) {
                 $student->is_active = true;
@@ -118,5 +142,41 @@ class StudentsImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
                 $this->updated++;
             }
         }
+    }
+
+    /**
+     * Terima Y-m-d (2008-07-14) atau d/m/Y (14/07/2008). Sel Excel yang
+     * terbaca sebagai tanggal juga diterima.
+     */
+    private function parseBirthDate(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        foreach (['Y-m-d', 'd/m/Y'] as $format) {
+            $parsed = \DateTimeImmutable::createFromFormat('!'.$format, $value);
+
+            if ($parsed !== false && $parsed->format($format) === $value) {
+                return $parsed->format('Y-m-d');
+            }
+        }
+
+        return null;
+    }
+
+    private function isEmptyBirthDate(mixed $value): bool
+    {
+        if ($value instanceof DateTimeInterface) {
+            return false;
+        }
+
+        return trim((string) $value) === '';
     }
 }

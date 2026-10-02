@@ -8,6 +8,7 @@ use App\Models\Student;
 use App\Models\UsageSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -195,5 +196,65 @@ class StudentStaffAdminTest extends TestCase
         $this->actingAs($admin)
             ->post('/devices/bulk-delete', ['ids' => []])
             ->assertSessionHasErrors('ids');
+    }
+
+    public function test_student_store_rejects_empty_birth_date(): void
+    {
+        $admin = User::factory()->adminIt()->create();
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'nisn' => '0051234567',
+                'name' => 'Siswa Tanpa Tanggal Lahir',
+                'class' => 'X RPL 1',
+            ])
+            ->assertSessionHasErrors('birth_date');
+
+        $this->assertDatabaseMissing('students', ['nisn' => '0051234567']);
+    }
+
+    public function test_student_store_persists_birth_date(): void
+    {
+        $admin = User::factory()->adminIt()->create();
+
+        $this->actingAs($admin)
+            ->post('/students', [
+                'nisn' => '0051234567',
+                'name' => 'Siswa Bertanggal',
+                'class' => 'X RPL 1',
+                'birth_date' => '2008-07-14',
+            ])
+            ->assertRedirect(route('students.index'));
+
+        $this->assertDatabaseHas('students', [
+            'nisn' => '0051234567',
+            'birth_date' => '2008-07-14',
+        ]);
+    }
+
+    public function test_student_import_accepts_two_date_formats_and_reports_missing_date(): void
+    {
+        $admin = User::factory()->adminIt()->create();
+
+        $csv = implode("\n", [
+            'NISN,NAMA,KELAS,TANGGAL LAHIR',
+            '1234500001,Valid Format Satu,X RPL 1,2008-07-14',
+            '1234500002,Valid Format Dua,X RPL 2,14/07/2008',
+            '1234500003,Tanpa Tanggal,X RPL 1,',
+            '1234500004,Tanggal Salah,X RPL 2,14-07-2008',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/students/import', [
+                'file' => UploadedFile::fake()->createWithContent('siswa.csv', $csv),
+            ])
+            ->assertOk()
+            ->assertSee('Tanggal lahir wajib diisi.')
+            ->assertSee('Tanggal lahir tidak valid.');
+
+        $this->assertDatabaseHas('students', ['nisn' => '1234500001', 'birth_date' => '2008-07-14']);
+        $this->assertDatabaseHas('students', ['nisn' => '1234500002', 'birth_date' => '2008-07-14']);
+        $this->assertDatabaseMissing('students', ['nisn' => '1234500003']);
+        $this->assertDatabaseMissing('students', ['nisn' => '1234500004']);
     }
 }

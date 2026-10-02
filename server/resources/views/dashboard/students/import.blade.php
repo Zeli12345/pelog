@@ -9,7 +9,7 @@
     <div class="grid gap-4 lg:grid-cols-3">
         <section class="card p-5 lg:col-span-2">
             <h2 class="text-sm font-semibold text-ink">Unggah Berkas</h2>
-            <p class="mt-1 text-xs text-ink-faint">Format CSV, XLSX, atau XLS. Baris pertama adalah header: <code class="rounded bg-paper px-1">NISN</code>, <code class="rounded bg-paper px-1">NAMA</code>, <code class="rounded bg-paper px-1">KELAS</code>.</p>
+            <p class="mt-1 text-xs text-ink-faint">Format CSV, XLSX, atau XLS. Baris pertama adalah header: <code class="rounded bg-paper px-1">NISN</code>, <code class="rounded bg-paper px-1">NAMA</code>, <code class="rounded bg-paper px-1">KELAS</code>, <code class="rounded bg-paper px-1">TANGGAL LAHIR</code>.</p>
 
             <form method="POST" action="{{ route('students.import') }}" enctype="multipart/form-data" class="mt-4 space-y-4">
                 @csrf
@@ -86,7 +86,7 @@
                 <li class="flex gap-2"><span class="font-mono font-bold text-navy-800">4.</span> Unggah — NISN yang sudah ada akan <strong>diperbarui</strong>, bukan diduplikasi.</li>
             </ol>
             <div class="mt-4 rounded-md border border-gold-200 bg-gold-50 p-3 text-[11px] text-gold-800">
-                <strong>Catatan:</strong> NISN wajib 10 angka. Baris bermasalah akan dilaporkan tanpa membatalkan baris lain.
+                <strong>Catatan:</strong> NISN wajib 10 angka, tanggal lahir wajib diisi (format <span class="font-mono">Y-m-d</span> atau <span class="font-mono">d/m/Y</span>). Baris bermasalah akan dilaporkan tanpa membatalkan baris lain.
             </div>
         </aside>
     </div>

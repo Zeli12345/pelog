@@ -1,5 +1,6 @@
 using System.Globalization;
 using BalilogKiosk.Core.Models;
+using BalilogKiosk.Core.Security;
 using Microsoft.Data.Sqlite;
 
 namespace BalilogKiosk.Core.Data;
@@ -57,6 +58,8 @@ public sealed class LocalStore : IDisposable
 {
     private readonly SqliteConnection _connection;
 
+    private readonly StudentDataProtector _protector;
+
     public LocalStore(string databasePath)
     {
         var directory = Path.GetDirectoryName(databasePath);
@@ -69,6 +72,7 @@ public sealed class LocalStore : IDisposable
         _connection = new SqliteConnection($"Data Source={databasePath}");
         _connection.Open();
         EnsureSchema();
+        _protector = new StudentDataProtector(GetKv, SetKv);
     }
 
     private void EnsureSchema()
@@ -85,13 +89,7 @@ public sealed class LocalStore : IDisposable
                 nisn TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 class TEXT NOT NULL,
-                has_pin INTEGER NOT NULL DEFAULT 0,
-                pin_algo TEXT,
-                pin_salt TEXT,
-                pin_iterations INTEGER,
-                pin_hash TEXT,
-                pin_failed INTEGER NOT NULL DEFAULT 0,
-                pin_locked_until TEXT
+                birth_date TEXT
             );
 
             CREATE TABLE IF NOT EXISTS staff (
@@ -130,6 +128,17 @@ public sealed class LocalStore : IDisposable
         // Upgrade idempoten untuk basis data lama yang belum memiliki kolom di atas.
         EnsureColumn("sessions", "screenshot_captured_at", "TEXT");
         EnsureColumn("sessions", "sync_failed_attempts", "INTEGER NOT NULL DEFAULT 0");
+
+        // Tambahkan kolom baru untuk basis data lama, lalu buang kolom PIN
+        // (basis data versi sebelumnya) agar tidak ada sisa data PIN di disk.
+        EnsureColumn("students", "birth_date", "TEXT");
+        DropColumnIfExists("students", "has_pin");
+        DropColumnIfExists("students", "pin_algo");
+        DropColumnIfExists("students", "pin_salt");
+        DropColumnIfExists("students", "pin_iterations");
+        DropColumnIfExists("students", "pin_hash");
+        DropColumnIfExists("students", "pin_failed");
+        DropColumnIfExists("students", "pin_locked_until");
     }
 
     private void Execute(string sql)
@@ -170,12 +179,72 @@ public sealed class LocalStore : IDisposable
         }
     }
 
+    /// <summary>
+    /// Membuang kolom lama secara idempoten (mis. kolom PIN pada basis data
+    /// versi sebelumnya). Kegagalan (SQLite lama tanpa DROP COLUMN) diabaikan.
+    /// </summary>
+    private void DropColumnIfExists(string table, string column)
+    {
+        var exists = false;
+
+        using (var command = _connection.CreateCommand())
+        {
+            command.CommandText = $"PRAGMA table_info({table})";
+
+            using var reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                {
+                    exists = true;
+
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+        {
+            return;
+        }
+
+        try
+        {
+            Execute($"ALTER TABLE {table} DROP COLUMN {column}");
+        }
+        catch (SqliteException)
+        {
+            // Kolom tak terpakai dibiarkan pada SQLite yang tidak mendukung DROP COLUMN.
+        }
+    }
+
     private static string? Iso(DateTimeOffset? value) => value?.ToUniversalTime().ToString("o");
 
     private static DateTimeOffset? ParseIso(string? value) =>
         string.IsNullOrEmpty(value)
             ? null
             : DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+
+    private static string? ToDbDate(DateOnly? value) =>
+        value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static DateOnly? ParseDbDate(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        if (DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var exact))
+        {
+            return exact;
+        }
+
+        return DateOnly.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed
+            : null;
+    }
 
     // ---------- Key-value ----------
 
@@ -204,25 +273,6 @@ public sealed class LocalStore : IDisposable
     {
         using var transaction = _connection.BeginTransaction();
 
-        // Simpan status lockout PIN lokal agar refresh bootstrap tidak mereset
-        // hitungan percobaan / masa kunci PIN siswa.
-        var pinState = new Dictionary<string, (int Failed, string? LockedUntil)>(StringComparer.Ordinal);
-
-        using (var read = _connection.CreateCommand())
-        {
-            read.Transaction = transaction;
-            read.CommandText = "SELECT nisn, pin_failed, pin_locked_until FROM students";
-
-            using var reader = read.ExecuteReader();
-
-            while (reader.Read())
-            {
-                pinState[reader.GetString(0)] = (
-                    reader.GetInt32(1),
-                    reader.IsDBNull(2) ? null : reader.GetString(2));
-            }
-        }
-
         using (var delete = _connection.CreateCommand())
         {
             delete.Transaction = transaction;
@@ -232,25 +282,15 @@ public sealed class LocalStore : IDisposable
 
         foreach (var student in students)
         {
-            pinState.TryGetValue(student.Nisn, out var pin);
-            var failed = pin.Failed;
-            var lockedUntil = pin.LockedUntil;
-
             using var insert = _connection.CreateCommand();
             insert.Transaction = transaction;
             insert.CommandText = @"
-                INSERT INTO students (nisn, name, class, has_pin, pin_algo, pin_salt, pin_iterations, pin_hash, pin_failed, pin_locked_until)
-                VALUES ($nisn, $name, $class, $hasPin, $algo, $salt, $iterations, $hash, $failed, $locked)";
-            insert.Parameters.AddWithValue("$nisn", student.Nisn);
-            insert.Parameters.AddWithValue("$name", student.Name);
-            insert.Parameters.AddWithValue("$class", student.ClassName);
-            insert.Parameters.AddWithValue("$hasPin", student.HasPin ? 1 : 0);
-            insert.Parameters.AddWithValue("$algo", (object?)student.Pin?.Algo ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$salt", (object?)student.Pin?.Salt ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$iterations", (object?)student.Pin?.Iterations ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$hash", (object?)student.Pin?.Hash ?? DBNull.Value);
-            insert.Parameters.AddWithValue("$failed", failed);
-            insert.Parameters.AddWithValue("$locked", (object?)lockedUntil ?? DBNull.Value);
+                INSERT INTO students (nisn, name, class, birth_date)
+                VALUES ($nisn, $name, $class, $birthDate)";
+            insert.Parameters.AddWithValue("$nisn", _protector.Encrypt(student.Nisn) ?? string.Empty);
+            insert.Parameters.AddWithValue("$name", _protector.Encrypt(student.Name) ?? string.Empty);
+            insert.Parameters.AddWithValue("$class", _protector.Encrypt(student.ClassName) ?? string.Empty);
+            insert.Parameters.AddWithValue("$birthDate", (object?)_protector.Encrypt(ToDbDate(student.BirthDate)) ?? DBNull.Value);
             insert.ExecuteNonQuery();
         }
 
@@ -310,32 +350,32 @@ public sealed class LocalStore : IDisposable
     public CachedStudent? GetStudent(string nisn)
     {
         using var command = _connection.CreateCommand();
-        command.CommandText = "SELECT * FROM students WHERE nisn = $nisn";
-        command.Parameters.AddWithValue("$nisn", nisn);
+        command.CommandText = "SELECT nisn, name, class, birth_date FROM students";
 
         using var reader = command.ExecuteReader();
 
-        if (!reader.Read())
+        while (reader.Read())
         {
-            return null;
+            // NISN disimpan terenkripsi (nonce acak), jadi pencarian dilakukan
+            // dengan mendekripsi baris per baris lalu membandingkan nilai asli.
+            var storedNisn = reader.IsDBNull(0) ? null : reader.GetString(0);
+            var plainNisn = _protector.Decrypt(storedNisn);
+
+            if (!string.Equals(plainNisn, nisn, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            return new CachedStudent
+            {
+                Nisn = plainNisn ?? string.Empty,
+                Name = _protector.Decrypt(reader.IsDBNull(1) ? null : reader.GetString(1)) ?? string.Empty,
+                ClassName = _protector.Decrypt(reader.IsDBNull(2) ? null : reader.GetString(2)) ?? string.Empty,
+                BirthDate = ParseDbDate(_protector.Decrypt(reader.IsDBNull(3) ? null : reader.GetString(3))),
+            };
         }
 
-        var hasPin = reader.GetInt32(reader.GetOrdinal("has_pin")) == 1;
-
-        return new CachedStudent
-        {
-            Nisn = reader.GetString(reader.GetOrdinal("nisn")),
-            Name = reader.GetString(reader.GetOrdinal("name")),
-            ClassName = reader.GetString(reader.GetOrdinal("class")),
-            HasPin = hasPin,
-            Pin = hasPin ? new PinData
-            {
-                Algo = reader.IsDBNull(reader.GetOrdinal("pin_algo")) ? null : reader.GetString(reader.GetOrdinal("pin_algo")),
-                Salt = reader.IsDBNull(reader.GetOrdinal("pin_salt")) ? null : reader.GetString(reader.GetOrdinal("pin_salt")),
-                Iterations = reader.IsDBNull(reader.GetOrdinal("pin_iterations")) ? 0 : reader.GetInt32(reader.GetOrdinal("pin_iterations")),
-                Hash = reader.IsDBNull(reader.GetOrdinal("pin_hash")) ? null : reader.GetString(reader.GetOrdinal("pin_hash")),
-            } : null,
-        };
+        return null;
     }
 
     public CachedStaff? GetStaff(string nipId)
@@ -383,53 +423,6 @@ public sealed class LocalStore : IDisposable
         command.CommandText = "SELECT COUNT(*) FROM students";
 
         return Convert.ToInt32(command.ExecuteScalar());
-    }
-
-    // ---------- PIN state lokal ----------
-
-    public (int Failed, DateTimeOffset? LockedUntil) GetPinState(string nisn)
-    {
-        using var command = _connection.CreateCommand();
-        command.CommandText = "SELECT pin_failed, pin_locked_until FROM students WHERE nisn = $nisn";
-        command.Parameters.AddWithValue("$nisn", nisn);
-
-        using var reader = command.ExecuteReader();
-
-        if (!reader.Read())
-        {
-            return (0, null);
-        }
-
-        return (
-            reader.GetInt32(0),
-            ParseIso(reader.IsDBNull(1) ? null : reader.GetString(1)));
-    }
-
-    public void SavePinState(string nisn, int failed, DateTimeOffset? lockedUntil)
-    {
-        using var command = _connection.CreateCommand();
-        command.CommandText = "UPDATE students SET pin_failed = $failed, pin_locked_until = $locked WHERE nisn = $nisn";
-        command.Parameters.AddWithValue("$failed", failed);
-        command.Parameters.AddWithValue("$locked", (object?)Iso(lockedUntil) ?? DBNull.Value);
-        command.Parameters.AddWithValue("$nisn", nisn);
-        command.ExecuteNonQuery();
-    }
-
-    /// <summary>Menandai PIN siswa sudah dibuat (dipakai setelah set berhasil/antrean).</summary>
-    public void UpdateStudentPin(string nisn, string algo, string salt, int iterations, string hash)
-    {
-        using var command = _connection.CreateCommand();
-        command.CommandText = @"
-            UPDATE students
-            SET has_pin = 1, pin_algo = $algo, pin_salt = $salt, pin_iterations = $iterations, pin_hash = $hash,
-                pin_failed = 0, pin_locked_until = NULL
-            WHERE nisn = $nisn";
-        command.Parameters.AddWithValue("$algo", algo);
-        command.Parameters.AddWithValue("$salt", salt);
-        command.Parameters.AddWithValue("$iterations", iterations);
-        command.Parameters.AddWithValue("$hash", hash);
-        command.Parameters.AddWithValue("$nisn", nisn);
-        command.ExecuteNonQuery();
     }
 
     // ---------- Sesi lokal ----------

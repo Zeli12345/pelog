@@ -24,7 +24,7 @@ class ScreenshotUploadTest extends TestCase
 
     private function startStudentSession(array $headers): string
     {
-        Student::factory()->withPin('2468')->create(['nisn' => '0051234567']);
+        Student::factory()->create(['nisn' => '0051234567']);
         $uuid = (string) Str::uuid();
 
         $this->postJson('/api/v1/sessions/start', [

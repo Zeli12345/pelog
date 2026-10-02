@@ -78,9 +78,9 @@ class StudentImportController extends Controller
             $output = fopen('php://output', 'w');
             fwrite($output, "\xEF\xBB\xBF");
 
-            fputcsv($output, ['NISN', 'NAMA', 'KELAS']);
-            fputcsv($output, ['0051234567', 'Budi Pratama', 'X RPL 1']);
-            fputcsv($output, ['0051234568', 'Ani Wijaya', 'X TKJ 2']);
+            fputcsv($output, ['NISN', 'NAMA', 'KELAS', 'TANGGAL LAHIR']);
+            fputcsv($output, ['0051234567', 'Budi Pratama', 'X RPL 1', '2008-07-14']);
+            fputcsv($output, ['0051234568', 'Ani Wijaya', 'X TKJ 2', '14/07/2008']);
 
             fclose($output);
         }, 'template-import-siswa.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);

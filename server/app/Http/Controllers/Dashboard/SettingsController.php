@@ -28,13 +28,7 @@ class SettingsController extends Controller
         'stale_session_minutes' => 'int',
         'bootstrap_refresh_minutes' => 'int',
         'device_online_window_seconds' => 'int',
-        'pin_setup_requires_online' => 'bool',
-        'pin_length' => 'int',
-        'pin_forbid_weak' => 'bool',
-        'pin_max_attempts' => 'int',
-        'pin_lock_minutes' => 'int',
         'single_active_session' => 'bool',
-        'pin_activation_required' => 'bool',
         'school_name' => 'string',
         'school_motto' => 'string',
     ];
@@ -71,22 +65,13 @@ class SettingsController extends Controller
             'stale_session_minutes' => ['required', 'integer', 'min:5', 'max:180'],
             'bootstrap_refresh_minutes' => ['required', 'integer', 'min:1', 'max:240'],
             'device_online_window_seconds' => ['required', 'integer', 'min:60', 'max:3600'],
-            'pin_setup_requires_online' => ['nullable', 'boolean'],
-            'pin_length' => ['required', 'integer', 'min:4', 'max:6'],
-            'pin_forbid_weak' => ['nullable', 'boolean'],
-            'pin_max_attempts' => ['required', 'integer', 'min:3', 'max:10'],
-            'pin_lock_minutes' => ['required', 'integer', 'min:1', 'max:60'],
             'single_active_session' => ['nullable', 'boolean'],
-            'pin_activation_required' => ['nullable', 'boolean'],
             'school_name' => ['required', 'string', 'max:100'],
             'school_motto' => ['nullable', 'string', 'max:100'],
         ]);
 
         $validated['screenshot_enabled'] = $request->boolean('screenshot_enabled');
-        $validated['pin_setup_requires_online'] = $request->boolean('pin_setup_requires_online');
-        $validated['pin_forbid_weak'] = $request->boolean('pin_forbid_weak');
         $validated['single_active_session'] = $request->boolean('single_active_session');
-        $validated['pin_activation_required'] = $request->boolean('pin_activation_required');
 
         foreach ($validated as $key => $value) {
             Setting::setValue($key, $value);

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using BalilogKiosk.App.Services;
 using BalilogKiosk.Core.Models;
-using BalilogKiosk.Core.Security;
 using BalilogKiosk.Core.Services;
 using Timer = System.Windows.Forms.Timer;
 
@@ -10,7 +9,8 @@ namespace BalilogKiosk.App.Forms;
 
 /// <summary>
 /// Layar kunci kiosk BALI-LOG.
-/// Alur: NISN/NIP -> (set/verifikasi PIN) -> mapel & tujuan -> sesi dimulai.
+/// Alur siswa: NISN -> tanggal lahir -> mapel & tujuan -> sesi dimulai.
+/// Alur guru/pegawai: NIP -> mapel & tujuan -> sesi dimulai.
 /// </summary>
 public sealed class LockscreenForm : Form
 {
@@ -23,10 +23,11 @@ public sealed class LockscreenForm : Form
     private enum Step
     {
         Identify,
-        PinSetup,
-        PinVerify,
+        BirthDate,
         Details,
     }
+
+    private const int MaxBirthDateAttempts = 5;
 
     private static readonly Color NavyDark = Color.FromArgb(15, 34, 55);
     private static readonly Color Navy = Color.FromArgb(27, 58, 92);
@@ -56,16 +57,10 @@ public sealed class LockscreenForm : Form
     private readonly TextBox _identifyInput;
     private readonly Label _identifyError;
 
-    private readonly Panel _pinSetupPanel;
-    private readonly Label _pinSetupName;
-    private readonly TextBox _pinSetupInput;
-    private readonly TextBox _pinSetupConfirmInput;
-    private readonly Label _pinSetupError;
-
-    private readonly Panel _pinVerifyPanel;
-    private readonly Label _pinVerifyName;
-    private readonly TextBox _pinVerifyInput;
-    private readonly Label _pinVerifyError;
+    private readonly Panel _birthDatePanel;
+    private readonly Label _birthDateName;
+    private readonly TextBox _birthDateInput;
+    private readonly Label _birthDateError;
 
     private readonly Panel _detailsPanel;
     private readonly Label _detailsName;
@@ -87,6 +82,8 @@ public sealed class LockscreenForm : Form
     private bool _busy;
     private bool _enrollmentRecoveryOpen;
     private bool _revokedHandled;
+    private int _birthDateAttempts;
+    private Task _startupHardening = Task.CompletedTask;
 
     public LockscreenForm(AppServices services)
     {
@@ -94,9 +91,10 @@ public sealed class LockscreenForm : Form
 
         // Pastikan kebijakan penguncian terpasang setiap aplikasi dijalankan
         // (mis. setelah "Keluar Aplikasi" lalu pengawas menghidupkan ulang kiosk).
+        // Task disimpan agar sesi yang dipulihkan tidak balapan dengan Suspend.
         if (_services.Config.HardeningEnabled && !_services.Config.TestMode)
         {
-            Task.Run(KioskHardening.Apply);
+            _startupHardening = Task.Run(KioskHardening.Apply);
         }
 
         Text = "BALI-LOG — Kiosk";
@@ -297,10 +295,10 @@ public sealed class LockscreenForm : Form
 
         _identifyPanel.Controls.AddRange([_identifyTitle, _identifyHint, _identifyInput, identifyButton, _identifyError]);
 
-        // ---------- Panel: Set PIN ----------
-        _pinSetupPanel = new Panel { Location = new Point(36, 156), Size = new Size(568, 290), BackColor = Color.Transparent, Visible = false };
+        // ---------- Panel: Tanggal lahir ----------
+        _birthDatePanel = new Panel { Location = new Point(36, 156), Size = new Size(568, 290), BackColor = Color.Transparent, Visible = false };
 
-        _pinSetupName = new Label
+        _birthDateName = new Label
         {
             Font = new Font("Segoe UI", 12F, FontStyle.Bold),
             ForeColor = Navy,
@@ -308,112 +306,47 @@ public sealed class LockscreenForm : Form
             AutoSize = true,
         };
 
-        var pinSetupInstructions = new Label
+        var birthDateHint = new Label
         {
-            Text = "Pertama kali login — buat PIN pribadimu.\nPilih 4 angka yang mudah kamu ingat, dan JANGAN bagikan ke teman.\nPIN ini untuk login di semua laptop sekolah.",
-            Font = new Font("Segoe UI", 9.5F),
-            ForeColor = InkSoft,
-            Location = new Point(4, 30),
-            Size = new Size(560, 70),
-            AutoSize = false,
-        };
-
-        var pin1Label = new Label { Text = "PIN baru", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Ink, Location = new Point(2, 106), AutoSize = true };
-
-        _pinSetupInput = new TextBox
-        {
-            Location = new Point(2, 128),
-            Width = 200,
-            Font = new Font("Consolas", 18F, FontStyle.Bold),
-            UseSystemPasswordChar = true,
-            MaxLength = 6,
-            BorderStyle = BorderStyle.FixedSingle,
-        };
-
-        var pin2Label = new Label { Text = "Ulangi PIN", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Ink, Location = new Point(230, 106), AutoSize = true };
-
-        _pinSetupConfirmInput = new TextBox
-        {
-            Location = new Point(230, 128),
-            Width = 200,
-            Font = new Font("Consolas", 18F, FontStyle.Bold),
-            UseSystemPasswordChar = true,
-            MaxLength = 6,
-            BorderStyle = BorderStyle.FixedSingle,
-        };
-
-        _pinSetupInput.KeyPress += OnlyDigits;
-        _pinSetupConfirmInput.KeyPress += OnlyDigits;
-
-        var pinSetupButton = new Button
-        {
-            Text = "S I M P A N   P I N",
-            Location = new Point(2, 186),
-            Size = new Size(428, 46),
-            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-            BackColor = Moss,
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Cursor = Cursors.Hand,
-        };
-
-        pinSetupButton.FlatAppearance.BorderSize = 0;
-        pinSetupButton.Click += async (_, _) => await SubmitPinSetupAsync();
-
-        var pinSetupBack = CreateBackButton();
-        pinSetupBack.Location = new Point(440, 186);
-        pinSetupBack.Click += (_, _) => ResetFlow();
-
-        _pinSetupError = new Label
-        {
-            Location = new Point(2, 240),
-            Size = new Size(564, 44),
-            Font = new Font("Segoe UI", 9.5F),
-            ForeColor = Brick,
-            AutoSize = false,
-        };
-
-        _pinSetupPanel.Controls.AddRange([
-            _pinSetupName, pinSetupInstructions, pin1Label, _pinSetupInput,
-            pin2Label, _pinSetupConfirmInput, pinSetupButton, pinSetupBack, _pinSetupError,
-        ]);
-
-        // ---------- Panel: Verifikasi PIN ----------
-        _pinVerifyPanel = new Panel { Location = new Point(36, 156), Size = new Size(568, 290), BackColor = Color.Transparent, Visible = false };
-
-        _pinVerifyName = new Label
-        {
-            Font = new Font("Segoe UI", 12F, FontStyle.Bold),
-            ForeColor = Navy,
-            Location = new Point(2, 0),
-            AutoSize = true,
-        };
-
-        var pinVerifyHint = new Label
-        {
-            Text = "Masukkan PIN yang pernah kamu buat.",
+            Text = "Masukkan tanggal lahirmu sesuai data sekolah.",
             Font = new Font("Segoe UI", 9.5F),
             ForeColor = InkSoft,
             Location = new Point(4, 30),
             AutoSize = true,
         };
 
-        _pinVerifyInput = new TextBox
+        var birthDateLabel = new Label
         {
+            Text = "Tanggal lahir (DD-MM-YYYY)",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Ink,
             Location = new Point(2, 62),
-            Width = 240,
-            Font = new Font("Consolas", 22F, FontStyle.Bold),
-            UseSystemPasswordChar = true,
-            MaxLength = 6,
-            BorderStyle = BorderStyle.FixedSingle,
+            AutoSize = true,
         };
 
-        _pinVerifyInput.KeyPress += OnlyDigits;
-
-        var pinVerifyButton = new Button
+        _birthDateInput = new TextBox
         {
-            Text = "M A S U K",
-            Location = new Point(2, 128),
+            Location = new Point(2, 86),
+            Width = 240,
+            Font = new Font("Consolas", 20F, FontStyle.Bold),
+            MaxLength = 10,
+            BorderStyle = BorderStyle.FixedSingle,
+            PlaceholderText = "31-12-2008",
+        };
+
+        _birthDateInput.KeyDown += (_, e) =>
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                SubmitBirthDate();
+            }
+        };
+
+        var birthDateButton = new Button
+        {
+            Text = "L A N J U T",
+            Location = new Point(2, 142),
             Size = new Size(428, 46),
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             BackColor = Navy,
@@ -422,24 +355,34 @@ public sealed class LockscreenForm : Form
             Cursor = Cursors.Hand,
         };
 
-        pinVerifyButton.FlatAppearance.BorderSize = 0;
-        pinVerifyButton.Click += async (_, _) => await SubmitPinVerifyAsync();
+        birthDateButton.FlatAppearance.BorderSize = 0;
+        birthDateButton.Click += (_, _) => SubmitBirthDate();
 
-        var pinVerifyBack = CreateBackButton();
-        pinVerifyBack.Location = new Point(440, 128);
-        pinVerifyBack.Click += (_, _) => ResetFlow();
+        var birthDateBack = CreateBackButton();
+        birthDateBack.Location = new Point(440, 142);
+        birthDateBack.Click += (_, _) => ResetFlow();
 
-        _pinVerifyError = new Label
+        var birthDateFormatHint = new Label
         {
-            Location = new Point(2, 186),
+            Text = "Format: 31-12-2008, 31/12/2008, atau 2008-12-31.",
+            Font = new Font("Segoe UI", 8.5F),
+            ForeColor = InkSoft,
+            Location = new Point(4, 196),
+            AutoSize = true,
+        };
+
+        _birthDateError = new Label
+        {
+            Location = new Point(2, 222),
             Size = new Size(564, 60),
             Font = new Font("Segoe UI", 9.5F),
             ForeColor = Brick,
             AutoSize = false,
         };
 
-        _pinVerifyPanel.Controls.AddRange([
-            _pinVerifyName, pinVerifyHint, _pinVerifyInput, pinVerifyButton, pinVerifyBack, _pinVerifyError,
+        _birthDatePanel.Controls.AddRange([
+            _birthDateName, birthDateHint, birthDateLabel, _birthDateInput,
+            birthDateButton, birthDateBack, birthDateFormatHint, _birthDateError,
         ]);
 
         // ---------- Panel: Detail sesi ----------
@@ -510,7 +453,7 @@ public sealed class LockscreenForm : Form
 
         _card.Controls.AddRange([
             cardHeader, cardSubtitle, separator, _studentModeButton, _staffModeButton,
-            _identifyPanel, _pinSetupPanel, _pinVerifyPanel, _detailsPanel,
+            _identifyPanel, _birthDatePanel, _detailsPanel,
         ]);
 
         var content = new Panel { Dock = DockStyle.Fill, BackColor = NavyDark };
@@ -832,6 +775,11 @@ public sealed class LockscreenForm : Form
         _identifyInput.MaxLength = mode == Mode.Student ? 10 : 30;
         _identifyInput.Clear();
         _identifyError.Text = string.Empty;
+        _student = null;
+        _staff = null;
+        _birthDateAttempts = 0;
+        _birthDateInput.Clear();
+        _birthDateError.Text = string.Empty;
 
         ShowStep(Step.Identify);
     }
@@ -839,8 +787,7 @@ public sealed class LockscreenForm : Form
     private void ShowStep(Step step)
     {
         _identifyPanel.Visible = step == Step.Identify;
-        _pinSetupPanel.Visible = step == Step.PinSetup;
-        _pinVerifyPanel.Visible = step == Step.PinVerify;
+        _birthDatePanel.Visible = step == Step.BirthDate;
         _detailsPanel.Visible = step == Step.Details;
 
         switch (step)
@@ -848,16 +795,10 @@ public sealed class LockscreenForm : Form
             case Step.Identify:
                 _identifyInput.Focus();
                 break;
-            case Step.PinSetup:
-                _pinSetupInput.Clear();
-                _pinSetupConfirmInput.Clear();
-                _pinSetupError.Text = string.Empty;
-                _pinSetupInput.Focus();
-                break;
-            case Step.PinVerify:
-                _pinVerifyInput.Clear();
-                _pinVerifyError.Text = string.Empty;
-                _pinVerifyInput.Focus();
+            case Step.BirthDate:
+                _birthDateInput.Clear();
+                _birthDateError.Text = string.Empty;
+                _birthDateInput.Focus();
                 break;
             case Step.Details:
                 _purposeInput.Clear();
@@ -923,18 +864,18 @@ public sealed class LockscreenForm : Form
                     }
                 }
 
-                _student = student;
+                if (student.BirthDate is null)
+                {
+                    _student = null;
+                    _identifyError.Text = "Data tanggal lahir belum ada - hubungi Admin IT";
 
-                if (student.HasPin)
-                {
-                    _pinVerifyName.Text = $"{student.Name} · {student.ClassName}";
-                    ShowStep(Step.PinVerify);
+                    return;
                 }
-                else
-                {
-                    _pinSetupName.Text = $"{student.Name} · {student.ClassName}";
-                    ShowStep(Step.PinSetup);
-                }
+
+                _student = student;
+                _birthDateAttempts = 0;
+                _birthDateName.Text = $"{student.Name} · {student.ClassName}";
+                ShowStep(Step.BirthDate);
             }
             else
             {
@@ -970,7 +911,11 @@ public sealed class LockscreenForm : Form
         }
     }
 
-    private async Task SubmitPinSetupAsync()
+    /// <summary>
+    /// Verifikasi tanggal lahir siswa. Maksimal 5 percobaan;
+    /// bila melewati batas, siswa dikembalikan ke layar NISN.
+    /// </summary>
+    private void SubmitBirthDate()
     {
         if (_busy || _student is null)
         {
@@ -981,76 +926,46 @@ public sealed class LockscreenForm : Form
 
         try
         {
-            var config = _services.Sync.LoadCachedConfig();
-            var pin = _pinSetupInput.Text.Trim();
-            var confirm = _pinSetupConfirmInput.Text.Trim();
+            _birthDateError.Text = string.Empty;
 
-            _pinSetupError.Text = string.Empty;
-
-            if (pin.Length != config.PinLength)
+            if (_student.BirthDate is null)
             {
-                _pinSetupError.Text = $"PIN harus {config.PinLength} angka.";
+                _student = null;
+                ResetFlow();
+                _identifyError.Text = "Data tanggal lahir belum ada - hubungi Admin IT";
 
                 return;
             }
 
-            if (pin != confirm)
+            if (!TryParseBirthDate(_birthDateInput.Text, out var submitted))
             {
-                _pinSetupError.Text = "Ulangi PIN tidak sama. Coba lagi.";
+                _birthDateError.Text = "Format tanggal tidak dikenali. Contoh: 31-12-2008.";
+                _birthDateInput.Focus();
+                _birthDateInput.SelectAll();
 
                 return;
             }
 
-            if (PinPolicy.IsWeak(pin))
+            if (submitted != _student.BirthDate.Value)
             {
-                _pinSetupError.Text = "PIN terlalu mudah ditebak. Hindari angka berulang atau berurutan.";
+                _birthDateAttempts++;
+                _birthDateInput.Clear();
+                _birthDateInput.Focus();
 
-                return;
-            }
-
-            // PIN selalu dibuat di server (hash kanonik), jadi wajib online.
-            // SetPinAsync tidak pernah dipanggil saat offline; siswa dapat mencoba
-            // lagi (dan server diperiksa ulang) setelah koneksi tersambung.
-            if (!await _services.Api.HealthAsync())
-            {
-                _pinSetupError.Text = "PIN harus dibuat saat laptop tersambung ke server. Sambungkan koneksi, lalu tekan S I M P A N   P I N lagi.";
-
-                return;
-            }
-
-            var result = await _services.Api.SetPinAsync(_student.Nisn, pin);
-
-            if (!result.Ok)
-            {
-                if (result.ErrorCode == "pin_already_set")
+                if (_birthDateAttempts >= MaxBirthDateAttempts)
                 {
-                    _pinSetupError.Text = "PIN sudah pernah dibuat di perangkat lain. Masuk dengan PIN yang dulu.";
-
-                    _student = _services.Store.GetStudent(_student.Nisn) ?? _student;
-                    _pinVerifyName.Text = $"{_student.Name} · {_student.ClassName}";
-                    ShowStep(Step.PinVerify);
+                    ResetFlow();
+                    _identifyError.Text = $"Tanggal lahir salah {MaxBirthDateAttempts}×. Masukkan NISN kembali, atau hubungi Admin IT.";
 
                     return;
                 }
 
-                _pinSetupError.Text = result.ErrorMessage ?? "Gagal menyimpan PIN.";
+                _birthDateError.Text = $"Tanggal lahir tidak cocok ({_birthDateAttempts}/{MaxBirthDateAttempts}). Coba lagi.";
 
                 return;
             }
 
-            // PIN tersimpan di server; simpan hash lokal untuk verifikasi offline berikutnya.
-            var pinData = result.Data?.Pin;
-            var made = PinHasher.Make(pin);
-
-            _services.Store.UpdateStudentPin(
-                _student.Nisn,
-                pinData?.Algo ?? made.Algo,
-                pinData?.Salt ?? made.Salt,
-                pinData?.Iterations ?? made.Iterations,
-                pinData?.Hash ?? made.Hash);
-
-            _student = _services.Store.GetStudent(_student.Nisn) ?? _student;
-
+            _birthDateAttempts = 0;
             PrepareDetails();
         }
         finally
@@ -1059,70 +974,34 @@ public sealed class LockscreenForm : Form
         }
     }
 
-    private async Task SubmitPinVerifyAsync()
+    /// <summary>
+    /// Mengurai tanggal lahir yang diterima: DD-MM-YYYY, DD/MM/YYYY, atau
+    /// YYYY-MM-DD, lalu dinormalisasi menjadi <see cref="DateOnly"/> (ISO).
+    /// </summary>
+    private static bool TryParseBirthDate(string value, out DateOnly date)
     {
-        if (_busy || _student is null)
+        date = default;
+
+        var text = value.Trim().Replace('/', '-');
+
+        if (text.Length == 0)
         {
-            return;
+            return false;
         }
 
-        _busy = true;
-
-        try
+        if (!DateTime.TryParseExact(
+                text,
+                ["yyyy-M-d", "d-M-yyyy"],
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsed))
         {
-            var config = _services.Sync.LoadCachedConfig();
-            var pin = _pinVerifyInput.Text.Trim();
-
-            _pinVerifyError.Text = string.Empty;
-
-            var (failed, lockedUntil) = _services.Store.GetPinState(_student.Nisn);
-
-            if (lockedUntil is not null && lockedUntil > _services.Clock.Now)
-            {
-                _pinVerifyError.Text = $"PIN terkunci sementara. Coba lagi pukul {lockedUntil.Value.ToOffset(TimeSpan.FromHours(8)):HH:mm} WITA, atau lapor guru/IT.";
-
-                return;
-            }
-
-            var pinData = _student.Pin;
-
-            if (pinData?.Salt is null || pinData.Hash is null)
-            {
-                _pinVerifyError.Text = "Data PIN belum tersedia di laptop ini. Lapor guru/IT untuk reset.";
-
-                return;
-            }
-
-            if (!PinHasher.Verify(pin, pinData.Salt, pinData.Iterations, pinData.Hash))
-            {
-                failed++;
-
-                if (failed >= config.PinMaxAttempts)
-                {
-                    _services.Store.SavePinState(_student.Nisn, failed, _services.Clock.Now.AddMinutes(config.PinLockMinutes));
-                    _pinVerifyError.Text = $"PIN salah {failed}×. Terkunci {config.PinLockMinutes} menit. Lapor guru/IT bila lupa PIN.";
-                }
-                else
-                {
-                    _services.Store.SavePinState(_student.Nisn, failed, null);
-                    _pinVerifyError.Text = $"PIN salah ({failed}/{config.PinMaxAttempts}). Coba lagi.";
-                }
-
-                _pinVerifyInput.Clear();
-
-                return;
-            }
-
-            _services.Store.SavePinState(_student.Nisn, 0, null);
-
-            PrepareDetails();
-
-            await Task.CompletedTask;
+            return false;
         }
-        finally
-        {
-            _busy = false;
-        }
+
+        date = DateOnly.FromDateTime(parsed);
+
+        return true;
     }
 
     private void PrepareDetails()
@@ -1213,7 +1092,7 @@ public sealed class LockscreenForm : Form
                     return;
                 }
 
-                LaunchSession(record, _student.Name);
+                LaunchSession(record);
             }
             else
             {
@@ -1233,7 +1112,7 @@ public sealed class LockscreenForm : Form
                     return;
                 }
 
-                LaunchSession(record, _staff.Name);
+                LaunchSession(record);
             }
 
             await Task.CompletedTask;
@@ -1276,7 +1155,7 @@ public sealed class LockscreenForm : Form
         return true;
     }
 
-    private void LaunchSession(Core.Data.LocalSessionRecord record, string displayName)
+    private void LaunchSession(Core.Data.LocalSessionRecord record)
     {
         Hide();
 
@@ -1284,7 +1163,7 @@ public sealed class LockscreenForm : Form
         EnterSessionMode();
 
         // Runtime sesi berjalan tanpa jendela: hotkey Ctrl+Alt+S (cadangan Ctrl+Alt+E) untuk mengakhiri.
-        var runtime = new ActiveSessionRuntime(_services, record, displayName);
+        var runtime = new ActiveSessionRuntime(_services, record);
 
         runtime.FormClosed += (_, _) =>
         {
@@ -1312,7 +1191,24 @@ public sealed class LockscreenForm : Form
             return;
         }
 
-        Task.Run(KioskHardening.Suspend);
+        // Tunggu penerapan hardening saat startup selesai lebih dulu: bila tidak,
+        // Apply yang masih berjalan dapat memasang kembali kebijakan tepat setelah
+        // sesi dimulai sehingga CMD/Run/Task Manager ikut terkunci saat sesi aktif.
+        var startupHardening = _startupHardening;
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                startupHardening.Wait();
+            }
+            catch (Exception)
+            {
+                // Kegagalan Apply tidak boleh menghalangi sesi.
+            }
+
+            KioskHardening.Suspend();
+        });
     }
 
     /// <summary>
@@ -1335,14 +1231,12 @@ public sealed class LockscreenForm : Form
     {
         _student = null;
         _staff = null;
+        _birthDateAttempts = 0;
 
         _identifyInput.Clear();
         _identifyError.Text = string.Empty;
-        _pinSetupInput.Clear();
-        _pinSetupConfirmInput.Clear();
-        _pinSetupError.Text = string.Empty;
-        _pinVerifyInput.Clear();
-        _pinVerifyError.Text = string.Empty;
+        _birthDateInput.Clear();
+        _birthDateError.Text = string.Empty;
         _purposeInput.Clear();
         _detailsError.Text = string.Empty;
         _subjectCombo.Items.Clear();
@@ -1396,22 +1290,8 @@ public sealed class LockscreenForm : Form
             return;
         }
 
-        // Sesi masih segar -> lanjutkan dengan widget yang sama.
-        var record = recovery.Record;
-        var displayName = "Pengguna";
-
-        if (record.UserType == "student" && record.Nisn is not null)
-        {
-            var student = _services.Store.GetStudent(record.Nisn);
-            displayName = student?.Name ?? record.Nisn;
-        }
-        else if (record.NipId is not null)
-        {
-            var staff = _services.Store.GetStaff(record.NipId);
-            displayName = staff?.Name ?? record.NipId;
-        }
-
-        BeginInvoke(() => LaunchSession(record, displayName));
+        // Sesi masih segar -> lanjutkan runtime sesi yang sama.
+        BeginInvoke(() => LaunchSession(recovery.Record));
     }
 
     protected override void OnHandleCreated(EventArgs e)

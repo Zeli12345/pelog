@@ -10,11 +10,11 @@ namespace BalilogKiosk.App.Forms;
 /// Mengelola heartbeat, sinkronisasi, screenshot terjadwal, dan pengakhiran sesi
 /// melalui hotkey Ctrl+Alt+S (cadangan Ctrl+Alt+E bila registrasi gagal).
 /// Saat Windows dimatikan / restart / log off:
-/// - log off: sesi ditutup otomatis (alasan "shutdown");
-/// - shutdown / restart: ditahan lebih dulu jika ada sesi berjalan supaya siswa
-///   mengisi refleksi (wajib), lalu komputer dimatikan;
-/// - jalur paksa (mis. "Shut down anyway"): sesi tetap ditutup sebagai "shutdown".
-/// Antrean disinkronkan saat aplikasi berjalan lagi.
+/// - sesi lokal ditutup dengan alasan "shutdown";
+/// - laporan ke server (maks. 3 detik) dan flush antrean (maks. 3 detik) dijalankan;
+/// - shutdown TIDAK PERNAH ditahan: tanpa ShutdownBlockReasonCreate dan tanpa
+///   mengembalikan FALSE dari WM_QUERYENDSESSION.
+/// Antrean yang belum terkirim disinkronkan saat aplikasi berjalan lagi.
 /// </summary>
 public sealed class ActiveSessionRuntime : Form
 {
@@ -22,15 +22,10 @@ public sealed class ActiveSessionRuntime : Form
     private const int WmHotkey = 0x0312;
     private const int WmQueryEndSession = 0x0011;
     private const int WmEndSession = 0x0016;
-    private const long EndsessionLogoff = 0x80000000L;
     private const uint ModAlt = 0x0001;
     private const uint ModControl = 0x0002;
     private const int VkS = 0x53;
     private const int VkE = 0x45;
-    private const uint SwpNoSize = 0x0001;
-    private const uint SwpNoMove = 0x0002;
-    private const uint SwpNoActivate = 0x0010;
-    private static readonly IntPtr HwndTopmost = new(-1);
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -38,22 +33,9 @@ public sealed class ActiveSessionRuntime : Form
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
-    private static extern bool ShutdownBlockReasonCreate(
-        IntPtr hWnd,
-        [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string pwszReason);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool ShutdownBlockReasonDestroy(IntPtr hWnd);
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-
     private readonly AppServices _services;
 
     private readonly LocalSessionRecord _record;
-
-    private readonly string _displayName;
 
     private readonly bool _isStudent;
 
@@ -65,8 +47,6 @@ public sealed class ActiveSessionRuntime : Form
 
     private readonly Timer _sessionEndingFallback = new() { Interval = 2_000 };
 
-    private readonly PowerButtonForm _powerButton;
-
     private bool _screenshotTaken;
 
     private bool _allowClose;
@@ -75,20 +55,12 @@ public sealed class ActiveSessionRuntime : Form
 
     private bool _shutdownHandled;
 
-    private bool _shutdownFeedbackDone;
-
-    private bool _shutdownDialogRunning;
-
     private bool _revokedHandled;
 
-    public ActiveSessionRuntime(
-        AppServices services,
-        LocalSessionRecord record,
-        string displayName)
+    public ActiveSessionRuntime(AppServices services, LocalSessionRecord record)
     {
         _services = services;
         _record = record;
-        _displayName = displayName;
         _isStudent = record.UserType == "student";
 
         // Form tidak pernah ditampilkan — hanya wadah handle untuk timer & hotkey.
@@ -121,12 +93,6 @@ public sealed class ActiveSessionRuntime : Form
 
         // Paksa pembuatan handle agar hotkey & timer langsung aktif tanpa menampilkan jendela.
         _ = Handle;
-
-        // Tombol "Matikan / Selesai" selama sesi berjalan: jalur shutdown yang andal
-        // (layar shutdown Windows menutupi form refleksi kita - lihat RequestShutdownFromKiosk).
-        _powerButton = new PowerButtonForm();
-        _powerButton.PowerRequested += (_, _) => RequestShutdownFromKiosk();
-        _powerButton.Show();
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -171,27 +137,9 @@ public sealed class ActiveSessionRuntime : Form
 
         if (m.Msg == WmQueryEndSession)
         {
-            var isLogoff = (m.LParam.ToInt64() & EndsessionLogoff) != 0;
-
-            // Log off: sesi ditutup, shutdown tidak pernah dihambat.
-            if (isLogoff || !_record.IsOpen || _shutdownFeedbackDone)
-            {
-                CloseForShutdown();
-                m.Result = new IntPtr(1);
-
-                return;
-            }
-
-            // Shutdown / restart saat sesi berjalan: tahan dulu (kembalikan FALSE)
-            // supaya siswa mengisi refleksi sebelum laptop benar-benar mati.
-            if (BeginShutdownFeedback())
-            {
-                m.Result = IntPtr.Zero;
-
-                return;
-            }
-
-            // Sesi sedang diakhiri lewat alur normal: jangan hambat shutdown.
+            // Shutdown / restart: tutup sesi lokal, lapor server & flush antrean
+            // sebentar, lalu izinkan shutdown (m.Result = 1 / TRUE). Shutdown
+            // tidak pernah ditahan lewat ShutdownBlockReasonCreate/FALSE.
             CloseForShutdown();
             m.Result = new IntPtr(1);
 
@@ -206,6 +154,12 @@ public sealed class ActiveSessionRuntime : Form
             {
                 CloseForShutdown();
             }
+            else if (_shutdownHandled)
+            {
+                // Shutdown/restart dibatalkan aplikasi lain: sesi sudah ditutup,
+                // jadi kembalikan kiosk ke layar kunci.
+                ShutdownRuntime();
+            }
 
             m.Result = IntPtr.Zero;
 
@@ -213,129 +167,6 @@ public sealed class ActiveSessionRuntime : Form
         }
 
         base.WndProc(ref m);
-    }
-
-    /// <summary>
-    /// Menahan shutdown/restart lalu menampilkan refleksi wajib. Windows menampilkan
-    /// alasan penahanan di layar shutdown. Bila siswa membatalkan, percobaan shutdown
-    /// dihentikan; bila tersimpan, komputer langsung dimatikan.
-    /// Mengembalikan false bila penahanan tidak dilakukan (shutdown boleh lanjut).
-    /// </summary>
-    private bool BeginShutdownFeedback()
-    {
-        if (_shutdownDialogRunning || _finishing)
-        {
-            return false;
-        }
-
-        _shutdownDialogRunning = true;
-
-        SafeBlockReason(create: true);
-
-        // Penanda: jika proses ini dibunuh paksa oleh Windows sebelum sesi sempat
-        // ditutup, boot berikutnya mencatat sesi sebagai "shutdown" (bukan "recovery").
-        _services.Store.SetKv("shutdown_pending", _record.SessionUuid);
-
-        LogShutdown("blocked-feedback");
-
-        BeginInvoke(new Action(RunShutdownFeedbackAsync));
-
-        return true;
-    }
-
-    /// <summary>
-    /// Shutdown/restart lewat tombol kiosk selama sesi berjalan. Jalur ini andal:
-    /// tidak melewati layar "Closing apps" Windows yang menutupi form refleksi.
-    /// </summary>
-    private void RequestShutdownFromKiosk()
-    {
-        if (_shutdownDialogRunning || _finishing)
-        {
-            return;
-        }
-
-        _shutdownDialogRunning = true;
-        _services.Store.SetKv("shutdown_pending", _record.SessionUuid);
-
-        LogShutdown("kiosk-power-button");
-
-        RunShutdownFeedbackAsync();
-    }
-
-    private async void RunShutdownFeedbackAsync()
-    {
-        try
-        {
-            var (confirmed, feedbackText, comprehension) = await ShowFeedbackAsync(shutdownMode: true);
-
-            if (!confirmed)
-            {
-                // Dibatalkan: hentikan percobaan shutdown, sesi tetap berjalan.
-                SafeBlockReason(create: false);
-                _services.Store.SetKv("shutdown_pending", "");
-                _shutdownDialogRunning = false;
-
-                LogShutdown("feedback-cancelled");
-
-                return;
-            }
-
-            _shutdownFeedbackDone = true;
-
-            StopTimers();
-            _services.Sessions.Close(_record, feedbackText, comprehension, "shutdown");
-
-            LogShutdown("feedback-saved");
-
-            // Lapor server maksimal singkat; sisa antrean menyusul setelah boot.
-            try
-            {
-                await _services.Sessions.TryRemoteEndAsync(_record).WaitAsync(TimeSpan.FromSeconds(3));
-            }
-            catch (Exception)
-            {
-                // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
-            }
-
-            // Batas singkat juga untuk unggahan antrean: jaringan yang tidak
-            // merespons tidak boleh menahan shutdown (30 detik timeout HttpClient).
-            try
-            {
-                using var flushTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-
-                await _services.Sync.PushSessionsAsync(flushTimeout.Token);
-            }
-            catch (Exception)
-            {
-                // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
-            }
-
-            _services.Store.SetKv("shutdown_pending", "");
-            SafeBlockReason(create: false);
-            _shutdownDialogRunning = false;
-
-            if (ShutdownController.PowerOff())
-            {
-                return;
-            }
-
-            // Hak shutdown ditolak: minta siswa mematikan manual; kiosk kembali terkunci.
-            LogShutdown("poweroff-manual");
-
-            MessageBox.Show(
-                "Refleksi tersimpan. Silakan matikan laptop dengan menu Power atau tombol power.",
-                "BALI-LOG",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-
-            ShutdownRuntime();
-        }
-        catch (Exception)
-        {
-            SafeBlockReason(create: false);
-            _services.Store.SetKv("shutdown_pending", "");
-            _shutdownDialogRunning = false;
-        }
     }
 
     private async void OnHeartbeatTick(object? sender, EventArgs e)
@@ -456,88 +287,47 @@ public sealed class ActiveSessionRuntime : Form
         await _services.Sync.PushScreenshotsAsync();
     }
 
-    /// <summary>Mengakhiri sesi (dipanggil hotkey Ctrl+Alt+S).</summary>
-    public async Task EndSessionAsync()
+    /// <summary>
+    /// Mengakhiri sesi (dipanggil hotkey Ctrl+Alt+S) setelah konfirmasi singkat,
+    /// tanpa form tambahan.
+    /// </summary>
+    public Task EndSessionAsync()
     {
-        if (_finishing || _shutdownDialogRunning)
+        if (_finishing || _shutdownHandled)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         _finishing = true;
         StopTimers();
 
-        if (_isStudent)
+        var confirmed = MessageBox.Show(
+            "Akhiri sesi sekarang?",
+            "BALI-LOG",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question,
+            MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+
+        if (!confirmed)
         {
-            var (confirmed, feedbackText, comprehension) = await ShowFeedbackAsync();
+            _finishing = false;
+            StartTimers();
 
-            if (!confirmed)
-            {
-                _finishing = false;
-                StartTimers();
-
-                return;
-            }
-
-            _services.Sessions.Close(_record, feedbackText, comprehension);
-        }
-        else
-        {
-            _services.Sessions.Close(_record, null, null);
+            return Task.CompletedTask;
         }
 
+        _services.Sessions.Close(_record, null, null);
+
+        return FinishSessionAsync();
+    }
+
+    private async Task FinishSessionAsync()
+    {
         await _services.Sessions.TryRemoteEndAsync(_record);
         await _services.Sync.PushSessionsAsync();
         await _services.Sync.PushScreenshotsAsync();
 
         ShutdownRuntime();
-    }
-
-    /// <summary>
-    /// Menampilkan form refleksi TANPA modal agar timer heartbeat/sinkronisasi
-    /// tetap berjalan selama siswa mengisi. Pada mode shutdown, form dijaga
-    /// tetap di atas agar tidak tertutup layar "menutup aplikasi" milik Windows.
-    /// </summary>
-    private async Task<(bool Confirmed, string? Feedback, string? Comprehension)> ShowFeedbackAsync(bool shutdownMode = false)
-    {
-        using var feedback = new FeedbackForm(_displayName, shutdownMode)
-        {
-            TopMost = true,
-        };
-
-        var completion = new TaskCompletionSource<(bool, string?, string?)>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-
-        Timer? keepOnTop = null;
-
-        if (shutdownMode)
-        {
-            keepOnTop = new Timer { Interval = 700 };
-            keepOnTop.Tick += (_, _) =>
-            {
-                if (!feedback.IsDisposed)
-                {
-                    SetWindowPos(feedback.Handle, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
-                }
-            };
-        }
-
-        feedback.FormClosed += (_, _) =>
-        {
-            keepOnTop?.Stop();
-            keepOnTop?.Dispose();
-
-            completion.TrySetResult((
-                feedback.DialogResult == DialogResult.OK,
-                feedback.Feedback,
-                feedback.Comprehension));
-        };
-
-        feedback.Show();
-
-        keepOnTop?.Start();
-
-        return await completion.Task;
     }
 
     private void StartTimers()
@@ -555,9 +345,10 @@ public sealed class ActiveSessionRuntime : Form
     }
 
     /// <summary>
-    /// Hook cadangan untuk log off / shutdown non-jendela. Log off langsung ditutup;
-    /// shutdown dibiarkan ditangani jalur WM_QUERYENDSESSION (yang bisa menahan),
-    /// dengan pengaman: bila pesan jendela tidak datang dalam 2 detik, sesi ditutup.
+    /// Hook cadangan untuk log off / shutdown non-jendela. Log off langsung
+    /// menutup sesi; shutdown/restart memakai fallback singkat bila pesan
+    /// WM_QUERYENDSESSION tidak sampai ke jendela ini. Shutdown tidak pernah
+    /// dihambat dari jalur mana pun.
     /// </summary>
     private void OnSystemSessionEnding(object sender, SessionEndingEventArgs e)
     {
@@ -570,7 +361,7 @@ public sealed class ActiveSessionRuntime : Form
             return;
         }
 
-        if (_shutdownDialogRunning || _shutdownFeedbackDone)
+        if (_shutdownHandled)
         {
             return;
         }
@@ -591,7 +382,7 @@ public sealed class ActiveSessionRuntime : Form
     {
         _sessionEndingFallback.Stop();
 
-        if (_shutdownDialogRunning || _shutdownFeedbackDone || _shutdownHandled)
+        if (_shutdownHandled)
         {
             return;
         }
@@ -602,9 +393,10 @@ public sealed class ActiveSessionRuntime : Form
     }
 
     /// <summary>
-    /// Menutup sesi untuk shutdown/restart/logoff. Dipanggil dari dua jalur
-    /// (SystemEvents.SessionEnding dan WM_QUERYENDSESSION) sehingga diberi
-    /// penjaga idempoten. Tidak pernah melempar exception.
+    /// Menutup sesi untuk shutdown/restart/logoff: simpan lokal (alasan "shutdown"),
+    /// lapor server maks. 3 detik, flush antrean maks. 3 detik, lalu izinkan
+    /// shutdown. Dipanggil dari beberapa jalur sehingga diberi penjaga idempoten.
+    /// Tidak pernah melempar exception.
     /// </summary>
     private void CloseForShutdown()
     {
@@ -614,6 +406,7 @@ public sealed class ActiveSessionRuntime : Form
         }
 
         _shutdownHandled = true;
+        _finishing = true;
 
         try
         {
@@ -624,27 +417,39 @@ public sealed class ActiveSessionRuntime : Form
 
             if (_record.IsOpen)
             {
+                _services.Store.SetKv("shutdown_pending", _record.SessionUuid);
                 _services.Sessions.Close(_record, null, null, "shutdown");
-                _services.Store.SetKv("shutdown_pending", "");
 
                 try
                 {
                     // Dijalankan di thread latar: menunggu task ini langsung di UI
                     // thread akan deadlock karena kelanjutannya menangkap
-                    // synchronization context WinForms.
-                    Task.Run(() => _services.Sessions.TryRemoteEndAsync(_record)).Wait(TimeSpan.FromSeconds(2));
+                    // synchronization context WinForms. Batas 3 detik.
+                    using var endTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+                    Task.Run(() => _services.Sessions.TryRemoteEndAsync(_record, endTimeout.Token))
+                        .Wait(TimeSpan.FromSeconds(3));
                 }
                 catch (Exception)
                 {
                     // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
                 }
-            }
 
-            _shutdownFeedbackDone = true;
+                try
+                {
+                    // Batas singkat untuk unggahan antrean: jaringan yang tidak
+                    // merespons tidak boleh menahan shutdown.
+                    using var flushTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
 
-            if (IsHandleCreated)
-            {
-                SafeBlockReason(create: false);
+                    Task.Run(() => _services.Sync.PushSessionsAsync(flushTimeout.Token))
+                        .Wait(TimeSpan.FromSeconds(3));
+                }
+                catch (Exception)
+                {
+                    // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
+                }
+
+                _services.Store.SetKv("shutdown_pending", "");
             }
 
             _allowClose = true;
@@ -670,50 +475,11 @@ public sealed class ActiveSessionRuntime : Form
         }
     }
 
-    /// <summary>
-    /// Menulis/menghapus alasan pemblokiran shutdown di layar Windows.
-    /// Opsional: bila API gagal, pemblokiran tetap berjalan lewat nilai balik
-    /// WM_QUERYENDSESSION (FALSE) sehingga aplikasi tidak pernah ikut gagal.
-    /// </summary>
-    private void SafeBlockReason(bool create)
-    {
-        try
-        {
-            if (!IsHandleCreated)
-            {
-                return;
-            }
-
-            if (create)
-            {
-                ShutdownBlockReasonCreate(Handle, "BALI-LOG: klik Cancel/Batal, lalu isi refleksi belajar supaya laptop bisa dimatikan.");
-            }
-            else
-            {
-                ShutdownBlockReasonDestroy(Handle);
-            }
-        }
-        catch (Exception)
-        {
-            // API opsional.
-        }
-    }
-
     private void ShutdownRuntime()
     {
         StopTimers();
         _sessionEndingFallback.Stop();
         _allowClose = true;
-
-        try
-        {
-            _powerButton.Close();
-            _powerButton.Dispose();
-        }
-        catch (Exception)
-        {
-            // Tombol opsional.
-        }
 
         SystemEvents.SessionEnding -= OnSystemSessionEnding;
 

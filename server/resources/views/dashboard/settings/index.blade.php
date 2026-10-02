@@ -71,46 +71,6 @@
                     </div>
                 </section>
 
-                {{-- PIN --}}
-                <section class="card p-5">
-                    <h2 class="text-sm font-semibold text-ink">PIN Siswa</h2>
-                    <div class="mt-4 space-y-4">
-                        <div class="flex flex-wrap gap-x-6 gap-y-2">
-                            <label class="flex items-center gap-2 text-sm text-ink-soft">
-                                <input type="checkbox" name="pin_setup_requires_online" value="1" @checked(old('pin_setup_requires_online', $settings['pin_setup_requires_online'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
-                                Pembuatan PIN wajib online
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-ink-soft">
-                                <input type="checkbox" name="pin_forbid_weak" value="1" @checked(old('pin_forbid_weak', $settings['pin_forbid_weak'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
-                                Tolak PIN lemah (0000, 1234, …)
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-ink-soft">
-                                <input type="checkbox" name="single_active_session" value="1" @checked(old('single_active_session', $settings['single_active_session'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
-                                Batasi 1 sesi aktif per NISN
-                            </label>
-                            <label class="flex items-center gap-2 text-sm text-ink-soft">
-                                <input type="checkbox" name="pin_activation_required" value="1" @checked(old('pin_activation_required', $settings['pin_activation_required'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
-                                Kode aktivasi guru saat set PIN
-                            </label>
-                        </div>
-
-                        <div class="grid gap-3 lg:grid-cols-4">
-                            <div>
-                                <label class="label" for="pin_length">Panjang PIN</label>
-                                <input type="number" id="pin_length" name="pin_length" min="4" max="6" value="{{ old('pin_length', $settings['pin_length']) }}" class="input text-sm">
-                            </div>
-                            <div>
-                                <label class="label" for="pin_max_attempts">Maks. Salah</label>
-                                <input type="number" id="pin_max_attempts" name="pin_max_attempts" min="3" max="10" value="{{ old('pin_max_attempts', $settings['pin_max_attempts']) }}" class="input text-sm">
-                            </div>
-                            <div>
-                                <label class="label" for="pin_lock_minutes">Durasi Kunci (menit)</label>
-                                <input type="number" id="pin_lock_minutes" name="pin_lock_minutes" min="1" max="60" value="{{ old('pin_lock_minutes', $settings['pin_lock_minutes']) }}" class="input text-sm">
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 {{-- Sesi & Sinkronisasi --}}
                 <section class="card p-5">
                     <h2 class="text-sm font-semibold text-ink">Sesi &amp; Sinkronisasi</h2>
@@ -128,6 +88,11 @@
                             <input type="number" id="device_online_window_seconds" name="device_online_window_seconds" min="60" max="3600" value="{{ old('device_online_window_seconds', $settings['device_online_window_seconds']) }}" class="input text-sm">
                         </div>
                     </div>
+
+                    <label class="mt-4 flex items-center gap-2 text-sm text-ink-soft">
+                        <input type="checkbox" name="single_active_session" value="1" @checked(old('single_active_session', $settings['single_active_session'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
+                        Batasi 1 sesi aktif per NISN
+                    </label>
                 </section>
 
                 <div class="flex items-center gap-2">

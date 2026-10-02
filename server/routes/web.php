@@ -62,7 +62,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/students/import', [StudentImportController::class, 'form'])->name('students.import.form');
         Route::post('/students/import', [StudentImportController::class, 'import'])->name('students.import');
         Route::get('/students/import/template', [StudentImportController::class, 'template'])->name('students.import.template');
-        Route::post('/students/{student}/reset-pin', [StudentController::class, 'resetPin'])->name('students.reset-pin');
         Route::post('/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
         Route::post('/students/bulk-restore', [StudentController::class, 'bulkRestore'])->name('students.bulk-restore');
         Route::post('/students/{student}/restore', [StudentController::class, 'restore'])->whereNumber('student')->name('students.restore');

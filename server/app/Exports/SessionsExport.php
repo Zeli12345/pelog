@@ -68,7 +68,7 @@ class SessionsExport extends DefaultValueBinder implements FromQuery, ShouldAuto
         return [
             'Tanggal', 'Perangkat', 'Tipe Pengguna', 'Nama', 'Kelas/Unit',
             'Mapel', 'Tujuan', 'Mulai', 'Selesai', 'Durasi (menit)',
-            'Pemahaman', 'Refleksi', 'Status Tutup',
+            'Status Tutup',
         ];
     }
 
@@ -89,8 +89,6 @@ class SessionsExport extends DefaultValueBinder implements FromQuery, ShouldAuto
             ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('H:i') ?? '-',
             $session->closed_at?->timezone('Asia/Makassar')->format('H:i') ?? '-',
             $session->duration_minutes,
-            $session->comprehension_level?->label() ?? '-',
-            $session->student_feedback ?? '-',
             $session->close_reason?->label() ?? '-',
         ];
     }

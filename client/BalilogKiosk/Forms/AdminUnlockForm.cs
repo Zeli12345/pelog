@@ -1,4 +1,4 @@
-using BalilogKiosk.Core.Security;
+using BalilogKiosk.App.Services;
 
 namespace BalilogKiosk.App.Forms;
 
@@ -155,7 +155,7 @@ public sealed class AdminUnlockForm : Form
                 return;
             }
 
-            var made = PinHasher.Make(password);
+            var made = AdminPasswordHasher.Make(password);
             _services.Config.AdminPasswordHash =
                 $"{made.Algo}${made.Iterations}${made.Salt}${made.Hash}";
 
@@ -177,9 +177,9 @@ public sealed class AdminUnlockForm : Form
             return;
         }
 
-        var valid = parts[0] == PinHasher.Algo
+        var valid = parts[0] == AdminPasswordHasher.Algo
             && int.TryParse(parts[1], out var iterations)
-            && PinHasher.Verify(password, parts[2], iterations, parts[3]);
+            && AdminPasswordHasher.Verify(password, parts[2], iterations, parts[3]);
 
         if (!valid)
         {

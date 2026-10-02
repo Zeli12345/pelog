@@ -1,4 +1,4 @@
-<x-dashboard-layout title="Laporan" subtitle="Rekapitulasi penggunaan & refleksi belajar">
+<x-dashboard-layout title="Laporan" subtitle="Rekapitulasi penggunaan perangkat">
     <x-slot:actions>
         <div class="flex items-center gap-2">
             <a href="{{ route('reports.export', array_merge(request()->query(), ['format' => 'csv'])) }}" class="btn-secondary !py-1.5 text-xs">
@@ -56,54 +56,25 @@
             <x-stat-card label="Sesi Guru/Pegawai" :value="number_format($summary->staff_sessions ?? 0)" icon="user-check" tone="navy" />
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-            {{-- Distribusi pemahaman --}}
-            <section class="card p-4">
-                <h3 class="text-sm font-semibold text-ink">Tingkat Pemahaman Siswa</h3>
-                <p class="text-xs text-ink-faint">Dari refleksi belajar yang diisi siswa</p>
-                <div class="mt-4 space-y-3">
-                    @php $totalLevels = max(1, $comprehension->sum()); @endphp
-                    @foreach ($levels as $level)
-                        @php
-                            $count = (int) ($comprehension[$level->value] ?? 0);
-                            $percent = (int) round($count / $totalLevels * 100);
-                        @endphp
-                        <div>
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="font-medium text-ink-soft">{{ $level->label() }}</span>
-                                <span class="font-mono text-ink-faint">{{ $count }}</span>
-                            </div>
-                            <div class="mt-1 h-2 overflow-hidden rounded-full bg-line">
-                                <div class="h-full rounded-full bg-navy-700" style="width: {{ $percent }}%"></div>
-                            </div>
-                        </div>
-                    @endforeach
-                    @if ($comprehension->isEmpty())
-                        <p class="text-xs text-ink-faint">Belum ada refleksi siswa pada rentang ini.</p>
-                    @endif
-                </div>
-            </section>
-
-            {{-- Mapel teratas --}}
-            <section class="card p-4">
-                <h3 class="text-sm font-semibold text-ink">Mata Pelajaran Terbanyak</h3>
-                <p class="text-xs text-ink-faint">10 mapel dengan sesi terbanyak</p>
-                @if ($bySubject->isEmpty())
-                    <p class="mt-4 text-xs text-ink-faint">Belum ada data.</p>
-                @else
-                    <table class="mt-3 w-full text-sm">
-                        <tbody class="divide-y divide-line/70">
-                            @foreach ($bySubject as $row)
-                                <tr>
-                                    <td class="py-2 text-ink-soft">{{ $row->subject_name }}</td>
-                                    <td class="py-2 text-right font-mono text-xs text-ink-faint">{{ $row->total }} sesi · {{ number_format($row->total_minutes) }} mnt</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </section>
-        </div>
+        {{-- Mapel teratas --}}
+        <section class="card p-4">
+            <h3 class="text-sm font-semibold text-ink">Mata Pelajaran Terbanyak</h3>
+            <p class="text-xs text-ink-faint">10 mapel dengan sesi terbanyak</p>
+            @if ($bySubject->isEmpty())
+                <p class="mt-4 text-xs text-ink-faint">Belum ada data.</p>
+            @else
+                <table class="mt-3 w-full text-sm">
+                    <tbody class="divide-y divide-line/70">
+                        @foreach ($bySubject as $row)
+                            <tr>
+                                <td class="py-2 text-ink-soft">{{ $row->subject_name }}</td>
+                                <td class="py-2 text-right font-mono text-xs text-ink-faint">{{ $row->total }} sesi · {{ number_format($row->total_minutes) }} mnt</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        </section>
 
         {{-- Tabel sesi --}}
         <section class="card overflow-hidden">
@@ -124,7 +95,6 @@
                                 <th class="px-4 py-2.5 font-semibold">Pengguna</th>
                                 <th class="px-4 py-2.5 font-semibold">Mapel</th>
                                 <th class="px-4 py-2.5 font-semibold">Durasi</th>
-                                <th class="px-4 py-2.5 font-semibold">Pemahaman</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-line/70">
@@ -140,7 +110,6 @@
                                     </td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $session->subject?->name ?? '—' }}</td>
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $session->duration_minutes }} mnt</td>
-                                    <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $session->comprehension_level?->label() ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
