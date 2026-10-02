@@ -28,7 +28,7 @@ class CloseStaleSessionsTest extends TestCase
             'last_heartbeat_at' => now()->subMinutes(30),
         ]);
 
-        $this->artisan('balilog:close-stale-sessions')->assertSuccessful();
+        $this->artisan('pelog:close-stale-sessions')->assertSuccessful();
 
         $session->refresh();
 
@@ -53,7 +53,7 @@ class CloseStaleSessionsTest extends TestCase
             'last_heartbeat_at' => now(),
         ]);
 
-        $this->artisan('balilog:close-stale-sessions')->assertSuccessful();
+        $this->artisan('pelog:close-stale-sessions')->assertSuccessful();
 
         $this->assertNull($session->refresh()->closed_at);
         $this->assertSame('in_use', $device->refresh()->status->value);

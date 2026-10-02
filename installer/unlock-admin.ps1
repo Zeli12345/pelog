@@ -1,4 +1,4 @@
-# BALI-LOG - Alat pemulihan Admin IT
+# PELOG - Alat pemulihan Admin IT
 # Menghapus kebijakan pengamanan kiosk PADA AKUN YANG SEDANG LOGIN (HKCU).
 #
 # PENTING: Jalankan skrip ini saat login dengan AKUN SISWA yang terkunci,
@@ -33,17 +33,17 @@ Write-Host '[unlock] Kebijakan kiosk (Task Manager, CMD, Regedit, Run, Control P
 Write-Host '[unlock] Log off / log in ulang agar perubahan berlaku penuh.' -ForegroundColor Yellow
 
 if ($FullUninstall) {
-    schtasks /Delete /F /TN "BALI-LOG Kiosk (Logon)" | Out-Null
-    schtasks /Delete /F /TN "BALI-LOG Kiosk (Watchdog)" | Out-Null
+    schtasks /Delete /F /TN "PELOG Kiosk (Logon)" | Out-Null
+    schtasks /Delete /F /TN "PELOG Kiosk (Watchdog)" | Out-Null
     schtasks /Delete /F /TN "BALILogHardeningSuspend" | Out-Null
     schtasks /Delete /F /TN "BALILogHardeningApply" | Out-Null
     schtasks /Delete /F /TN "BALILogAutoUpdate" | Out-Null
 
     Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'BALILogKiosk' -ErrorAction SilentlyContinue
 
-    Write-Host '[unlock] Autostart & scheduled task BALI-LOG telah dihapus (full uninstall).' -ForegroundColor Green
+    Write-Host '[unlock] Autostart & scheduled task PELOG telah dihapus (full uninstall).' -ForegroundColor Green
 }
 
 Write-Host ''
-Write-Host 'Catatan: aplikasi BALI-LOG tetap terpasang. Uninstall lewat Settings > Apps,'
+Write-Host 'Catatan: aplikasi PELOG tetap terpasang. Uninstall lewat Settings > Apps,'
 Write-Host 'atau hentikan proses BALILogKiosk lalu hapus foldernya bila ingin bersih total.'

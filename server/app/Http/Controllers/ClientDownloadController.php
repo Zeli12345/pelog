@@ -7,7 +7,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ClientDownloadController extends Controller
 {
-    public const INSTALLER_PATH = 'client/BALI-LOG_Setup.exe';
+    public const INSTALLER_PATH = 'client/PELOG_Setup.exe';
 
     /**
      * Unduhan installer client untuk pembaruan otomatis.
@@ -19,7 +19,7 @@ class ClientDownloadController extends Controller
 
         return response()->file(Storage::disk('local')->path(self::INSTALLER_PATH), [
             'Content-Type' => 'application/octet-stream',
-            'Content-Disposition' => 'attachment; filename="BALI-LOG_Setup.exe"',
+            'Content-Disposition' => 'attachment; filename="PELOG_Setup.exe"',
         ]);
     }
 }

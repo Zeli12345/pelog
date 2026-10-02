@@ -7,13 +7,13 @@ Jalankan di host:
 Di VM:
   curl -X POST --data-binary @C:\\path\\file http://192.168.0.100:8091/namafile
 
-Berkas tersimpan di E:\\balilog-build\\received\\<namafile>
+Berkas tersimpan di E:\\pelog-build\\received\\<namafile>
 """
 
 import http.server
 import os
 
-OUTPUT_DIR = r"E:\balilog-build\received"
+OUTPUT_DIR = r"E:\pelog-build\received"
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -42,5 +42,5 @@ class Handler(http.server.BaseHTTPRequestHandler):
 if __name__ == "__main__":
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     server = http.server.HTTPServer(("0.0.0.0", 8091), Handler)
-    print("file receiver on :8091 -> E:\\balilog-build\\received")
+    print("file receiver on :8091 -> E:\\pelog-build\\received")
     server.serve_forever()

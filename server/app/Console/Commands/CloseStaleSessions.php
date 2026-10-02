@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 class CloseStaleSessions extends Command
 {
-    protected $signature = 'balilog:close-stale-sessions';
+    protected $signature = 'pelog:close-stale-sessions';
 
     protected $description = 'Menutup sesi yang menggantung (heartbeat lama) sebagai recovery';
 

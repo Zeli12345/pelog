@@ -1,12 +1,12 @@
-# BALI-LOG - Development Environment
+# PELOG - Development Environment
 # Mengarahkan semua cache & output berat ke drive E: (drive C: terbatas).
 # Pakai: . .\scripts\env.ps1
 
 $ErrorActionPreference = 'Stop'
 
 $root  = Split-Path -Parent $PSScriptRoot
-$cache = 'E:\balilog-cache'
-$build = 'E:\balilog-build'
+$cache = 'E:\pelog-cache'
+$build = 'E:\pelog-build'
 
 foreach ($d in @(
     $cache,
@@ -29,7 +29,7 @@ $env:npm_config_cache    = "$cache\npm"
 $env:TEMP                = "$cache\temp"
 $env:TMP                 = "$cache\temp"
 
-Write-Host "[env] BALI-LOG dev environment aktif" -ForegroundColor Cyan
+Write-Host "[env] PELOG dev environment aktif" -ForegroundColor Cyan
 Write-Host "[env] Project        : $root"
 Write-Host "[env] NUGET_PACKAGES : $env:NUGET_PACKAGES"
 Write-Host "[env] COMPOSER_CACHE : $env:COMPOSER_CACHE_DIR"

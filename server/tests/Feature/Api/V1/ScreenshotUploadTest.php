@@ -107,7 +107,7 @@ class ScreenshotUploadTest extends TestCase
         $image = imagecreatetruecolor(320, 240);
         imagefill($image, 0, 0, imagecolorallocate($image, 120, 120, 120));
 
-        $path = tempnam(sys_get_temp_dir(), 'balilog_big_').'.jpg';
+        $path = tempnam(sys_get_temp_dir(), 'pelog_big_').'.jpg';
         imagejpeg($image, $path, 85);
         imagedestroy($image);
 

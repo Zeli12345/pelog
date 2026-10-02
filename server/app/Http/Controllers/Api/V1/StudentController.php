@@ -21,7 +21,7 @@ class StudentController extends Controller
                 action: 'nisn_lookup_failed',
                 metadata: ['nisn' => $nisn],
                 actorType: 'device',
-                actorId: $request->attributes->get('balilog_device')?->id,
+                actorId: $request->attributes->get('pelog_device')?->id,
                 request: $request,
             );
 

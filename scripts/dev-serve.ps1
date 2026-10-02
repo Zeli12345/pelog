@@ -1,4 +1,4 @@
-# BALI-LOG - Menjalankan server staging (Laravel) di port 8000.
+# PELOG - Menjalankan server staging (Laravel) di port 8000.
 # Pakai: .\scripts\dev-serve.ps1
 
 $ErrorActionPreference = 'Stop'

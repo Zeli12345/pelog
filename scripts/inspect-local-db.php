@@ -1,6 +1,6 @@
 <?php
 
-$path = $argv[1] ?? 'E:\balilog-build\received\local.db';
+$path = $argv[1] ?? 'E:\pelog-build\received\local.db';
 
 $db = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 

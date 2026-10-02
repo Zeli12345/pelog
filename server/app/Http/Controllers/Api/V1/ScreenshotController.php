@@ -25,7 +25,7 @@ class ScreenshotController extends Controller
         ]);
 
         /** @var Device $device */
-        $device = $request->attributes->get('balilog_device');
+        $device = $request->attributes->get('pelog_device');
 
         $session = UsageSession::query()
             ->where('session_uuid', $sessionUuid)

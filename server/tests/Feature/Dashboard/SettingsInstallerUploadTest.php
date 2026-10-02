@@ -24,7 +24,7 @@ class SettingsInstallerUploadTest extends TestCase
         $this->actingAs($admin)
             ->post(route('settings.client-installer'), [
                 'client_latest_version' => '1.2.3',
-                'client_installer' => UploadedFile::fake()->create('BALI-LOG_Setup.exe', 128, 'application/octet-stream'),
+                'client_installer' => UploadedFile::fake()->create('PELOG_Setup.exe', 128, 'application/octet-stream'),
                 'client_update_notes' => 'Uji unggah dari dashboard',
             ])
             ->assertRedirect(route('settings.index'));
@@ -33,9 +33,9 @@ class SettingsInstallerUploadTest extends TestCase
         Storage::disk('local')->assertExists(ClientDownloadController::INSTALLER_PATH);
 
         // ...dan sekaligus terpublikasi sebagai rilis auto-update.
-        Storage::disk('local')->assertExists('releases/BALI-LOG_Setup_1.2.3.exe');
+        Storage::disk('local')->assertExists('releases/PELOG_Setup_1.2.3.exe');
         $this->assertSame('1.2.3', Setting::getValue('app_version'));
-        $this->assertSame('releases/BALI-LOG_Setup_1.2.3.exe', Setting::getValue('app_installer_file'));
+        $this->assertSame('releases/PELOG_Setup_1.2.3.exe', Setting::getValue('app_installer_file'));
         $this->assertTrue((bool) Setting::getValue('app_updater_enabled'));
 
         // Agen kiosk melihat rilis tersebut sebagai tersedia.

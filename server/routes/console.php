@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Kebersihan sesi: tutup sesi menggantung (laptop mati / client hilang) tiap 5 menit.
-Schedule::command('balilog:close-stale-sessions')->everyFiveMinutes();
+Schedule::command('pelog:close-stale-sessions')->everyFiveMinutes();

@@ -1,5 +1,5 @@
 ====================================================================
-BALI-LOG KIOSK — CATATAN OPERASIONAL UNTUK ADMIN IT
+PELOG KIOSK â€” CATATAN OPERASIONAL UNTUK ADMIN IT
 SMK Negeri 1 Mas Ubud
 ====================================================================
 
@@ -14,10 +14,10 @@ SMK Negeri 1 Mas Ubud
      Regedit, PowerShell, Explorer, dan MUAT ULANG SHELL (bila masih ada
      aplikasi yang terblokir oleh kebijakan lama).
    - Klik "KEMBALI KE KIOSK" bila selesai (kebijakan dipasang ulang), atau
-     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya — pada opsi ini
+     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya â€” pada opsi ini
      penguncian juga DILEPAS agar cmd/Pengaturan/dll. normal kembali.
    - Bila muncul peringatan "Hardening tidak dapat ditangguhkan":
-     task admin tidak ada (instalasi lama) — jalankan installer ulang.
+     task admin tidak ada (instalasi lama) â€” jalankan installer ulang.
      Sementara itu, tombol PowerShell/Pengaturan/Explorer tetap berfungsi
      (dijalankan langsung tanpa shell), dan dari PowerShell admin dapat
      menghapus kebijakan secara manual:
@@ -45,7 +45,7 @@ SMK Negeri 1 Mas Ubud
    - Shutdown paksa (shutdown /f, tahan tombol power) atau mati listrik:
      catatan sesi tetap aman (sesi menggantung ditutup server sebagai
      "recovery").
-   - Diagnosa: C:\ProgramData\BALI-LOG\data\shutdown.log.
+   - Diagnosa: C:\ProgramData\PELOG\data\shutdown.log.
    - Sesi yang tertinggal karena mati listrik / aplikasi dihentikan paksa
      akan dipulihkan: dilanjutkan bila baru, atau ditutup sebagai
      "recovery" oleh server (pemantau sesi menggantung).
@@ -80,23 +80,23 @@ SMK Negeri 1 Mas Ubud
      (contoh: scripts\vm-reset-kiosk.vbs) atau akun admin Windows.
 
 6. RESET PASSWORD ADMIN KIOSK
-   - Buka file:  C:\ProgramData\BALI-LOG\balilog.json
+   - Buka file:  C:\ProgramData\PELOG\pelog.json
    - Hapus baris "admin_password_hash", simpan, lalu buka kiosk kembali.
    - Password baru akan diminta saat menekan Ctrl+Alt+Shift+B berikutnya.
 
 7. LOKASI DATA PENTING
-   - Konfigurasi : C:\ProgramData\BALI-LOG\balilog.json
-   - Database lokal (cache & antrean) : C:\ProgramData\BALI-LOG\data\local.db
-   - Screenshot tertunda (offline)    : C:\ProgramData\BALI-LOG\data\screenshots
+   - Konfigurasi : C:\ProgramData\PELOG\pelog.json
+   - Database lokal (cache & antrean) : C:\ProgramData\PELOG\data\local.db
+   - Screenshot tertunda (offline)    : C:\ProgramData\PELOG\data\screenshots
    - Token perangkat disimpan terenkripsi (DPAPI) di database lokal.
 
 8. MENAMBAH / MENGHAPUS LAPTOP
    - Setiap laptop melakukan enrollment sekali dengan kode dari dashboard
      (Pengaturan > Enrollment Perangkat > Buat Kode Enrollment Baru).
-   - Kode hanya tampil sekali. Bila hilang, buat kode baru — laptop yang
+   - Kode hanya tampil sekali. Bila hilang, buat kode baru â€” laptop yang
      sudah terdaftar tidak terpengaruh.
-   - Uninstall: Settings > Apps > BALI-LOG Kiosk, atau:
-       "C:\Program Files\BALI-LOG Kiosk\unins000.exe"
+   - Uninstall: Settings > Apps > PELOG Kiosk, atau:
+       "C:\Program Files\PELOG Kiosk\unins000.exe"
 
 9. CATATAN PENTING
    - Instalasi sebaiknya dilakukan saat login dengan AKUN SISWA VIA akun
@@ -115,7 +115,7 @@ SMK Negeri 1 Mas Ubud
    - Tidak memerlukan hak administrator: profil baru dibuat sebagai profil
      pengguna Windows (user=current).
    - Bila hanya jaringan tertentu yang boleh dipakai siswa, isi daftar SSID
-     pada C:\ProgramData\BALI-LOG\balilog.json, contoh:
+     pada C:\ProgramData\PELOG\pelog.json, contoh:
        "allowed_wifi_ssids": ["SMKN1-UBUD", "LAB-RPL"]
      Kosongkan ([]) agar semua jaringan tampil. Perubahan berlaku setelah
      aplikasi kiosk dijalankan ulang.
@@ -131,20 +131,20 @@ SMK Negeri 1 Mas Ubud
      dihapus dan menjalankan Scheduled Task "BALILogSelfWipe" (hak admin,
      TANPA prompt UAC).
    - Tugas self-wipe menjalankan hardening.ps1 -Wipe dengan tahapan:
-     1) menghentikan BalilogKiosk.exe,
-     2) menghapus semua Scheduled Task & autostart BALI-LOG,
+     1) menghentikan PelogKiosk.exe,
+     2) menghapus semua Scheduled Task & autostart PELOG,
      3) menjalankan uninstaller secara senyap (VERYSILENT, tanpa UAC),
-     4) menghapus folder data C:\ProgramData\BALI-LOG.
+     4) menghapus folder data C:\ProgramData\PELOG.
    - PENTING - TIDAK DAPAT DIBATALKAN (IRREVERSIBLE): aplikasi, konfigurasi,
      database lokal, token perangkat, dan screenshot tertunda ikut terhapus.
-     Laptop harus DIINSTAL ULANG (BALI-LOG_Setup.exe) dan DI-ENROLL ULANG
+     Laptop harus DIINSTAL ULANG (PELOG_Setup.exe) dan DI-ENROLL ULANG
      dengan kode enrollment baru sebelum bisa dipakai lagi.
-   - Log wipe ada di laptop:  C:\Users\Public\balilog-wipe.log
+   - Log wipe ada di laptop:  C:\Users\Public\pelog-wipe.log
      Baris terakhir "wipe selesai" menandakan proses tuntas. Bila laptop
      sempat mati di tengah proses, jalankan installer ulang atau ulangi wipe
      secara manual (dari akun admin):
-       powershell -ExecutionPolicy Bypass -File "C:\Program Files\BALI-LOG Kiosk\hardening.ps1" -Wipe
-   - Wipe hanya menghapus aplikasi & data BALI-LOG; akun Windows siswa dan
+       powershell -ExecutionPolicy Bypass -File "C:\Program Files\PELOG Kiosk\hardening.ps1" -Wipe
+   - Wipe hanya menghapus aplikasi & data PELOG; akun Windows siswa dan
      Windows itu sendiri TIDAK dihapus.
 
    Mengatur nama/lokasi perangkat saat membangun installer:
@@ -154,12 +154,12 @@ SMK Negeri 1 Mas Ubud
      "Pengaturan Perangkat" > ubah "Nama perangkat" dan "Lokasi" > Simpan.
    - Saat build installer (Admin IT), pakai parameter baru:
        .\scripts\build-installer.ps1 -DeviceLabel "LAB-BL-09" -Location "Lab RPL 1"
-     Nilai ini ditulis ke balilog.client.json di folder installer dan
-     disalin ke C:\ProgramData\BALI-LOG\balilog.json saat instalasi (hanya
+     Nilai ini ditulis ke pelog.client.json di folder installer dan
+     disalin ke C:\ProgramData\PELOG\pelog.json saat instalasi (hanya
      bila file tujuan belum ada). Contoh isi:
        "device_label": "LAB-BL-09",
        "device_location": "Lab RPL 1"
-   - Bisa juga mengedit langsung C:\ProgramData\BALI-LOG\balilog.json lalu
+   - Bisa juga mengedit langsung C:\ProgramData\PELOG\pelog.json lalu
      menjalankan ulang aplikasi kiosk.
 
 ====================================================================

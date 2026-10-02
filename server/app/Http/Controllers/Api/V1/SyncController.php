@@ -28,7 +28,7 @@ class SyncController extends Controller
         ]);
 
         /** @var Device $device */
-        $device = $request->attributes->get('balilog_device');
+        $device = $request->attributes->get('pelog_device');
 
         $results = [];
 

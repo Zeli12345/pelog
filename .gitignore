@@ -4,7 +4,7 @@ Desktop.ini
 .DS_Store
 .idea
 
-# Build & arsip (output berat berada di E:\balilog-build)
+# Build & arsip (output berat berada di E:\pelog-build)
 *.zip
 *.7z
 

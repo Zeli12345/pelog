@@ -1,4 +1,4 @@
-# BALI-LOG - Kebijakan penguncian kiosk untuk AKUN SAAT INI.
+# PELOG - Kebijakan penguncian kiosk untuk AKUN SAAT INI.
 # WAJIB dijalankan dengan hak Administrator (installer / UAC):
 #   powershell -ExecutionPolicy Bypass -File hardening.ps1 -Apply
 #   powershell -ExecutionPolicy Bypass -File hardening.ps1 -Suspend   (mode maintenance)
@@ -13,7 +13,7 @@ param(
 $ErrorActionPreference = 'Continue'
 
 # Log publik self-wipe (dibaca Admin IT setelah perangkat dihapus dari dashboard).
-$WipeLogPath = 'C:\Users\Public\balilog-wipe.log'
+$WipeLogPath = 'C:\Users\Public\pelog-wipe.log'
 
 function Write-WipeLog([string]$Message) {
     try {
@@ -48,7 +48,7 @@ function Remove-Value($path, $name) {
 }
 
 # ---------------------------------------------------------------------------
-# SELF-WIPE: menghapus seluruh instalasi BALI-LOG + data tanpa prompt UAC.
+# SELF-WIPE: menghapus seluruh instalasi PELOG + data tanpa prompt UAC.
 # Dipicu dari dashboard (perangkat dihapus) lewat Scheduled Task
 # "BALILogSelfWipe" -> hardening.ps1 -Wipe. Semua langkah best-effort:
 # tidak pernah melempar error dan setiap tahap dicatat ke log publik.
@@ -61,8 +61,8 @@ if ($Wipe) {
     while ($killAttempt -lt 2) {
         $killAttempt++
         try {
-            Write-WipeLog ('menghentikan BalilogKiosk.exe (percobaan ' + $killAttempt + ')...')
-            & taskkill.exe /f /im BalilogKiosk.exe 2>&1 | Out-Null
+            Write-WipeLog ('menghentikan PelogKiosk.exe (percobaan ' + $killAttempt + ')...')
+            & taskkill.exe /f /im PelogKiosk.exe 2>&1 | Out-Null
             Write-WipeLog ('taskkill selesai dengan kode ' + $LASTEXITCODE + '.')
         } catch {
             Write-WipeLog ('GAGAL menghentikan kiosk: ' + $_.Exception.Message)
@@ -76,8 +76,8 @@ if ($Wipe) {
     # 2) Hapus Scheduled Task (watchdog/logon/auto-update/hardening lebih dulu,
     #    task self-wipe PALING AKHIR).
     $wipeTasks = @(
-        'BALI-LOG Kiosk (Watchdog)',
-        'BALI-LOG Kiosk (Logon)',
+        'PELOG Kiosk (Watchdog)',
+        'PELOG Kiosk (Logon)',
         'BALILogAutoUpdate',
         'BALILogHardeningApply',
         'BALILogHardeningSuspend',
@@ -121,15 +121,15 @@ if ($Wipe) {
     #    aplikasi supaya uninstaller tidak terkunci oleh skrip ini. Proses
     #    anak mewarisi token admin dari task (tanpa prompt UAC).
     try {
-        $stage2Path = Join-Path $env:TEMP 'balilog-wipe-run.ps1'
+        $stage2Path = Join-Path $env:TEMP 'pelog-wipe-run.ps1'
 
         $stage2Script = @'
-# BALI-LOG self-wipe tahap 2 - dijalankan lepas dari folder aplikasi.
+# PELOG self-wipe tahap 2 - dijalankan lepas dari folder aplikasi.
 # Semua langkah best-effort; setiap tahap dicatat ke log publik.
 $ErrorActionPreference = "Continue"
-$log = "C:\Users\Public\balilog-wipe.log"
-$appDir = Join-Path $env:ProgramFiles "BALI-LOG Kiosk"
-$dataDir = "C:\ProgramData\BALI-LOG"
+$log = "C:\Users\Public\pelog-wipe.log"
+$appDir = Join-Path $env:ProgramFiles "PELOG Kiosk"
+$dataDir = "C:\ProgramData\PELOG"
 
 function Write-Stage2Log([string]$message) {
     try {

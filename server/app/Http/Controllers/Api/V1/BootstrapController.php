@@ -18,7 +18,7 @@ class BootstrapController extends Controller
     public function index(Request $request): JsonResponse
     {
         /** @var \App\Models\Device $device */
-        $device = $request->attributes->get('balilog_device');
+        $device = $request->attributes->get('pelog_device');
         $students = Student::query()
             ->where('is_active', true)
             ->orderBy('name')

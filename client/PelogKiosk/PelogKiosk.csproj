@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Samakan dengan AppInfo.Version (client/PelogKiosk.Core/AppInfo.cs)
+         dan AppVersion di installer/pelog-setup.iss saat merilis versi baru. -->
+    <Version>1.2.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+    <PackageReference Include="SkiaSharp" Version="4.152.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PelogKiosk.Core\PelogKiosk.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\assets\logo_sekolah.png" Link="Assets\logo_sekolah.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

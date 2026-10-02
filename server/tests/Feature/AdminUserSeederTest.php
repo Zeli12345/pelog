@@ -18,18 +18,18 @@ class AdminUserSeederTest extends TestCase
 
         (new AdminUserSeeder)->run();
 
-        $admin = User::query()->where('email', 'admin@balilog.local')->first();
+        $admin = User::query()->where('email', 'admin@pelog.local')->first();
 
         $this->assertNotNull($admin);
         $this->assertTrue($admin->isAdminIt());
         $this->assertTrue($admin->is_active);
         $this->assertFalse(
-            Hash::check('Balilog!Admin2026', $admin->password),
+            Hash::check('Pelog!Admin2026', $admin->password),
             'Seeder produksi tidak boleh memakai password contoh yang ada di repositori.'
         );
 
         // Akun guru contoh tidak boleh ikut dibuat di produksi.
-        $this->assertNull(User::query()->where('email', 'guru@balilog.local')->first());
+        $this->assertNull(User::query()->where('email', 'guru@pelog.local')->first());
     }
 
     public function test_seeder_ulang_tidak_mereset_password_admin(): void
@@ -38,11 +38,11 @@ class AdminUserSeederTest extends TestCase
 
         (new AdminUserSeeder)->run();
 
-        $before = User::query()->where('email', 'admin@balilog.local')->firstOrFail()->password;
+        $before = User::query()->where('email', 'admin@pelog.local')->firstOrFail()->password;
 
         (new AdminUserSeeder)->run();
 
-        $after = User::query()->where('email', 'admin@balilog.local')->firstOrFail()->password;
+        $after = User::query()->where('email', 'admin@pelog.local')->firstOrFail()->password;
 
         $this->assertSame($before, $after, 'Menjalankan seeder ulang tidak boleh mengubah password admin.');
     }

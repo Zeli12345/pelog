@@ -1,4 +1,4 @@
-# BALI-LOG - Build installer (Inno Setup) memakai hasil publish di E:
+# PELOG - Build installer (Inno Setup) memakai hasil publish di E:
 # Pakai: .\scripts\build-installer.ps1 -BaseUrl "http://192.168.1.10:8000" -EnrollmentCode "BLG-XXXX-XXXX" [-UpdateCheckHours 6]
 #        [-DeviceLabel "LAB-BL-09"] [-Location "Lab RPL 1"]
 
@@ -14,11 +14,11 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $installerDir = Join-Path $root "installer"
 
-if (-not (Test-Path "E:\balilog-build\publish\BalilogKiosk.exe")) {
+if (-not (Test-Path "E:\pelog-build\publish\PelogKiosk.exe")) {
     throw "Hasil publish tidak ditemukan. Jalankan dulu: .\scripts\build-client.ps1"
 }
 
-# Konfigurasi awal aplikasi client (dibaca dari C:\ProgramData\BALI-LOG\balilog.json)
+# Konfigurasi awal aplikasi client (dibaca dari C:\ProgramData\PELOG\pelog.json)
 # device_label/device_location hanya ditulis bila diisi, dan update_check_hours
 # hanya bila diminta (> 0), agar output default tidak berubah.
 $clientConfig = [ordered]@{
@@ -42,7 +42,7 @@ if ($UpdateCheckHours -gt 0) {
 
 $clientConfig = $clientConfig | ConvertTo-Json
 
-[System.IO.File]::WriteAllText((Join-Path $installerDir "balilog.client.json"), $clientConfig)
+[System.IO.File]::WriteAllText((Join-Path $installerDir "pelog.client.json"), $clientConfig)
 
 # Kode enrollment opsional (agar dialog enroll terisi otomatis)
 $enrollmentFile = Join-Path $installerDir "enrollment.txt"
@@ -68,13 +68,13 @@ if (-not (Test-Path $iscc)) {
 
 Write-Host "[installer] Compile setup.iss..." -ForegroundColor Cyan
 
-& $iscc (Join-Path $installerDir "balilog-setup.iss")
+& $iscc (Join-Path $installerDir "pelog-setup.iss")
 
 if ($LASTEXITCODE -ne 0) {
     throw "Compile installer gagal (exit code $LASTEXITCODE)"
 }
 
-$setup = "E:\balilog-build\installer\BALI-LOG_Setup.exe"
+$setup = "E:\pelog-build\installer\PELOG_Setup.exe"
 
 if (-not (Test-Path $setup)) {
     throw "Installer tidak terbentuk: $setup"

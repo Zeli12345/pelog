@@ -18,7 +18,7 @@ class AppUpdateController extends Controller
         if (! $enabled) {
             return ApiResponse::ok([
                 'available' => false,
-                'version' => Setting::getValue('app_version', config('balilog.version')),
+                'version' => Setting::getValue('app_version', config('pelog.version')),
             ]);
         }
 
@@ -27,13 +27,13 @@ class AppUpdateController extends Controller
         if (! is_string($file) || $file === '' || ! Storage::disk('local')->exists($file)) {
             return ApiResponse::ok([
                 'available' => false,
-                'version' => Setting::getValue('app_version', config('balilog.version')),
+                'version' => Setting::getValue('app_version', config('pelog.version')),
             ]);
         }
 
         return ApiResponse::ok([
             'available' => true,
-            'version' => Setting::getValue('app_version', config('balilog.version')),
+            'version' => Setting::getValue('app_version', config('pelog.version')),
             'sha256' => Setting::getValue('app_installer_sha256'),
             'size_bytes' => (int) Setting::getValue('app_installer_size', 0),
             'mandatory' => (bool) Setting::getValue('app_update_mandatory', false),

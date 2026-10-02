@@ -23,9 +23,9 @@ class HealthController extends Controller
             && Setting::getValue('client_installer_sha256') !== '';
 
         return ApiResponse::ok([
-            'app_version' => config('balilog.version', '1.0.0'),
-            'min_client_version' => config('balilog.min_client_version', '1.0.0'),
-            'latest_version' => Setting::getValue('client_latest_version', config('balilog.version', '1.0.0')),
+            'app_version' => config('pelog.version', '1.0.0'),
+            'min_client_version' => config('pelog.min_client_version', '1.0.0'),
+            'latest_version' => Setting::getValue('client_latest_version', config('pelog.version', '1.0.0')),
             'update_url' => $hasInstaller ? url('/downloads/client-setup') : null,
             'sha256' => $hasInstaller ? Setting::getValue('client_installer_sha256') : null,
             'size' => $hasInstaller ? (int) Setting::getValue('client_installer_size', 0) : null,

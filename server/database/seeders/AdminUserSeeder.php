@@ -16,10 +16,10 @@ class AdminUserSeeder extends Seeder
         // Jangan pernah dibuat di produksi (kredensial contoh = pintu belakang).
         if (app()->environment('local', 'testing')) {
             User::query()->updateOrCreate(
-                ['email' => 'guru@balilog.local'],
+                ['email' => 'guru@pelog.local'],
                 [
                     'name' => 'Guru Contoh',
-                    'password' => 'Balilog!Guru2026',
+                    'password' => 'Pelog!Guru2026',
                     'role' => 'guru',
                     'is_active' => true,
                     'email_verified_at' => now(),
@@ -30,17 +30,17 @@ class AdminUserSeeder extends Seeder
 
     private function seedAdmin(): void
     {
-        $email = trim((string) env('BALILOG_ADMIN_EMAIL', 'admin@balilog.local'));
-        $email = $email !== '' ? $email : 'admin@balilog.local';
+        $email = trim((string) env('PELOG_ADMIN_EMAIL', 'admin@pelog.local'));
+        $email = $email !== '' ? $email : 'admin@pelog.local';
 
-        $envPassword = (string) env('BALILOG_ADMIN_PASSWORD', '');
+        $envPassword = (string) env('PELOG_ADMIN_PASSWORD', '');
         $existing = User::query()->where('email', $email)->first();
 
         if ($existing !== null) {
             // Jangan pernah menimpa password yang sudah diubah admin. Rotasi hanya
-            // bila BALILOG_ADMIN_PASSWORD diberikan secara eksplisit (mis. reset).
+            // bila PELOG_ADMIN_PASSWORD diberikan secara eksplisit (mis. reset).
             $attributes = [
-                'name' => 'Admin IT BALI-LOG',
+                'name' => 'Admin IT PELOG',
                 'role' => 'admin_it',
                 'is_active' => true,
                 'email_verified_at' => $existing->email_verified_at ?? now(),
@@ -53,7 +53,7 @@ class AdminUserSeeder extends Seeder
             $existing->forceFill($attributes)->save();
 
             if ($envPassword !== '') {
-                $this->command?->info('  Password admin diperbarui dari BALILOG_ADMIN_PASSWORD.');
+                $this->command?->info('  Password admin diperbarui dari PELOG_ADMIN_PASSWORD.');
             }
 
             return;
@@ -68,13 +68,13 @@ class AdminUserSeeder extends Seeder
                 $generated = true;
             } else {
                 // Lingkungan lokal/pengujian: kredensial tetap agar mudah dipakai.
-                $password = 'Balilog!Admin2026';
+                $password = 'Pelog!Admin2026';
             }
         }
 
         User::query()->create([
             'email' => $email,
-            'name' => 'Admin IT BALI-LOG',
+            'name' => 'Admin IT PELOG',
             'password' => $password,
             'role' => 'admin_it',
             'is_active' => true,
@@ -85,7 +85,7 @@ class AdminUserSeeder extends Seeder
             $this->command?->warn('  Akun admin dibuat dengan password ACAK (hanya ditampilkan sekali):');
             $this->command?->line('    Email    : '.$email);
             $this->command?->line('    Password : '.$password);
-            $this->command?->warn('  Simpan sekarang, atau set BALILOG_ADMIN_PASSWORD lalu jalankan ulang seeder ini untuk merotasi.');
+            $this->command?->warn('  Simpan sekarang, atau set PELOG_ADMIN_PASSWORD lalu jalankan ulang seeder ini untuk merotasi.');
         }
     }
 }

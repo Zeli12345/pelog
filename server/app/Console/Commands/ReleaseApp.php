@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ReleaseApp extends Command
 {
-    protected $signature = 'balilog:release-app
-        {installer : Path ke installer (BALI-LOG_Setup.exe)}
+    protected $signature = 'pelog:release-app
+        {installer : Path ke installer (PELOG_Setup.exe)}
         {version : Versi rilis, mis. 1.1.0}
         {--notes= : Catatan rilis singkat}
         {--mandatory : Tandai sebagai update wajib}';
@@ -33,7 +33,7 @@ class ReleaseApp extends Command
             return self::FAILURE;
         }
 
-        $target = 'releases/BALI-LOG_Setup_'.$version.'.exe';
+        $target = 'releases/PELOG_Setup_'.$version.'.exe';
 
         $stream = fopen($source, 'rb');
 

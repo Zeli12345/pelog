@@ -58,7 +58,7 @@ class EnsureDeviceToken
 
         $device->forceFill($updates)->saveQuietly();
 
-        $request->attributes->set('balilog_device', $device);
+        $request->attributes->set('pelog_device', $device);
 
         return $next($request);
     }

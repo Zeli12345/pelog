@@ -112,7 +112,7 @@ class SettingsController extends Controller
         );
 
         return redirect()->route('settings.index')
-            ->with('status', 'Kode enrollment baru dibuat. Salin sekarang — kode hanya ditampilkan sekali.')
+            ->with('status', 'Kode enrollment baru dibuat. Salin sekarang â€” kode hanya ditampilkan sekali.')
             ->with('enrollment_code', $code);
     }
 
@@ -136,7 +136,7 @@ class SettingsController extends Controller
         Storage::disk('local')->putFileAs(
             'client',
             $file,
-            'BALI-LOG_Setup.exe',
+            'PELOG_Setup.exe',
         );
 
         $absolutePath = Storage::disk('local')->path(ClientDownloadController::INSTALLER_PATH);
@@ -144,7 +144,7 @@ class SettingsController extends Controller
         // Sekaligus publikasikan sebagai rilis auto-update. Tanpa langkah ini
         // installer hanya tersedia untuk unduhan manual (penyebab umum keluhan
         // "pembaruan otomatis tidak jalan" karena agen kiosk membaca app_*).
-        $releaseTarget = 'releases/BALI-LOG_Setup_'.$data['client_latest_version'].'.exe';
+        $releaseTarget = 'releases/PELOG_Setup_'.$data['client_latest_version'].'.exe';
         Storage::disk('local')->makeDirectory('releases');
         Storage::disk('local')->copy(ClientDownloadController::INSTALLER_PATH, $releaseTarget);
         $releasePath = Storage::disk('local')->path($releaseTarget);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BALI-LOG VNC driver — otomasi VM untuk pengujian Fase 6.
+"""PELOG VNC driver â€” otomasi VM untuk pengujian Fase 6.
 
 Contoh:
   python scripts/vnc-driver.py "key:win-r" "type:cmd" "key:enter" "sleep:2" "capture:out.png"
@@ -20,7 +20,7 @@ import time
 from vncdotool import api
 
 SERVER = "127.0.0.1::5900"
-PASSWORD = "balilog"
+PASSWORD = "pelog"
 
 KEY_ALIASES = {
     "win": "super",

@@ -1,4 +1,4 @@
-# BALI-LOG - Agen pembaruan otomatis.
+# PELOG - Agen pembaruan otomatis.
 # Dijalankan sebagai SYSTEM oleh Scheduled Task "BALILogAutoUpdate" (trigger: boot + delay).
 #
 # Alur: kiosk mengunduh installer + menulis update.json (staging). Saat boot,
@@ -11,11 +11,11 @@
 # folder staging (data\updates) dan sha256 wajib 64 hex yang cocok.
 #
 # Hasil setiap percobaan ditulis ke:
-#   C:\ProgramData\BALI-LOG\update-result.json
-#   C:\ProgramData\BALI-LOG\update-agent.log
+#   C:\ProgramData\PELOG\update-result.json
+#   C:\ProgramData\PELOG\update-agent.log
 
 param(
-    [string]$ConfigDir = (Join-Path $env:ProgramData 'BALI-LOG')
+    [string]$ConfigDir = (Join-Path $env:ProgramData 'PELOG')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -114,7 +114,7 @@ $version = [string]$manifest.version
 $installer = [string]$manifest.installer_path
 
 # Tunda bila kiosk sedang berjalan (sesi aktif) - dicoba lagi pada boot berikutnya.
-if (Get-Process -Name 'BalilogKiosk' -ErrorAction SilentlyContinue) {
+if (Get-Process -Name 'PelogKiosk' -ErrorAction SilentlyContinue) {
     Write-Log ("tunda v{0}: kiosk sedang berjalan" -f $version)
     Write-Result 'deferred' $version 'kiosk masih berjalan'
     exit 0
@@ -176,7 +176,7 @@ if ($hash -ne $expected) {
 }
 
 # Cek sekali lagi: hindari balapan dengan autostart/watchdog kiosk.
-if (Get-Process -Name 'BalilogKiosk' -ErrorAction SilentlyContinue) {
+if (Get-Process -Name 'PelogKiosk' -ErrorAction SilentlyContinue) {
     Write-Log ("tunda v{0}: kiosk muncul saat verifikasi" -f $version)
     Write-Result 'deferred' $version 'kiosk mulai berjalan'
     exit 0

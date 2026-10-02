@@ -1,4 +1,4 @@
-# BALI-LOG - Menyalakan MariaDB XAMPP (port 3307) jika belum berjalan.
+# PELOG - Menyalakan MariaDB XAMPP (port 3307) jika belum berjalan.
 # Pakai: .\scripts\dev-db.ps1
 
 $ErrorActionPreference = 'Continue'

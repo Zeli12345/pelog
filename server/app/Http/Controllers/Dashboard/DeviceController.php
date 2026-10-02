@@ -52,7 +52,7 @@ class DeviceController extends Controller
             'statusFilter' => $statusFilter,
             'onlineWindow' => $onlineWindow,
             'trashed' => $trashed,
-            'latestVersion' => (string) Setting::getValue('app_version', config('balilog.version')),
+            'latestVersion' => (string) Setting::getValue('app_version', config('pelog.version')),
         ]);
     }
 

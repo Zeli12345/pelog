@@ -170,7 +170,7 @@ class DemoDataSeeder extends Seeder
         $white = imagecolorallocate($image, 240, 240, 240);
         $accent = imagecolorallocate($image, 201, 162, 39);
 
-        imagestring($image, 5, 40, 40, 'Demo screenshot BALI-LOG', $white);
+        imagestring($image, 5, 40, 40, 'Demo screenshot PELOG', $white);
         imagestring($image, 4, 40, 80, 'Sesi praktikum siswa - LAB-BL-05', $accent);
         imagestring($image, 3, 40, 116, now()->timezone('Asia/Makassar')->format('d/m/Y H:i').' WITA', $white);
 

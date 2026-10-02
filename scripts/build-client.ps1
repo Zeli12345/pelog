@@ -1,4 +1,4 @@
-# BALI-LOG - Build aplikasi kiosk (self-contained single-file) ke drive E:
+# PELOG - Build aplikasi kiosk (self-contained single-file) ke drive E:
 # Pakai: .\scripts\build-client.ps1
 
 param(
@@ -10,15 +10,15 @@ $root = Split-Path -Parent $PSScriptRoot
 
 & "$PSScriptRoot\env.ps1"
 
-$publishDir = "E:\balilog-build\publish"
+$publishDir = "E:\pelog-build\publish"
 
 if (Test-Path $publishDir) {
     Remove-Item $publishDir -Recurse -Force
 }
 
-Write-Host "[build] Publish BALI-LOG Kiosk ($Configuration, win-x64)..." -ForegroundColor Cyan
+Write-Host "[build] Publish PELOG Kiosk ($Configuration, win-x64)..." -ForegroundColor Cyan
 
-dotnet publish "$root\client\BalilogKiosk\BalilogKiosk.csproj" `
+dotnet publish "$root\client\PelogKiosk\PelogKiosk.csproj" `
     -c $Configuration `
     -r win-x64 `
     --self-contained true `
@@ -30,20 +30,20 @@ if ($LASTEXITCODE -ne 0) {
     throw "Publish gagal (exit code $LASTEXITCODE)"
 }
 
-$exe = Join-Path $publishDir "BalilogKiosk.exe"
+$exe = Join-Path $publishDir "PelogKiosk.exe"
 
 if (-not (Test-Path $exe)) {
     throw "Executable tidak ditemukan: $exe"
 }
 
-$corePdb = Join-Path $publishDir "BalilogKiosk.Core.pdb"
+$corePdb = Join-Path $publishDir "PelogKiosk.Core.pdb"
 
 if (-not (Test-Path $corePdb)) {
     throw "Symbol file tidak ditemukan: $corePdb"
 }
 
 # Tampilkan versi rilis dari konstanta AppInfo.Version (file tidak diubah).
-$appInfoPath = Join-Path $root "client\BalilogKiosk.Core\AppInfo.cs"
+$appInfoPath = Join-Path $root "client\PelogKiosk.Core\AppInfo.cs"
 
 if (-not (Test-Path $appInfoPath)) {
     throw "AppInfo.cs tidak ditemukan: $appInfoPath"

@@ -1,7 +1,7 @@
-# VERIFICATION — BALI-LOG
+# VERIFICATION â€” PELOG
 
 Laporan verifikasi menyeluruh. Diperbarui: 15 September 2026 (Fase 6 selesai di VM).
-Semua perintah dijalankan dari root repo `balilog/` kecuali disebut lain.
+Semua perintah dijalankan dari root repo `pelog/` kecuali disebut lain.
 
 ---
 
@@ -17,21 +17,21 @@ cd server; php artisan test; cd ..
 
 # 2) Test client + integrasi E2E (27 test)
 #    E2E membutuhkan server staging hidup + kode enrollment
-$code = (php server\artisan balilog:enrollment-code | Select-String "BLG-").Matches[0].Value
-$env:BALILOG_E2E_CODE = $code
-dotnet test Balilog.sln
+$code = (php server\artisan pelog:enrollment-code | Select-String "BLG-").Matches[0].Value
+$env:PELOG_E2E_CODE = $code
+dotnet test Pelog.sln
 
 # 3) Build aplikasi + installer
 .\scripts\build-client.ps1
 .\scripts\build-installer.ps1 -BaseUrl "http://<IP-SERVER>:8000"
-# Output: E:\balilog-build\installer\BALI-LOG_Setup.exe
+# Output: E:\pelog-build\installer\PELOG_Setup.exe
 ```
 
 ---
 
 ## 2. Test Otomatis
 
-### 2.1 Server — 80 test, 250 assertion (semua hijau)
+### 2.1 Server â€” 80 test, 250 assertion (semua hijau)
 
 Cakupan utama:
 
@@ -48,7 +48,7 @@ Cakupan utama:
 | Stale sessions | sesi menggantung ditutup `recovery` + device dibebaskan; sesi sehat tidak tersentuh |
 | Dashboard/akses | tamu diarahkan login, guru 403 pada halaman admin, registrasi publik ditutup (404) |
 
-### 2.2 Client — 27 test (semua hijau)
+### 2.2 Client â€” 27 test (semua hijau)
 
 | Area | Yang diverifikasi |
 |---|---|
@@ -57,40 +57,40 @@ Cakupan utama:
 | LocalStore (SQLite) | kv, cache siswa/guru/mapel, status kunci PIN lokal, siklus sesi + antrean sync, antrean screenshot |
 | ServerClock | offset jam server diterapkan & dipertahankan |
 | ImageEncoder | downscale ke 1280 px, WebP utama, fallback JPEG |
-| Integrasi E2E (server nyata) | enroll → bootstrap → set PIN (+verifikasi hash server di C#) → start → heartbeat → upload screenshot WebP → end → sync batch (+idempotensi) → token salah ditolak 401 |
+| Integrasi E2E (server nyata) | enroll â†’ bootstrap â†’ set PIN (+verifikasi hash server di C#) â†’ start â†’ heartbeat â†’ upload screenshot WebP â†’ end â†’ sync batch (+idempotensi) â†’ token salah ditolak 401 |
 
 ---
 
 ## 3. Uji End-to-End di VM (Fase 6)
 
-VM: Windows 10 (1920x1080), VMware Workstation 17.6.4 di `E:\New folder (34)\balilog vm.vmx`.
+VM: Windows 10 (1920x1080), VMware Workstation 17.6.4 di `E:\New folder (34)\pelog vm.vmx`.
 Kontrol: VNC (vncdotool via `scripts/vnc-driver.py`), snapshot `sebelum-install`.
 Bukti visual: `docs/evidence-fase-6/` (102 tangkapan layar).
 
 | # | Skenario | Hasil | Bukti |
 |---|---|---|---|
-| 1 | Install senyap via installer (UAC Alt+Y) | ✅ aplikasi, config, task, autostart terpasang | 43, 52 |
-| 2 | Enrollment (kode dari dashboard) | ✅ device terdaftar di server | 44–46 |
-| 3 | Login siswa pertama (wizard PIN + instruksi) | ✅ PIN tersimpan server (PBKDF2) | 24, 25 |
-| 4 | Verifikasi PIN | ✅ | 36, 39 |
-| 5 | Sesi: mapel + tujuan → MULAI | ✅ device `in_use`, widget + stopwatch | 27, 49 |
-| 6 | Heartbeat 60 detik di server | ✅ `last_heartbeat_at` tepat +60s | §4 |
-| 7 | Screenshot otomatis + upload (test mode menit-1) | ✅ WebP 41,7 KB + thumb 8 KB di server | §4, 50 |
-| 8 | Selesai + form refleksi | ✅ sesi `normal`, durasi, pemahaman, feedback tersimpan | 50, 51, §4 |
-| 9 | Recovery/resume (kill proses → start ulang) | ✅ widget lanjut (stopwatch tidak reset), heartbeat lanjut | 54, 55, 56 |
-| 10 | Offline total (server mati) | ✅ banner offline, login dari cache, sesi & feedback tercatat lokal | 57–62 |
-| 11 | Sinkron otomatis saat online kembali | ✅ sesi offline masuk server (`sync_source=offline`) + penutupan tersinkron | §4, 67 |
-| 12 | Hardening (policy installer) | ✅ Task Manager "Access is denied", regedit diblokir | 21, 75 |
-| 13 | Mode Guru (NIP) | ✅ tanpa mapel, tanpa feedback, tercatat `user_type=staff` | 70–72 |
-| 14 | Autostart setelah reboot | ✅ kiosk terbuka otomatis | 35, 38, 94 |
-| 15 | Watchdog (task 2 menit) | ✅ relaunch otomatis setelah proses dibunuh | 13, 76 |
-| 16 | Adopsi perangkat setelah re-image (VM revert) | ✅ uuid dirotasi, audit `device_adopted` | 47, 48 |
-| 17 | Sesi menggantung dibersihkan server (cron 5 menit) | ✅ 3 sesi ditutup `recovery`, device bebas | §4 |
-| 18 | Mode Admin: hotkey + password + banner + degradasi aman | ✅ dialog set/verifikasi password, banner, peringatan bila suspend gagal | 84, 85, 86, 95–98 |
-| 19 | Hardening -Apply / -Suspend (skrip) | ✅ -Apply terverifikasi di VM; -Suspend tervalidasi eksekusinya | 75, §4 |
-| 20 | Uninstall (task & autostart dibersihkan) | ⏳ diuji manual saat produksi (skrip siap) | — |
+| 1 | Install senyap via installer (UAC Alt+Y) | âœ… aplikasi, config, task, autostart terpasang | 43, 52 |
+| 2 | Enrollment (kode dari dashboard) | âœ… device terdaftar di server | 44â€“46 |
+| 3 | Login siswa pertama (wizard PIN + instruksi) | âœ… PIN tersimpan server (PBKDF2) | 24, 25 |
+| 4 | Verifikasi PIN | âœ… | 36, 39 |
+| 5 | Sesi: mapel + tujuan â†’ MULAI | âœ… device `in_use`, widget + stopwatch | 27, 49 |
+| 6 | Heartbeat 60 detik di server | âœ… `last_heartbeat_at` tepat +60s | Â§4 |
+| 7 | Screenshot otomatis + upload (test mode menit-1) | âœ… WebP 41,7 KB + thumb 8 KB di server | Â§4, 50 |
+| 8 | Selesai + form refleksi | âœ… sesi `normal`, durasi, pemahaman, feedback tersimpan | 50, 51, Â§4 |
+| 9 | Recovery/resume (kill proses â†’ start ulang) | âœ… widget lanjut (stopwatch tidak reset), heartbeat lanjut | 54, 55, 56 |
+| 10 | Offline total (server mati) | âœ… banner offline, login dari cache, sesi & feedback tercatat lokal | 57â€“62 |
+| 11 | Sinkron otomatis saat online kembali | âœ… sesi offline masuk server (`sync_source=offline`) + penutupan tersinkron | Â§4, 67 |
+| 12 | Hardening (policy installer) | âœ… Task Manager "Access is denied", regedit diblokir | 21, 75 |
+| 13 | Mode Guru (NIP) | âœ… tanpa mapel, tanpa feedback, tercatat `user_type=staff` | 70â€“72 |
+| 14 | Autostart setelah reboot | âœ… kiosk terbuka otomatis | 35, 38, 94 |
+| 15 | Watchdog (task 2 menit) | âœ… relaunch otomatis setelah proses dibunuh | 13, 76 |
+| 16 | Adopsi perangkat setelah re-image (VM revert) | âœ… uuid dirotasi, audit `device_adopted` | 47, 48 |
+| 17 | Sesi menggantung dibersihkan server (cron 5 menit) | âœ… 3 sesi ditutup `recovery`, device bebas | Â§4 |
+| 18 | Mode Admin: hotkey + password + banner + degradasi aman | âœ… dialog set/verifikasi password, banner, peringatan bila suspend gagal | 84, 85, 86, 95â€“98 |
+| 19 | Hardening -Apply / -Suspend (skrip) | âœ… -Apply terverifikasi di VM; -Suspend tervalidasi eksekusinya | 75, Â§4 |
+| 20 | Uninstall (task & autostart dibersihkan) | â³ diuji manual saat produksi (skrip siap) | â€” |
 
-Catatan #18–19: prompt UAC pada VM uji (autologon + akun tanpa password + secure desktop) tidak dapat di-approve otomatis secara konsisten oleh harness VNC. Jalur `-Apply` sempat tervalidasi penuh di VM; `-Suspend` divalidasi eksekusinya. **Klik UAC final perlu dilakukan manusia** — diuji sekali lagi saat deployment sekolah.
+Catatan #18â€“19: prompt UAC pada VM uji (autologon + akun tanpa password + secure desktop) tidak dapat di-approve otomatis secara konsisten oleh harness VNC. Jalur `-Apply` sempat tervalidasi penuh di VM; `-Suspend` divalidasi eksekusinya. **Klik UAC final perlu dilakukan manusia** â€” diuji sekali lagi saat deployment sekolah.
 
 ---
 
@@ -115,7 +115,7 @@ Sesi recovery (simulasi mati listrik / aplikasi dibunuh):
 
 ```
 e51630d7... | durasi 3 menit (termasuk jeda crash + resume) | "Sesi recovery diuji sukses"
-ab23cae6... | ditutup otomatis oleh cron stale → close_reason: recovery
+ab23cae6... | ditutup otomatis oleh cron stale â†’ close_reason: recovery
 ```
 
 Screenshot di server:
@@ -128,8 +128,8 @@ thumbnail: e1087888-...-thumb.jpg (8 KB)
 Autostart & watchdog:
 
 ```
-BALI-LOG Kiosk (Logon)     N/A    Ready
-BALI-LOG Kiosk (Watchdog)  ...    Running
+PELOG Kiosk (Logon)     N/A    Ready
+PELOG Kiosk (Watchdog)  ...    Running
 ```
 
 ---
@@ -138,12 +138,12 @@ BALI-LOG Kiosk (Watchdog)  ...    Running
 
 | Temuan | Perbaikan |
 |---|---|
-| Installer menaruh `balilog.client.json`, aplikasi membaca `balilog.json` | `DestName` diperbaiki di installer |
-| Aplikasi crash saat menulis policy HKCU tanpa elevasi (ACL `Policies` menolak) → arsitektur hardening diubah: **installer (elevated) yang menerapkan policy**; aplikasi hanya keyboard-blocker + MODE ADMIN via UAC | Commit `c2eda11` |
+| Installer menaruh `pelog.client.json`, aplikasi membaca `pelog.json` | `DestName` diperbaiki di installer |
+| Aplikasi crash saat menulis policy HKCU tanpa elevasi (ACL `Policies` menolak) â†’ arsitektur hardening diubah: **installer (elevated) yang menerapkan policy**; aplikasi hanya keyboard-blocker + MODE ADMIN via UAC | Commit `c2eda11` |
 | Token DPAPI `CurrentUser` tidak terbaca lintas akun (installer vs siswa) | DPAPI `LocalMachine` |
 | Data di ProgramData tidak bisa ditulis akun siswa | `icacls` grant Users Modify saat install |
-| Re-image laptop → enrollment ditolak `hostname_taken` selamanya | **Adopsi perangkat** (uuid dirotasi, audit) + guard 10 menit/aktif |
-| Sesi menggantung menahan `in_use` di server | Perintah `balilog:close-stale-sessions` + scheduler 5 menit |
+| Re-image laptop â†’ enrollment ditolak `hostname_taken` selamanya | **Adopsi perangkat** (uuid dirotasi, audit) + guard 10 menit/aktif |
+| Sesi menggantung menahan `in_use` di server | Perintah `pelog:close-stale-sessions` + scheduler 5 menit |
 | Sesi offline/recovery lama tertahan di antrean | Sinkronisasi idle di lockscreen (60 detik) |
 | Recovery tidak pernah terhubung ke UI | `TryRecoverSession()` saat aplikasi dibuka (resume atau tutup `recovery`) |
 
@@ -151,9 +151,9 @@ BALI-LOG Kiosk (Watchdog)  ...    Running
 
 ## 6. Batasan & Sisa Pekerjaan Sebelum Produksi
 
-1. **Klik UAC MODE ADMIN** — perlu verifikasi manual sekali di laptop sekolah (harness VM tidak bisa).
+1. **Klik UAC MODE ADMIN** â€” perlu verifikasi manual sekali di laptop sekolah (harness VM tidak bisa).
 2. **Screenshot produksi = menit ke-30** (config `test_mode=false`); diuji memakai test mode menit-1.
-3. **Deploy server produksi** (VPS/aaPanel, SSL, cron scheduler, backup) belum dilakukan — menunggu keputusan sekolah.
+3. **Deploy server produksi** (VPS/aaPanel, SSL, cron scheduler, backup) belum dilakukan â€” menunggu keputusan sekolah.
 4. **Impor data nyata** (siswa/guru) dan penyesuaian logo/teks sekolah.
 5. **Uji uninstall** di mesin produksi (skrip & task sudah disiapkan).
 6. **Kebijakan privasi** perlu disahkan sekolah sebelum screenshot aktif di mesin nyata.
@@ -162,7 +162,7 @@ BALI-LOG Kiosk (Watchdog)  ...    Running
 
 ## 7. Verifikasi Tambahan: Update Versi Tanpa Widget (2026-09-15)
 
-Konteks: build baru (tanpa widget timer, tanpa dialog instance ganda, perbaikan export xlsx) dipasang di VM `balilog vm` memakai installer yang sama (GUI, diunduh via Edge di guest).
+Konteks: build baru (tanpa widget timer, tanpa dialog instance ganda, perbaikan export xlsx) dipasang di VM `pelog vm` memakai installer yang sama (GUI, diunduh via Edge di guest).
 
 | # | Skenario | Hasil |
 |---|---|---|
@@ -203,7 +203,7 @@ Fitur yang ditambahkan/diperbaiki: nama perangkat saat enroll, mode perawatan pe
 
 | # | Skenario | Hasil |
 |---|---|---|
-| 11 | Sesi aktif ditutup otomatis saat **Restart OS** (tombol Start > Restart) | Lulus - sesi `id=25` tercatat `close_reason=shutdown`, `closed_at` benar; bukti log lokal `C:\ProgramData\BALI-LOG\data\shutdown.log` |
+| 11 | Sesi aktif ditutup otomatis saat **Restart OS** (tombol Start > Restart) | Lulus - sesi `id=25` tercatat `close_reason=shutdown`, `closed_at` benar; bukti log lokal `C:\ProgramData\PELOG\data\shutdown.log` |
 | 12 | Sesi aktif ditutup otomatis saat aplikasi ditutup paksa installer (Restart Manager) | Lulus - `id=24` tercatat `close_reason=shutdown` |
 | 13 | Sinkronisasi menerapkan penutupan sesi yang sudah ada di server (idempoten) | Lulus - `id=21` tertutup `normal` + feedback via sync klien |
 | 14 | Ikon tray dihilangkan saat sesi berjalan | Lulus - area tray bersih (hanya ikon sistem) |
@@ -238,9 +238,9 @@ Fitur: shutdown/restart saat sesi berjalan ditahan (`WM_QUERYENDSESSION` -> FALS
 
 | # | Skenario | Hasil |
 |---|---|---|
-| 28 | Shutdown saat sesi aktif (`shutdown /s /t 0`) | Lulus - layar Windows "Closing 1 app and shutting down" menampilkan alasan "BALI-LOG: klik Cancel/Batal, lalu isi refleksi belajar supaya laptop bisa dimatikan." (sesi id=46) |
+| 28 | Shutdown saat sesi aktif (`shutdown /s /t 0`) | Lulus - layar Windows "Closing 1 app and shutting down" menampilkan alasan "PELOG: klik Cancel/Batal, lalu isi refleksi belajar supaya laptop bisa dimatikan." (sesi id=46) |
 | 29 | Klik Cancel pada layar Windows | Lulus - kembali ke desktop; form "Refleksi Sebelum Mematikan" tampil di atas (TopMost + re-assert Z-order tiap 700 md) |
-| 30 | Isi refleksi + "SIMPAN & MATIKAN" | Lulus - sesi `id=50` `close_reason=shutdown` + feedback + pemahaman `paham`; **komputer mati otomatis** (VM power-off; terbukti dari daftar VM - balilog vm hilang - dan koneksi VNC terputus) |
+| 30 | Isi refleksi + "SIMPAN & MATIKAN" | Lulus - sesi `id=50` `close_reason=shutdown` + feedback + pemahaman `paham`; **komputer mati otomatis** (VM power-off; terbukti dari daftar VM - pelog vm hilang - dan koneksi VNC terputus) |
 | 31 | Tombol "BATAL" pada form | Lulus - percobaan shutdown dibatalkan; sesi `id=52` tetap berjalan (heartbeat lanjut); log `alasan=feedback-cancelled` |
 | 32 | Log off (`shutdown /l`) | Lulus - TANPA form refleksi; sesi `id=51` ditutup otomatis `close_reason=shutdown` |
 | 33 | Regresi alur normal Ctrl+Alt+S | Lulus - form mode normal ("SIMPAN KUNCI LAPTOP", tanpa Batal); sesi `id=52` ditutup `normal` + feedback |
@@ -253,7 +253,7 @@ Temuan & perbaikan penting sesi ini:
 1. `ShutdownBlockReasonCreate` ada di **user32.dll** (header winuser.h), bukan shell32.dll - deklarasi salah menyebabkan `EntryPointNotFoundException` (dialog crash .NET) tepat saat penolakan shutdown. Diperbaiki + dibungkus try/catch (API opsional; pemblokiran tetap jalan lewat nilai balik FALSE).
 2. Struct `TOKEN_PRIVILEGES` dengan field `long Luid` salah alignment di x64 (native: LUID 4-byte aligned) sehingga `AdjustTokenPrivileges` gagal dan auto power-off tidak jalan. Diperbaiki memakai `struct Luid { uint LowPart; int HighPart; }`.
 3. Layar "menutup aplikasi" milik Windows selalu tampil saat ada penolakan shutdown dan tidak dapat ditimpa oleh jendela aplikasi (topmost tidak menang). Alur baku: pengguna klik Cancel/Batal pada layar itu -> form aplikasi tampil. Teks alasan di layar Windows memberi instruksi langsung.
-4. Log diagnostik `C:\ProgramData\BALI-LOG\data\shutdown.log` kini mencatat tiap tahap: `blocked-feedback`, `feedback-cancelled`, `feedback-saved`, `poweroff-manual`, `shutdown`.
+4. Log diagnostik `C:\ProgramData\PELOG\data\shutdown.log` kini mencatat tiap tahap: `blocked-feedback`, `feedback-cancelled`, `feedback-saved`, `poweroff-manual`, `shutdown`.
 5. Tes otomatis bertambah 4 tes recovery untuk tanda `shutdown_pending` -> **31 tes client** (semuanya hijau).
 
 Batasan (batas OS, bukan bug aplikasi):

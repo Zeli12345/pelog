@@ -32,10 +32,10 @@ class AppUpdateTest extends TestCase
     {
         [$device, $token] = $this->enrolledDevice();
 
-        Storage::disk('local')->put('releases/BALI-LOG_Setup_1.1.0.exe', 'installer-bytes');
+        Storage::disk('local')->put('releases/PELOG_Setup_1.1.0.exe', 'installer-bytes');
 
         Setting::setValue('app_version', '1.1.0');
-        Setting::setValue('app_installer_file', 'releases/BALI-LOG_Setup_1.1.0.exe');
+        Setting::setValue('app_installer_file', 'releases/PELOG_Setup_1.1.0.exe');
         Setting::setValue('app_installer_sha256', hash('sha256', 'installer-bytes'));
         Setting::setValue('app_installer_size', strlen('installer-bytes'));
 
@@ -51,8 +51,8 @@ class AppUpdateTest extends TestCase
     {
         [$device, $token] = $this->enrolledDevice();
 
-        Storage::disk('local')->put('releases/BALI-LOG_Setup_1.1.0.exe', 'installer-bytes');
-        Setting::setValue('app_installer_file', 'releases/BALI-LOG_Setup_1.1.0.exe');
+        Storage::disk('local')->put('releases/PELOG_Setup_1.1.0.exe', 'installer-bytes');
+        Setting::setValue('app_installer_file', 'releases/PELOG_Setup_1.1.0.exe');
 
         $response = $this->get('/api/v1/app/installer', $this->deviceHeaders($token));
 

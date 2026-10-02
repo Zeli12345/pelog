@@ -7,9 +7,9 @@ use Illuminate\Console\Command;
 
 class GenerateEnrollmentCode extends Command
 {
-    protected $signature = 'balilog:enrollment-code';
+    protected $signature = 'pelog:enrollment-code';
 
-    protected $description = 'Membuat kode enrollment perangkat BALI-LOG (hanya ditampilkan sekali)';
+    protected $description = 'Membuat kode enrollment perangkat PELOG (hanya ditampilkan sekali)';
 
     public function handle(): int
     {

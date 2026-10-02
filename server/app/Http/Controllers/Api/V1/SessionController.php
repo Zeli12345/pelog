@@ -34,7 +34,7 @@ class SessionController extends Controller
         ]);
 
         /** @var Device $device */
-        $device = $request->attributes->get('balilog_device');
+        $device = $request->attributes->get('pelog_device');
 
         if ($device->status === DeviceStatus::Maintenance) {
             Audit::log(
@@ -167,7 +167,7 @@ class SessionController extends Controller
         ]);
 
         /** @var Device $device */
-        $device = $request->attributes->get('balilog_device');
+        $device = $request->attributes->get('pelog_device');
 
         $session = UsageSession::query()
             ->where('session_uuid', $data['session_uuid'])
@@ -209,7 +209,7 @@ class SessionController extends Controller
         ]);
 
         /** @var Device $device */
-        $device = $request->attributes->get('balilog_device');
+        $device = $request->attributes->get('pelog_device');
 
         $session = UsageSession::query()
             ->where('session_uuid', $data['session_uuid'])
