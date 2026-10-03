@@ -19,14 +19,21 @@ class CloseStaleSessions extends Command
         $minutes = (int) Setting::getValue('stale_session_minutes', 15);
         $threshold = now()->subMinutes(max(5, $minutes));
 
+        // Laptop yang dimatikan manual berhenti mengirim heartbeat. Sesi seperti
+        // itu juga ditutup begitu perangkat terlihat offline (last_seen lebih tua
+        // dari jendela online), tanpa harus menunggu ambang stale penuh.
+        $onlineWindowSeconds = (int) Setting::getValue('device_online_window_seconds', 300);
+        $offlineThreshold = now()->subSeconds(max(60, $onlineWindowSeconds));
+
         $closed = 0;
 
         UsageSession::query()
             ->with('device')
             ->whereNull('closed_at')
-            ->where(function ($query) use ($threshold) {
+            ->where(function ($query) use ($threshold, $offlineThreshold) {
                 $query->where('last_heartbeat_at', '<', $threshold)
-                    ->orWhereNull('last_heartbeat_at');
+                    ->orWhereNull('last_heartbeat_at')
+                    ->orWhereHas('device', fn ($device) => $device->where('last_seen_at', '<', $offlineThreshold));
             })
             ->chunkById(100, function ($sessions) use (&$closed) {
                 foreach ($sessions as $session) {
