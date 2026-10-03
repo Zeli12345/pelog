@@ -48,8 +48,8 @@ public class UpdateStagingTests : IDisposable
     [Fact]
     public void Cleanup_Removes_Stale_Staging_When_Not_Newer()
     {
-        var installerPath = StageInstaller("1.0.1");
-        _store.SetKv("update_staged_version", "1.0.1");
+        var installerPath = StageInstaller("0.9.0");
+        _store.SetKv("update_staged_version", "0.9.0");
 
         _updates.CleanupStaleStaging();
 

@@ -4,7 +4,11 @@ namespace PelogKiosk.Core.Config;
 
 public sealed class KioskConfig
 {
-    public string BaseUrl { get; set; } = "http://127.0.0.1:8000";
+    /// <summary>
+    /// Alamat server produksi. Nilai ini hanya fallback bila C:\ProgramData\PELOG\pelog.json
+    /// belum ada / tidak memuat base_url (installer menulis base_url produksi).
+    /// </summary>
+    public string BaseUrl { get; set; } = "https://pelog.smkn1mas.sch.id";
 
     public string EnrollmentCode { get; set; } = string.Empty;
 

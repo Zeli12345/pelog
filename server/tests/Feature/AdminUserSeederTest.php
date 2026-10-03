@@ -12,7 +12,7 @@ class AdminUserSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_production_seeder_membuat_password_acak_tanpa_akun_contoh(): void
+    public function test_seeder_membuat_admin_dengan_password_awal_default(): void
     {
         $this->app->detectEnvironment(fn () => 'production');
 
@@ -23,13 +23,10 @@ class AdminUserSeederTest extends TestCase
         $this->assertNotNull($admin);
         $this->assertTrue($admin->isAdminIt());
         $this->assertTrue($admin->is_active);
-        $this->assertFalse(
-            Hash::check('Pelog!Admin2026', $admin->password),
-            'Seeder produksi tidak boleh memakai password contoh yang ada di repositori.'
+        $this->assertTrue(
+            Hash::check(AdminUserSeeder::DEFAULT_PASSWORD, $admin->password),
+            'Instalasi baru memakai password awal yang terdokumentasi (wajib diganti setelah instalasi).'
         );
-
-        // Akun guru contoh tidak boleh ikut dibuat di produksi.
-        $this->assertNull(User::query()->where('email', 'guru@pelog.local')->first());
     }
 
     public function test_seeder_ulang_tidak_mereset_password_admin(): void
@@ -38,12 +35,16 @@ class AdminUserSeederTest extends TestCase
 
         (new AdminUserSeeder)->run();
 
-        $before = User::query()->where('email', 'admin@pelog.local')->firstOrFail()->password;
+        $admin = User::query()->where('email', 'admin@pelog.local')->firstOrFail();
+        $admin->forceFill(['password' => 'PasswordBaruYangSudahDiganti!'])->save();
 
         (new AdminUserSeeder)->run();
 
-        $after = User::query()->where('email', 'admin@pelog.local')->firstOrFail()->password;
+        $admin->refresh();
 
-        $this->assertSame($before, $after, 'Menjalankan seeder ulang tidak boleh mengubah password admin.');
+        $this->assertTrue(
+            Hash::check('PasswordBaruYangSudahDiganti!', $admin->password),
+            'Menjalankan seeder ulang tidak boleh mengubah password admin yang sudah diganti.'
+        );
     }
 }

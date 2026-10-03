@@ -43,6 +43,16 @@ Akses dashboard: <http://127.0.0.1:8000>
 - MariaDB (XAMPP) â€” `127.0.0.1:3307`, database `pelog`
 - Kredensial ada di `server/.env` (user khusus `pelog`, bukan root)
 
+## Produksi
+
+- URL: <https://pelog.smkn1mas.sch.id> (aaPanel: Nginx + PHP 8.4, MySQL)
+- Akun awal (dibuat seeder): `admin@pelog.local` / `Pelog!Admin2026` dan
+  `guru@pelog.local` / `Pelog!Guru2026` â€” **ganti setelah instalasi**. Seeder
+  produksi hanya membuat akun awal + pengaturan; tanpa data contoh.
+- Base URL client: `https://pelog.smkn1mas.sch.id` (installer menulisnya ke
+  `C:\ProgramData\PELOG\pelog.json`).
+- Panduan deploy/operasional lengkap: [`docs/DEPLOY-PRODUCTION.md`](docs/DEPLOY-PRODUCTION.md).
+
 ## Status Fase
 
 - [x] **Fase 0** â€” Environment, tooling, scaffold repo & Laravel

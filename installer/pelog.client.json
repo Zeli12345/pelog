@@ -1,5 +1,5 @@
 {
-    "base_url":  "http://192.168.0.100:8000",
+    "base_url":  "https://pelog.smkn1mas.sch.id",
     "enrollment_code":  "",
     "test_mode":  false,
     "hardening_enabled":  true

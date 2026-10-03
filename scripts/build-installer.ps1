@@ -1,9 +1,9 @@
 # PELOG - Build installer (Inno Setup) memakai hasil publish di E:
-# Pakai: .\scripts\build-installer.ps1 -BaseUrl "http://192.168.1.10:8000" -EnrollmentCode "BLG-XXXX-XXXX" [-UpdateCheckHours 6]
+# Pakai: .\scripts\build-installer.ps1 [-BaseUrl "https://pelog.smkn1mas.sch.id"] [-EnrollmentCode "BLG-XXXX-XXXX"] [-UpdateCheckHours 6]
 #        [-DeviceLabel "LAB-BL-09"] [-Location "Lab RPL 1"]
 
 param(
-    [string]$BaseUrl = "http://127.0.0.1:8000",
+    [string]$BaseUrl = "https://pelog.smkn1mas.sch.id",
     [string]$EnrollmentCode = "",
     [int]$UpdateCheckHours = 0,
     [string]$DeviceLabel = "",
