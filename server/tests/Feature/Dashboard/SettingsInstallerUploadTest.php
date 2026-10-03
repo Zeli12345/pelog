@@ -47,4 +47,28 @@ class SettingsInstallerUploadTest extends TestCase
             ->assertJsonPath('data.version', '1.2.3')
             ->assertJsonPath('data.notes', 'Uji unggah dari dashboard');
     }
+
+    public function test_halaman_pengaturan_menampilkan_tombol_unduh_installer(): void
+    {
+        $admin = User::factory()->adminIt()->create();
+
+        // Sebelum ada installer: halaman tetap tampil dengan ajakan unggah.
+        $this->actingAs($admin)
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee('Belum ada installer yang dipublikasikan');
+
+        Setting::setValue('client_latest_version', '1.0.0');
+        Setting::setValue('client_installer_sha256', str_repeat('a', 64));
+        Setting::setValue('client_installer_size', 54385977);
+        Setting::setValue('client_installer_uploaded_at', now()->toIso8601String());
+        Setting::setValue('client_update_notes', 'Installer produksi PELOG 1.0.0.');
+
+        $this->actingAs($admin)
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee('Unduh Installer (PELOG_Setup.exe)')
+            ->assertSee(route('client.download'), false)
+            ->assertSee('51.9 MB');
+    }
 }

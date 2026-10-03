@@ -1,5 +1,9 @@
 <x-dashboard-layout title="Perangkat" subtitle="Status & riwayat seluruh perangkat">
     <x-slot:actions>
+        <a href="{{ route('client.download') }}" class="btn-secondary !py-1.5 text-xs" title="Unduh installer untuk perangkat baru">
+            <x-icon name="download" size="h-3.5 w-3.5" />
+            Unduh Installer
+        </a>
         <form method="GET" action="{{ route('devices.index') }}" class="flex items-center gap-2">
             @if ($trashed)
                 <input type="hidden" name="trashed" value="1">

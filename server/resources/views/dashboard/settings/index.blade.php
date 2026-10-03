@@ -101,8 +101,71 @@
             </form>
         </div>
 
-        {{-- Enrollment --}}
         <aside class="space-y-4">
+            {{-- Installer Client --}}
+            <section class="card p-5">
+                <h2 class="text-sm font-semibold text-ink">Installer Client</h2>
+                <p class="mt-1 text-xs text-ink-faint">Pasang di laptop baru — kode enrollment sudah terisi otomatis bila installer dibangun dari sini.</p>
+
+                @if ($clientUpdate['sha256'])
+                    <dl class="mt-3 space-y-1 text-xs text-ink-soft">
+                        <div class="flex justify-between gap-3">
+                            <dt class="text-ink-faint">Versi</dt>
+                            <dd class="font-semibold text-ink">{{ $clientUpdate['latest_version'] ?? '1.0.0' }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-3">
+                            <dt class="text-ink-faint">Ukuran</dt>
+                            <dd>{{ number_format(((int) ($clientUpdate['size'] ?? 0)) / 1048576, 1) }} MB</dd>
+                        </div>
+                        <div class="flex justify-between gap-3">
+                            <dt class="text-ink-faint">SHA-256</dt>
+                            <dd class="max-w-[150px] truncate font-mono" title="{{ $clientUpdate['sha256'] }}">{{ \Illuminate\Support\Str::limit($clientUpdate['sha256'], 20) }}</dd>
+                        </div>
+                        @if ($clientUpdate['uploaded_at'])
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-ink-faint">Dipublikasikan</dt>
+                                <dd>{{ \Illuminate\Support\Carbon::parse($clientUpdate['uploaded_at'])->timezone('Asia/Makassar')->translatedFormat('d M Y H:i') }}</dd>
+                            </div>
+                        @endif
+                        @if ($clientUpdate['notes'])
+                            <p class="pt-1 text-ink-faint">Catatan: {{ $clientUpdate['notes'] }}</p>
+                        @endif
+                    </dl>
+
+                    <a href="{{ route('client.download') }}" class="btn-primary mt-3 w-full">
+                        <x-icon name="download" size="h-4 w-4" />
+                        Unduh Installer (PELOG_Setup.exe)
+                    </a>
+                @else
+                    <p class="mt-3 rounded-md border border-gold-300 bg-gold-50 p-3 text-[11px] leading-relaxed text-gold-800">
+                        Belum ada installer yang dipublikasikan. Unggah installer di bawah agar tombol unduh &amp; pembaruan otomatis aktif.
+                    </p>
+                @endif
+
+                <form method="POST" action="{{ route('settings.client-installer') }}" enctype="multipart/form-data" class="mt-4 space-y-3 border-t border-line pt-4">
+                    @csrf
+                    <div>
+                        <label class="label" for="client_latest_version">Versi installer</label>
+                        <input type="text" id="client_latest_version" name="client_latest_version" value="{{ old('client_latest_version', $clientUpdate['latest_version'] ?? '1.0.0') }}" placeholder="1.0.0" class="input text-sm" required>
+                        @error('client_latest_version')<p class="mt-1 text-[11px] text-brick-600">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="label" for="client_installer">Berkas installer (.exe, maks 200 MB)</label>
+                        <input type="file" id="client_installer" name="client_installer" accept=".exe,.msi" class="input text-xs" required>
+                        @error('client_installer')<p class="mt-1 text-[11px] text-brick-600">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="label" for="client_update_notes">Catatan rilis (opsional)</label>
+                        <input type="text" id="client_update_notes" name="client_update_notes" value="{{ old('client_update_notes', $clientUpdate['notes']) }}" maxlength="200" class="input text-sm">
+                    </div>
+                    <button type="submit" class="btn-secondary w-full">
+                        <x-icon name="upload" size="h-4 w-4" />
+                        Unggah &amp; Publikasikan
+                    </button>
+                </form>
+            </section>
+
+            {{-- Enrollment --}}
             <section class="card p-5">
                 <h2 class="text-sm font-semibold text-ink">Enrollment Perangkat</h2>
                 @if ($enrollmentEnabled)
