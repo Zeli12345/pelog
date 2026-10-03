@@ -1,5 +1,5 @@
 ====================================================================
-PELOG KIOSK â€” CATATAN OPERASIONAL UNTUK ADMIN IT
+PELOG KIOSK — CATATAN OPERASIONAL UNTUK ADMIN IT
 SMK Negeri 1 Mas Ubud
 ====================================================================
 
@@ -14,10 +14,10 @@ SMK Negeri 1 Mas Ubud
      Regedit, PowerShell, Explorer, dan MUAT ULANG SHELL (bila masih ada
      aplikasi yang terblokir oleh kebijakan lama).
    - Klik "KEMBALI KE KIOSK" bila selesai (kebijakan dipasang ulang), atau
-     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya â€” pada opsi ini
+     "Keluar Aplikasi" untuk menghentikan kiosk sepenuhnya — pada opsi ini
      penguncian juga DILEPAS agar cmd/Pengaturan/dll. normal kembali.
    - Bila muncul peringatan "Hardening tidak dapat ditangguhkan":
-     task admin tidak ada (instalasi lama) â€” jalankan installer ulang.
+     task admin tidak ada (instalasi lama) — jalankan installer ulang.
      Sementara itu, tombol PowerShell/Pengaturan/Explorer tetap berfungsi
      (dijalankan langsung tanpa shell), dan dari PowerShell admin dapat
      menghapus kebijakan secara manual:
@@ -93,7 +93,7 @@ SMK Negeri 1 Mas Ubud
 8. MENAMBAH / MENGHAPUS LAPTOP
    - Setiap laptop melakukan enrollment sekali dengan kode dari dashboard
      (Pengaturan > Enrollment Perangkat > Buat Kode Enrollment Baru).
-   - Kode hanya tampil sekali. Bila hilang, buat kode baru â€” laptop yang
+   - Kode hanya tampil sekali. Bila hilang, buat kode baru — laptop yang
      sudah terdaftar tidak terpengaruh.
    - Uninstall: Settings > Apps > PELOG Kiosk, atau:
        "C:\Program Files\PELOG Kiosk\unins000.exe"

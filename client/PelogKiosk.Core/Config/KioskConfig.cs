@@ -12,10 +12,10 @@ public sealed class KioskConfig
 
     public string EnrollmentCode { get; set; } = string.Empty;
 
-    /// <summary>Nama perangkat (label dashboard) â€” nilai awal dialog pendaftaran.</summary>
+    /// <summary>Nama perangkat (label dashboard) — nilai awal dialog pendaftaran.</summary>
     public string DeviceLabel { get; set; } = string.Empty;
 
-    /// <summary>Lokasi/ruang perangkat (maks. 60 karakter) â€” nilai awal dialog pendaftaran.</summary>
+    /// <summary>Lokasi/ruang perangkat (maks. 60 karakter) — nilai awal dialog pendaftaran.</summary>
     public string DeviceLocation { get; set; } = string.Empty;
 
     /// <summary>
@@ -30,7 +30,7 @@ public sealed class KioskConfig
     /// <summary>Mengganti menit screenshot saat TestMode aktif.</summary>
     public int TestScreenshotMinute { get; set; } = 1;
 
-    /// <summary>Hardening HKCU kiosk â€” hanya diaktifkan pada mesin produksi (oleh installer).</summary>
+    /// <summary>Hardening HKCU kiosk — hanya diaktifkan pada mesin produksi (oleh installer).</summary>
     public bool HardeningEnabled { get; set; }
 
     /// <summary>Hash password admin kiosk (format: pbkdf2-sha256$iterations$salt$hash).</summary>

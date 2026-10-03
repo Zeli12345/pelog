@@ -14,7 +14,7 @@ public sealed class AdminModeForm : Form
 
     public AdminModeForm()
     {
-        Text = "PELOG â€” Mode Admin";
+        Text = "PELOG — Mode Admin";
         FormBorderStyle = FormBorderStyle.FixedToolWindow;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
@@ -29,7 +29,7 @@ public sealed class AdminModeForm : Form
 
         var badge = new Label
         {
-            Text = "ðŸ”“  MODE ADMIN AKTIF",
+            Text = "🔓  MODE ADMIN AKTIF",
             Font = new Font("Segoe UI", 12F, FontStyle.Bold),
             ForeColor = Color.FromArgb(255, 214, 120),
             Location = new Point(18, 14),

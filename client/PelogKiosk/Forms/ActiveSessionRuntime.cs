@@ -63,7 +63,7 @@ public sealed class ActiveSessionRuntime : Form
         _record = record;
         _isStudent = record.UserType == "student";
 
-        // Form tidak pernah ditampilkan â€” hanya wadah handle untuk timer & hotkey.
+        // Form tidak pernah ditampilkan — hanya wadah handle untuk timer & hotkey.
         ShowInTaskbar = false;
         FormBorderStyle = FormBorderStyle.None;
         WindowState = FormWindowState.Minimized;
@@ -218,7 +218,7 @@ public sealed class ActiveSessionRuntime : Form
         {
             LocalLog.Write(
                 _services.DataDirectory,
-                $"device_revoked ({reason}) â€” SelfWipeOnRevoke=false, wipe tidak dijalankan.");
+                $"device_revoked ({reason}) — SelfWipeOnRevoke=false, wipe tidak dijalankan.");
 
             return;
         }
@@ -432,7 +432,7 @@ public sealed class ActiveSessionRuntime : Form
                 }
                 catch (Exception)
                 {
-                    // Diabaikan â€” antrean lokal akan menyusul saat aplikasi jalan lagi.
+                    // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
                 }
 
                 try
@@ -446,7 +446,7 @@ public sealed class ActiveSessionRuntime : Form
                 }
                 catch (Exception)
                 {
-                    // Diabaikan â€” antrean lokal akan menyusul saat aplikasi jalan lagi.
+                    // Diabaikan — antrean lokal akan menyusul saat aplikasi jalan lagi.
                 }
 
                 _services.Store.SetKv("shutdown_pending", "");

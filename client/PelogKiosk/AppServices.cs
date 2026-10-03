@@ -131,8 +131,8 @@ public sealed class AppServices : IDisposable
     /// Bila server menolak token (device_token_invalid), token lokal dihapus agar
     /// perangkat dapat didaftarkan ulang. Bila perangkat DIHAPUS dari dashboard
     /// (device_revoked), hasil <see cref="DeviceTokenStatus.Revoked"/> dikembalikan
-    /// tanpa tindakan â€” pemanggil yang memutuskan wipe total. Gangguan jaringan
-    /// tidak mengubah apa pun â€” kiosk tetap berjalan dengan data lokal.
+    /// tanpa tindakan — pemanggil yang memutuskan wipe total. Gangguan jaringan
+    /// tidak mengubah apa pun — kiosk tetap berjalan dengan data lokal.
     /// </summary>
     public async Task<DeviceTokenStatus> VerifyDeviceTokenAsync(CancellationToken cancellationToken = default)
     {
@@ -155,7 +155,7 @@ public sealed class AppServices : IDisposable
 
             LocalLog.Write(
                 DataDirectory,
-                "token perangkat ditolak server (device_token_invalid) â€” token dihapus, perlu pendaftaran ulang.");
+                "token perangkat ditolak server (device_token_invalid) — token dihapus, perlu pendaftaran ulang.");
 
             return DeviceTokenStatus.Invalid;
         }

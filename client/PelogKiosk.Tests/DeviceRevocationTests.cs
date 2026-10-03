@@ -5,7 +5,7 @@ using Xunit;
 namespace PelogKiosk.Tests;
 
 /// <summary>
-/// Logika deteksi perangkat yang DIHAPUS dari dashboard â€” inti dari
+/// Logika deteksi perangkat yang DIHAPUS dari dashboard — inti dari
 /// SelfWipeService.IsRevoked: hanya HTTP 410 + kode "device_revoked".
 /// Deaktivasi biasa (401 device_token_invalid), timeout, dan gangguan
 /// jaringan tidak boleh memicu wipe.

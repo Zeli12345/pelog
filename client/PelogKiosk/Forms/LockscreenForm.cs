@@ -97,7 +97,7 @@ public sealed class LockscreenForm : Form
             _startupHardening = Task.Run(KioskHardening.Apply);
         }
 
-        Text = "PELOG â€” Kiosk";
+        Text = "PELOG — Kiosk";
         WindowState = FormWindowState.Maximized;
         FormBorderStyle = FormBorderStyle.None;
         TopMost = true;
@@ -153,7 +153,7 @@ public sealed class LockscreenForm : Form
 
         _serverLabel = new Label
         {
-            Text = "â€¢ memeriksa serverâ€¦",
+            Text = "• memeriksa server…",
             Font = new Font("Segoe UI", 9F),
             ForeColor = Color.FromArgb(180, 200, 220),
             Location = new Point(36, 10),
@@ -175,7 +175,7 @@ public sealed class LockscreenForm : Form
         // langsung dari layar kunci, tanpa keluar dari kiosk.
         _wifiButton = new Button
         {
-            Text = "ðŸ“¶  Wi-Fi",
+            Text = "📶  Wi-Fi",
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = Navy,
@@ -250,7 +250,7 @@ public sealed class LockscreenForm : Form
 
         _identifyHint = new Label
         {
-            Text = "10 angka Â· nama akan muncul otomatis",
+            Text = "10 angka · nama akan muncul otomatis",
             Font = new Font("Segoe UI", 8.5F),
             ForeColor = InkSoft,
             Location = new Point(4, 24),
@@ -420,7 +420,7 @@ public sealed class LockscreenForm : Form
 
         var startButton = new Button
         {
-            Text = "ðŸ”“  MULAI GUNAKAN LAPTOP",
+            Text = "🔓  MULAI GUNAKAN LAPTOP",
             Location = new Point(2, 208),
             Size = new Size(428, 48),
             Font = new Font("Segoe UI", 11F, FontStyle.Bold),
@@ -603,7 +603,7 @@ public sealed class LockscreenForm : Form
     {
         _clockLabel.Text = _services.Clock.Now
             .ToOffset(TimeSpan.FromHours(8))
-            .ToString("dddd, dd MMMM yyyy  Â·  HH:mm:ss", _culture) + " WITA";
+            .ToString("dddd, dd MMMM yyyy  ·  HH:mm:ss", _culture) + " WITA";
     }
 
     private async Task CheckServerAsync()
@@ -612,13 +612,13 @@ public sealed class LockscreenForm : Form
 
         if (_services.Store.GetKv("device_maintenance") == "1")
         {
-            _serverLabel.Text = "â€¢ Laptop dalam perawatan Admin IT";
+            _serverLabel.Text = "• Laptop dalam perawatan Admin IT";
             _serverLabel.ForeColor = Color.FromArgb(255, 200, 110);
 
             return;
         }
 
-        _serverLabel.Text = online ? "â€¢ Terhubung ke server" : "â€¢ Mode offline â€” data tersimpan di laptop";
+        _serverLabel.Text = online ? "• Terhubung ke server" : "• Mode offline — data tersimpan di laptop";
         _serverLabel.ForeColor = online
             ? Color.FromArgb(150, 220, 170)
             : Color.FromArgb(255, 190, 110);
@@ -635,7 +635,7 @@ public sealed class LockscreenForm : Form
             // Token yang dicabut server tidak boleh membuat kiosk offline
             // selamanya: token dihapus dan pendaftaran ulang ditawarkan.
             // Perangkat yang DIHAPUS dari dashboard (device_revoked) berbeda:
-            // tidak ada pendaftaran ulang â€” jalur wipe total yang dipakai.
+            // tidak ada pendaftaran ulang — jalur wipe total yang dipakai.
             var tokenStatus = await _services.VerifyDeviceTokenAsync();
 
             if (tokenStatus == DeviceTokenStatus.Revoked)
@@ -739,7 +739,7 @@ public sealed class LockscreenForm : Form
         {
             LocalLog.Write(
                 _services.DataDirectory,
-                $"device_revoked ({reason}) â€” SelfWipeOnRevoke=false, wipe tidak dijalankan.");
+                $"device_revoked ({reason}) — SelfWipeOnRevoke=false, wipe tidak dijalankan.");
 
             return;
         }
@@ -769,7 +769,7 @@ public sealed class LockscreenForm : Form
             : "NIP / NUPTK Guru atau Pegawai";
 
         _identifyHint.Text = mode == Mode.Student
-            ? "10 angka Â· nama akan muncul otomatis"
+            ? "10 angka · nama akan muncul otomatis"
             : "Masukkan NIP sesuai data sekolah";
 
         _identifyInput.MaxLength = mode == Mode.Student ? 10 : 30;
@@ -874,7 +874,7 @@ public sealed class LockscreenForm : Form
 
                 _student = student;
                 _birthDateAttempts = 0;
-                _birthDateName.Text = $"{student.Name} Â· {student.ClassName}";
+                _birthDateName.Text = $"{student.Name} · {student.ClassName}";
                 ShowStep(Step.BirthDate);
             }
             else
@@ -955,7 +955,7 @@ public sealed class LockscreenForm : Form
                 if (_birthDateAttempts >= MaxBirthDateAttempts)
                 {
                     ResetFlow();
-                    _identifyError.Text = $"Tanggal lahir salah {MaxBirthDateAttempts}Ã—. Masukkan NISN kembali, atau hubungi Admin IT.";
+                    _identifyError.Text = $"Tanggal lahir salah {MaxBirthDateAttempts}×. Masukkan NISN kembali, atau hubungi Admin IT.";
 
                     return;
                 }
@@ -1008,7 +1008,7 @@ public sealed class LockscreenForm : Form
     {
         if (_mode == Mode.Student && _student is not null)
         {
-            _detailsName.Text = $"{_student.Name} Â· {_student.ClassName}";
+            _detailsName.Text = $"{_student.Name} · {_student.ClassName}";
 
             _subjectLabel.Visible = true;
             _subjectCombo.Visible = true;
@@ -1265,7 +1265,7 @@ public sealed class LockscreenForm : Form
         {
             LocalLog.Write(
                 _services.DataDirectory,
-                "keyboard-blocker: hook gagal dipasang â€” Alt+Tab/tombol Windows/Ctrl+Esc mungkin tidak terblokir.");
+                "keyboard-blocker: hook gagal dipasang — Alt+Tab/tombol Windows/Ctrl+Esc mungkin tidak terblokir.");
         }
     }
 

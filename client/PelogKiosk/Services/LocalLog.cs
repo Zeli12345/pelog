@@ -17,7 +17,7 @@ internal static class LocalLog
         }
         catch (Exception)
         {
-            // Logging opsional â€” jangan pernah mengganggu jalannya kiosk.
+            // Logging opsional — jangan pernah mengganggu jalannya kiosk.
         }
     }
 }

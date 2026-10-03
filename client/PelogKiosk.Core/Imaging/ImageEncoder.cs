@@ -6,7 +6,7 @@ public sealed record EncodedImage(byte[] Bytes, string Format);
 
 /// <summary>
 /// Encoder gambar: WebP (utama) dengan fallback JPEG, plus pengecilan ukuran.
-/// Dipakai untuk screenshot sesi (maks 1280 px, target â‰¤120 KB).
+/// Dipakai untuk screenshot sesi (maks 1280 px, target ≤120 KB).
 /// </summary>
 public static class ImageEncoder
 {

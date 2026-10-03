@@ -12,7 +12,7 @@ internal static class Program
 
         if (!isFirstInstance)
         {
-            // Instance lain sudah berjalan (mis. dipicu watchdog) â€” keluar diam-diam
+            // Instance lain sudah berjalan (mis. dipicu watchdog) — keluar diam-diam
             // tanpa dialog agar tidak mengganggu pengguna.
             return;
         }
@@ -46,7 +46,7 @@ internal static class Program
                     {
                         LocalLog.Write(
                             services.DataDirectory,
-                            "device_revoked saat startup â€” SelfWipeOnRevoke=false, wipe tidak dijalankan.");
+                            "device_revoked saat startup — SelfWipeOnRevoke=false, wipe tidak dijalankan.");
 
                         // Token tetap tersimpan: kiosk berjalan dengan layar kunci,
                         // bukan menawarkan pendaftaran ulang perangkat yang dihapus.
@@ -75,7 +75,7 @@ internal static class Program
         {
             MessageBox.Show(
                 "Aplikasi gagal dijalankan:\n\n" + ex.Message,
-                "PELOG â€” Kesalahan",
+                "PELOG — Kesalahan",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }

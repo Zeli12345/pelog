@@ -13,7 +13,7 @@ internal sealed record WifiNetwork(string Ssid, string Security, int SignalPerce
         Security.Contains("terbuka", StringComparison.OrdinalIgnoreCase) ||
         Security.Contains("none", StringComparison.OrdinalIgnoreCase);
 
-    public string SignalText => SignalPercent > 0 ? $"{SignalPercent}%" : "â€”";
+    public string SignalText => SignalPercent > 0 ? $"{SignalPercent}%" : "—";
 
     public string SecurityText => string.IsNullOrWhiteSpace(Security) ? "Terbuka" : Security;
 }

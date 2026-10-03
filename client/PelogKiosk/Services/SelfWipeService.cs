@@ -8,7 +8,7 @@ namespace PelogKiosk.App.Services;
 /// Menjalankan Scheduled Task elevated "PelogSelfWipe" yang dibuat installer
 /// (seperti task PelogHardening*) supaya uninstaller berjalan tanpa UAC,
 /// lalu keluar agar task dapat membersihkan sisa instalasi.
-/// Semua langkah best effort â€” jalur ini tidak pernah melempar exception.
+/// Semua langkah best effort — jalur ini tidak pernah melempar exception.
 /// </summary>
 internal static class SelfWipeService
 {
@@ -47,7 +47,7 @@ internal static class SelfWipeService
 
             if (!RunSelfWipeTask())
             {
-                WriteLog("task PelogSelfWipe GAGAL dijalankan â€” wipe total tidak berjalan, perlu perhatian Admin IT.");
+                WriteLog("task PelogSelfWipe GAGAL dijalankan — wipe total tidak berjalan, perlu perhatian Admin IT.");
             }
 
             // Beri kesempatan task elevated menutup/membersihkan aplikasi ini
@@ -58,7 +58,7 @@ internal static class SelfWipeService
         }
         catch (Exception)
         {
-            // Best effort â€” apa pun yang terjadi, jangan melempar keluar.
+            // Best effort — apa pun yang terjadi, jangan melempar keluar.
         }
     }
 
@@ -103,7 +103,7 @@ internal static class SelfWipeService
         }
         catch (Exception)
         {
-            // Aplikasi mungkin tidak punya hak tulis â€” logging opsional.
+            // Aplikasi mungkin tidak punya hak tulis — logging opsional.
         }
     }
 }

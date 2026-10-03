@@ -39,7 +39,7 @@ internal sealed class WifiForm : Form
             .Select(ssid => ssid.Trim())
             .ToList();
 
-        Text = "Koneksi Wi-Fi â€” PELOG";
+        Text = "Koneksi Wi-Fi — PELOG";
         ClientSize = new Size(640, 584);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -76,7 +76,7 @@ internal sealed class WifiForm : Form
         // ---------- Status ----------
         _statusLabel = new Label
         {
-            Text = "Status: memeriksaâ€¦",
+            Text = "Status: memeriksa…",
             Font = new Font("Segoe UI", 10F, FontStyle.Bold),
             ForeColor = Navy,
             Location = new Point(24, 88),
@@ -257,7 +257,7 @@ internal sealed class WifiForm : Form
             return;
         }
 
-        SetBusy(true, "Memindai jaringan Wi-Fiâ€¦");
+        SetBusy(true, "Memindai jaringan Wi-Fi…");
 
         try
         {
@@ -366,14 +366,14 @@ internal sealed class WifiForm : Form
 
         if (HasSavedProfile(network.Ssid))
         {
-            _passwordLabel.Text = $"\"{network.Ssid}\" sudah tersimpan â€” tinggal tekan Hubungkan";
+            _passwordLabel.Text = $"\"{network.Ssid}\" sudah tersimpan — tinggal tekan Hubungkan";
             _passwordInput.Enabled = false;
             return;
         }
 
         if (network.IsOpen)
         {
-            _passwordLabel.Text = $"\"{network.Ssid}\" jaringan terbuka â€” tinggal tekan Hubungkan";
+            _passwordLabel.Text = $"\"{network.Ssid}\" jaringan terbuka — tinggal tekan Hubungkan";
             _passwordInput.Enabled = false;
             return;
         }
@@ -407,7 +407,7 @@ internal sealed class WifiForm : Form
             return;
         }
 
-        SetBusy(true, $"Menyambungkan ke {network.Ssid}â€¦");
+        SetBusy(true, $"Menyambungkan ke {network.Ssid}…");
 
         try
         {
@@ -454,7 +454,7 @@ internal sealed class WifiForm : Form
             return;
         }
 
-        SetBusy(true, $"Menyambungkan ke {profile}â€¦");
+        SetBusy(true, $"Menyambungkan ke {profile}…");
 
         try
         {

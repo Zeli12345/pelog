@@ -112,7 +112,7 @@ class SettingsController extends Controller
         );
 
         return redirect()->route('settings.index')
-            ->with('status', 'Kode enrollment baru dibuat. Salin sekarang â€” kode hanya ditampilkan sekali.')
+            ->with('status', 'Kode enrollment baru dibuat. Salin sekarang — kode hanya ditampilkan sekali.')
             ->with('enrollment_code', $code);
     }
 

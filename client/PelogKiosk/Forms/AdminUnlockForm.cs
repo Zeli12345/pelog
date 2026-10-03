@@ -23,7 +23,7 @@ public sealed class AdminUnlockForm : Form
         _services = services;
         _setupMode = string.IsNullOrEmpty(_services.Config.AdminPasswordHash);
 
-        Text = _setupMode ? "PELOG â€” Atur Password Admin" : "PELOG â€” Mode Admin";
+        Text = _setupMode ? "PELOG — Atur Password Admin" : "PELOG — Mode Admin";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;

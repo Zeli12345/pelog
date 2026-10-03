@@ -1,4 +1,4 @@
-# VERIFICATION â€” PELOG
+# VERIFICATION — PELOG
 
 Laporan verifikasi menyeluruh. Diperbarui: 15 September 2026 (Fase 6 selesai di VM).
 Semua perintah dijalankan dari root repo `pelog/` kecuali disebut lain.
@@ -31,7 +31,7 @@ dotnet test Pelog.sln
 
 ## 2. Test Otomatis
 
-### 2.1 Server â€” 80 test, 250 assertion (semua hijau)
+### 2.1 Server — 80 test, 250 assertion (semua hijau)
 
 Cakupan utama:
 
@@ -48,7 +48,7 @@ Cakupan utama:
 | Stale sessions | sesi menggantung ditutup `recovery` + device dibebaskan; sesi sehat tidak tersentuh |
 | Dashboard/akses | tamu diarahkan login, guru 403 pada halaman admin, registrasi publik ditutup (404) |
 
-### 2.2 Client â€” 27 test (semua hijau)
+### 2.2 Client — 27 test (semua hijau)
 
 | Area | Yang diverifikasi |
 |---|---|
@@ -57,7 +57,7 @@ Cakupan utama:
 | LocalStore (SQLite) | kv, cache siswa/guru/mapel, status kunci PIN lokal, siklus sesi + antrean sync, antrean screenshot |
 | ServerClock | offset jam server diterapkan & dipertahankan |
 | ImageEncoder | downscale ke 1280 px, WebP utama, fallback JPEG |
-| Integrasi E2E (server nyata) | enroll â†’ bootstrap â†’ set PIN (+verifikasi hash server di C#) â†’ start â†’ heartbeat â†’ upload screenshot WebP â†’ end â†’ sync batch (+idempotensi) â†’ token salah ditolak 401 |
+| Integrasi E2E (server nyata) | enroll → bootstrap → set PIN (+verifikasi hash server di C#) → start → heartbeat → upload screenshot WebP → end → sync batch (+idempotensi) → token salah ditolak 401 |
 
 ---
 
@@ -69,28 +69,28 @@ Bukti visual: `docs/evidence-fase-6/` (102 tangkapan layar).
 
 | # | Skenario | Hasil | Bukti |
 |---|---|---|---|
-| 1 | Install senyap via installer (UAC Alt+Y) | âœ… aplikasi, config, task, autostart terpasang | 43, 52 |
-| 2 | Enrollment (kode dari dashboard) | âœ… device terdaftar di server | 44â€“46 |
-| 3 | Login siswa pertama (wizard PIN + instruksi) | âœ… PIN tersimpan server (PBKDF2) | 24, 25 |
-| 4 | Verifikasi PIN | âœ… | 36, 39 |
-| 5 | Sesi: mapel + tujuan â†’ MULAI | âœ… device `in_use`, widget + stopwatch | 27, 49 |
-| 6 | Heartbeat 60 detik di server | âœ… `last_heartbeat_at` tepat +60s | Â§4 |
-| 7 | Screenshot otomatis + upload (test mode menit-1) | âœ… WebP 41,7 KB + thumb 8 KB di server | Â§4, 50 |
-| 8 | Selesai + form refleksi | âœ… sesi `normal`, durasi, pemahaman, feedback tersimpan | 50, 51, Â§4 |
-| 9 | Recovery/resume (kill proses â†’ start ulang) | âœ… widget lanjut (stopwatch tidak reset), heartbeat lanjut | 54, 55, 56 |
-| 10 | Offline total (server mati) | âœ… banner offline, login dari cache, sesi & feedback tercatat lokal | 57â€“62 |
-| 11 | Sinkron otomatis saat online kembali | âœ… sesi offline masuk server (`sync_source=offline`) + penutupan tersinkron | Â§4, 67 |
-| 12 | Hardening (policy installer) | âœ… Task Manager "Access is denied", regedit diblokir | 21, 75 |
-| 13 | Mode Guru (NIP) | âœ… tanpa mapel, tanpa feedback, tercatat `user_type=staff` | 70â€“72 |
-| 14 | Autostart setelah reboot | âœ… kiosk terbuka otomatis | 35, 38, 94 |
-| 15 | Watchdog (task 2 menit) | âœ… relaunch otomatis setelah proses dibunuh | 13, 76 |
-| 16 | Adopsi perangkat setelah re-image (VM revert) | âœ… uuid dirotasi, audit `device_adopted` | 47, 48 |
-| 17 | Sesi menggantung dibersihkan server (cron 5 menit) | âœ… 3 sesi ditutup `recovery`, device bebas | Â§4 |
-| 18 | Mode Admin: hotkey + password + banner + degradasi aman | âœ… dialog set/verifikasi password, banner, peringatan bila suspend gagal | 84, 85, 86, 95â€“98 |
-| 19 | Hardening -Apply / -Suspend (skrip) | âœ… -Apply terverifikasi di VM; -Suspend tervalidasi eksekusinya | 75, Â§4 |
-| 20 | Uninstall (task & autostart dibersihkan) | â³ diuji manual saat produksi (skrip siap) | â€” |
+| 1 | Install senyap via installer (UAC Alt+Y) | ✅ aplikasi, config, task, autostart terpasang | 43, 52 |
+| 2 | Enrollment (kode dari dashboard) | ✅ device terdaftar di server | 44–46 |
+| 3 | Login siswa pertama (wizard PIN + instruksi) | ✅ PIN tersimpan server (PBKDF2) | 24, 25 |
+| 4 | Verifikasi PIN | ✅ | 36, 39 |
+| 5 | Sesi: mapel + tujuan → MULAI | ✅ device `in_use`, widget + stopwatch | 27, 49 |
+| 6 | Heartbeat 60 detik di server | ✅ `last_heartbeat_at` tepat +60s | §4 |
+| 7 | Screenshot otomatis + upload (test mode menit-1) | ✅ WebP 41,7 KB + thumb 8 KB di server | §4, 50 |
+| 8 | Selesai + form refleksi | ✅ sesi `normal`, durasi, pemahaman, feedback tersimpan | 50, 51, §4 |
+| 9 | Recovery/resume (kill proses → start ulang) | ✅ widget lanjut (stopwatch tidak reset), heartbeat lanjut | 54, 55, 56 |
+| 10 | Offline total (server mati) | ✅ banner offline, login dari cache, sesi & feedback tercatat lokal | 57–62 |
+| 11 | Sinkron otomatis saat online kembali | ✅ sesi offline masuk server (`sync_source=offline`) + penutupan tersinkron | §4, 67 |
+| 12 | Hardening (policy installer) | ✅ Task Manager "Access is denied", regedit diblokir | 21, 75 |
+| 13 | Mode Guru (NIP) | ✅ tanpa mapel, tanpa feedback, tercatat `user_type=staff` | 70–72 |
+| 14 | Autostart setelah reboot | ✅ kiosk terbuka otomatis | 35, 38, 94 |
+| 15 | Watchdog (task 2 menit) | ✅ relaunch otomatis setelah proses dibunuh | 13, 76 |
+| 16 | Adopsi perangkat setelah re-image (VM revert) | ✅ uuid dirotasi, audit `device_adopted` | 47, 48 |
+| 17 | Sesi menggantung dibersihkan server (cron 5 menit) | ✅ 3 sesi ditutup `recovery`, device bebas | §4 |
+| 18 | Mode Admin: hotkey + password + banner + degradasi aman | ✅ dialog set/verifikasi password, banner, peringatan bila suspend gagal | 84, 85, 86, 95–98 |
+| 19 | Hardening -Apply / -Suspend (skrip) | ✅ -Apply terverifikasi di VM; -Suspend tervalidasi eksekusinya | 75, §4 |
+| 20 | Uninstall (task & autostart dibersihkan) | ⏳ diuji manual saat produksi (skrip siap) | — |
 
-Catatan #18â€“19: prompt UAC pada VM uji (autologon + akun tanpa password + secure desktop) tidak dapat di-approve otomatis secara konsisten oleh harness VNC. Jalur `-Apply` sempat tervalidasi penuh di VM; `-Suspend` divalidasi eksekusinya. **Klik UAC final perlu dilakukan manusia** â€” diuji sekali lagi saat deployment sekolah.
+Catatan #18–19: prompt UAC pada VM uji (autologon + akun tanpa password + secure desktop) tidak dapat di-approve otomatis secara konsisten oleh harness VNC. Jalur `-Apply` sempat tervalidasi penuh di VM; `-Suspend` divalidasi eksekusinya. **Klik UAC final perlu dilakukan manusia** — diuji sekali lagi saat deployment sekolah.
 
 ---
 
@@ -115,7 +115,7 @@ Sesi recovery (simulasi mati listrik / aplikasi dibunuh):
 
 ```
 e51630d7... | durasi 3 menit (termasuk jeda crash + resume) | "Sesi recovery diuji sukses"
-ab23cae6... | ditutup otomatis oleh cron stale â†’ close_reason: recovery
+ab23cae6... | ditutup otomatis oleh cron stale → close_reason: recovery
 ```
 
 Screenshot di server:
@@ -139,10 +139,10 @@ PELOG Kiosk (Watchdog)  ...    Running
 | Temuan | Perbaikan |
 |---|---|
 | Installer menaruh `pelog.client.json`, aplikasi membaca `pelog.json` | `DestName` diperbaiki di installer |
-| Aplikasi crash saat menulis policy HKCU tanpa elevasi (ACL `Policies` menolak) â†’ arsitektur hardening diubah: **installer (elevated) yang menerapkan policy**; aplikasi hanya keyboard-blocker + MODE ADMIN via UAC | Commit `c2eda11` |
+| Aplikasi crash saat menulis policy HKCU tanpa elevasi (ACL `Policies` menolak) → arsitektur hardening diubah: **installer (elevated) yang menerapkan policy**; aplikasi hanya keyboard-blocker + MODE ADMIN via UAC | Commit `c2eda11` |
 | Token DPAPI `CurrentUser` tidak terbaca lintas akun (installer vs siswa) | DPAPI `LocalMachine` |
 | Data di ProgramData tidak bisa ditulis akun siswa | `icacls` grant Users Modify saat install |
-| Re-image laptop â†’ enrollment ditolak `hostname_taken` selamanya | **Adopsi perangkat** (uuid dirotasi, audit) + guard 10 menit/aktif |
+| Re-image laptop → enrollment ditolak `hostname_taken` selamanya | **Adopsi perangkat** (uuid dirotasi, audit) + guard 10 menit/aktif |
 | Sesi menggantung menahan `in_use` di server | Perintah `pelog:close-stale-sessions` + scheduler 5 menit |
 | Sesi offline/recovery lama tertahan di antrean | Sinkronisasi idle di lockscreen (60 detik) |
 | Recovery tidak pernah terhubung ke UI | `TryRecoverSession()` saat aplikasi dibuka (resume atau tutup `recovery`) |
@@ -151,9 +151,9 @@ PELOG Kiosk (Watchdog)  ...    Running
 
 ## 6. Batasan & Sisa Pekerjaan Sebelum Produksi
 
-1. **Klik UAC MODE ADMIN** â€” perlu verifikasi manual sekali di laptop sekolah (harness VM tidak bisa).
+1. **Klik UAC MODE ADMIN** — perlu verifikasi manual sekali di laptop sekolah (harness VM tidak bisa).
 2. **Screenshot produksi = menit ke-30** (config `test_mode=false`); diuji memakai test mode menit-1.
-3. **Deploy server produksi** (VPS/aaPanel, SSL, cron scheduler, backup) belum dilakukan â€” menunggu keputusan sekolah.
+3. **Deploy server produksi** (VPS/aaPanel, SSL, cron scheduler, backup) belum dilakukan — menunggu keputusan sekolah.
 4. **Impor data nyata** (siswa/guru) dan penyesuaian logo/teks sekolah.
 5. **Uji uninstall** di mesin produksi (skrip & task sudah disiapkan).
 6. **Kebijakan privasi** perlu disahkan sekolah sebelum screenshot aktif di mesin nyata.

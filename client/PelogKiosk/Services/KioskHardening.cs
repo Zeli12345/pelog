@@ -19,7 +19,7 @@ internal static class KioskHardening
     public const string ApplyTaskName = "PelogHardeningApply";
 
     // Lokasi kanonik DisableTaskMgr/DisableRegistryTools (lihat hardening.ps1
-    // $polSystem) â€” bukan Software\Policies\... yang hanya dipakai DisableCMD.
+    // $polSystem) — bukan Software\Policies\... yang hanya dipakai DisableCMD.
     private const string SystemPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\System";
 
     private const string ExplorerPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";

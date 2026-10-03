@@ -27,7 +27,7 @@ public sealed class EnrollForm : Form
     {
         _services = services;
 
-        Text = "PELOG â€” Pendaftaran Perangkat";
+        Text = "PELOG — Pendaftaran Perangkat";
         FormBorderStyle = FormBorderStyle.FixedDialog;
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
@@ -191,7 +191,7 @@ public sealed class EnrollForm : Form
 
         _enrollButton.Enabled = false;
         _statusLabel.ForeColor = Color.FromArgb(180, 200, 220);
-        _statusLabel.Text = "Menghubungi serverâ€¦";
+        _statusLabel.Text = "Menghubungi server…";
 
         try
         {

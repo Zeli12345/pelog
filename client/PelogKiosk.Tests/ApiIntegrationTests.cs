@@ -34,7 +34,7 @@ public class ApiIntegrationTests
 
         if (!await api.HealthAsync())
         {
-            // Server staging tidak berjalan â€” lewati (mode unit test saja).
+            // Server staging tidak berjalan — lewati (mode unit test saja).
             return;
         }
 
