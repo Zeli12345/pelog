@@ -26,6 +26,7 @@ class Device extends Model
         'agent_version',
         'windows_version',
         'last_seen_at',
+        'screenshot_requested_at',
         'enrolled_at',
         'is_active',
     ];
@@ -42,6 +43,7 @@ class Device extends Model
             'storage_total_gb' => 'integer',
             'storage_used_gb' => 'integer',
             'last_seen_at' => 'datetime',
+            'screenshot_requested_at' => 'datetime',
             'enrolled_at' => 'datetime',
             'is_active' => 'boolean',
         ];

@@ -58,6 +58,9 @@ Route::middleware('auth')->group(function () {
         // Sesi: tutup paksa sesi aktif
         Route::post('/sessions/{session}/close', [SessionController::class, 'close'])->name('sessions.close');
 
+        // Perangkat: minta screenshot langsung (diproses kiosk saat heartbeat berikutnya)
+        Route::post('/devices/{device}/request-screenshot', [DeviceController::class, 'requestScreenshot'])->name('devices.request-screenshot');
+
         // Siswa
         Route::get('/students/import', [StudentImportController::class, 'form'])->name('students.import.form');
         Route::post('/students/import', [StudentImportController::class, 'import'])->name('students.import');

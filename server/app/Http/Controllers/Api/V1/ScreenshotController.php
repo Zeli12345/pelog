@@ -56,6 +56,9 @@ class ScreenshotController extends Controller
                 : null,
         ])->save();
 
+        // Permintaan screenshot langsung dari dashboard sudah terpenuhi.
+        $device->forceFill(['screenshot_requested_at' => null])->saveQuietly();
+
         Audit::log(
             action: 'screenshot_uploaded',
             entityType: Screenshot::class,

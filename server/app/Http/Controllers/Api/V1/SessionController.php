@@ -197,6 +197,7 @@ class SessionController extends Controller
 
         return ApiResponse::ok([
             'active' => true,
+            'screenshot_requested' => $device->screenshot_requested_at !== null,
         ]);
     }
 

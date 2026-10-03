@@ -189,6 +189,8 @@ public sealed class HeartbeatData
     public DateTimeOffset? ClosedAt { get; set; }
 
     public string? CloseReason { get; set; }
+
+    public bool ScreenshotRequested { get; set; }
 }
 
 public sealed class EndSessionRequest

@@ -238,6 +238,30 @@ class DeviceController extends Controller
     }
 
     /**
+     * Minta screenshot langsung: kiosk mengambil & mengunggahnya pada heartbeat
+     * berikutnya (maks ±1 menit), tanpa menunggu jadwal menit ke-30.
+     */
+    public function requestScreenshot(Request $request, Device $device): RedirectResponse
+    {
+        $device->forceFill(['screenshot_requested_at' => now()])->save();
+
+        Audit::log(
+            action: 'screenshot_requested',
+            entityType: Device::class,
+            entityId: $device->id,
+            metadata: ['hostname' => $device->hostname],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return back()->with(
+            'status',
+            'Permintaan screenshot dikirim. Kiosk akan mengunggahnya saat heartbeat berikutnya (satu sesi aktif ±1 menit).'
+        );
+    }
+
+    /**
      * Menutup paksa sesi aktif saat perangkat dihapus agar dashboard tidak
      * menampilkan sesi hantu. Alasan penutupan memakai CloseReason::Admin,
      * sama seperti penutupan paksa dari halaman Sesi.

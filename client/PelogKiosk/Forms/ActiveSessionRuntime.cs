@@ -49,6 +49,8 @@ public sealed class ActiveSessionRuntime : Form
 
     private bool _screenshotTaken;
 
+    private bool _manualScreenshotBusy;
+
     private bool _allowClose;
 
     private bool _finishing;
@@ -196,7 +198,23 @@ public sealed class ActiveSessionRuntime : Form
             _record.State = "synced";
             _services.Store.SaveSession(_record);
 
+            // Ditutup paksa oleh admin: matikan Windows otomatis.
+            if (string.Equals(result.Data.CloseReason, "admin", StringComparison.OrdinalIgnoreCase))
+            {
+                ShutdownWindows();
+
+                return;
+            }
+
             ShutdownRuntime();
+
+            return;
+        }
+
+        // Permintaan screenshot langsung dari dashboard.
+        if (result.Data is { Active: true, ScreenshotRequested: true })
+        {
+            await CaptureScreenshotNowAsync();
         }
     }
 
@@ -472,6 +490,73 @@ public sealed class ActiveSessionRuntime : Form
         catch (Exception)
         {
             // Logging opsional.
+        }
+    }
+
+    /// <summary>
+    /// Sesi ditutup paksa oleh admin (dashboard): matikan Windows otomatis.
+    /// Bila perintah shutdown gagal dijalankan, kiosk tetap kembali ke layar kunci.
+    /// </summary>
+    private void ShutdownWindows()
+    {
+        StopTimers();
+
+        try
+        {
+            LocalLog.Write(_services.DataDirectory, "sesi ditutup admin — Windows dimatikan otomatis");
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("shutdown.exe", "/s /t 0 /f")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            });
+        }
+        catch (Exception)
+        {
+            // Diabaikan: jalur aman di bawah mengembalikan kiosk ke layar kunci.
+        }
+
+        ShutdownRuntime();
+    }
+
+    /// <summary>
+    /// Screenshot langsung atas permintaan dashboard: ambil & unggah sekarang.
+    /// Bila gagal, flag server tetap aktif dan dicoba lagi pada heartbeat berikutnya.
+    /// </summary>
+    private async Task CaptureScreenshotNowAsync()
+    {
+        if (_manualScreenshotBusy || !_record.IsOpen)
+        {
+            return;
+        }
+
+        _manualScreenshotBusy = true;
+
+        try
+        {
+            var config = _services.Sync.LoadCachedConfig();
+            var capturedAt = _services.Clock.Now;
+
+            var path = ScreenCapture.CaptureToFile(
+                _services.ScreenshotDirectory,
+                _record.SessionUuid,
+                config.ImageFormat,
+                config.MaxWidth,
+                config.WebpQuality,
+                config.JpegQuality);
+
+            if (path is null)
+            {
+                return;
+            }
+
+            _services.Sessions.AttachScreenshot(_record, path, capturedAt);
+
+            await _services.Sync.PushScreenshotsAsync();
+        }
+        finally
+        {
+            _manualScreenshotBusy = false;
         }
     }
 

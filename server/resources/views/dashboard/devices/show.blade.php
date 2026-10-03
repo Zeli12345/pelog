@@ -34,10 +34,19 @@
                         <p class="mt-1 font-mono text-xs text-moss-700">Durasi {{ $start ? $start->diff(now())->format('%H:%I') : '—' }}</p>
 
                         @if (auth()->user()->isAdminIt())
-                            <form method="POST" action="{{ route('sessions.close', $activeSession) }}" class="mt-2" onsubmit="return confirm('Tutup paksa sesi ini? Perangkat akan kembali tersedia.')">
-                                @csrf
-                                <button type="submit" class="btn-secondary !px-2.5 !py-1 text-[11px]">Tutup Sesi</button>
-                            </form>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <form method="POST" action="{{ route('sessions.close', $activeSession) }}" onsubmit="return confirm('Tutup paksa sesi ini? Laptop akan dimatikan otomatis oleh kiosk.')">
+                                    @csrf
+                                    <button type="submit" class="btn-secondary !px-2.5 !py-1 text-[11px]">Tutup Sesi</button>
+                                </form>
+                                <form method="POST" action="{{ route('devices.request-screenshot', $device) }}">
+                                    @csrf
+                                    <button type="submit" class="btn-secondary !px-2.5 !py-1 text-[11px]">
+                                        <x-icon name="camera" size="h-3.5 w-3.5" />
+                                        Minta Screenshot
+                                    </button>
+                                </form>
+                            </div>
                         @endif
                     </div>
                 @endif
