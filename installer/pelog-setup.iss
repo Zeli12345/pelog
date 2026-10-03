@@ -5,7 +5,7 @@
 [Setup]
 AppId={{8F1A2C64-3B7E-4F3A-9C21-BALI0G000001}
 AppName=PELOG Kiosk
-AppVersion=1.2.1
+AppVersion=1.0.0
 AppPublisher=SMK Negeri 1 Mas Ubud
 AppPublisherURL=https://pelog.smkn1mas.sch.id
 DefaultDirName={autopf}\PELOG Kiosk
