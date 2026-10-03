@@ -76,6 +76,24 @@
                     <dd class="mt-0.5 text-ink-soft">{{ $device->last_seen_at?->timezone('Asia/Makassar')->translatedFormat('d M Y H:i') ?? '—' }} WITA</dd>
                 </div>
                 <div>
+                    <dt class="text-[11px] uppercase tracking-wide text-ink-faint">CPU</dt>
+                    <dd class="mt-0.5 font-mono text-xs text-ink-soft">{{ $device->cpu_usage_percent !== null ? $device->cpu_usage_percent.' %' : '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-[11px] uppercase tracking-wide text-ink-faint">RAM</dt>
+                    <dd class="mt-0.5 font-mono text-xs text-ink-soft">
+                        @if ($device->ram_usage_percent !== null)
+                            {{ $device->ram_usage_percent }}%{{ $device->ram_total_gb ? ' / '.$device->ram_total_gb.' GB' : '' }}
+                        @else
+                            —
+                        @endif
+                    </dd>
+                </div>
+                <div class="col-span-2">
+                    <dt class="text-[11px] uppercase tracking-wide text-ink-faint">GPU</dt>
+                    <dd class="mt-0.5 text-ink-soft">{{ $device->gpu_name ?? '—' }}</dd>
+                </div>
+                <div>
                     <dt class="text-[11px] uppercase tracking-wide text-ink-faint">Agent</dt>
                     <dd class="mt-0.5 font-mono text-xs text-ink-soft">{{ $device->agent_version ?? '—' }}</dd>
                 </div>

@@ -83,10 +83,17 @@ public sealed class PelogApiClient
         return SendAsync<SessionDto>(CreateRequest(HttpMethod.Post, "sessions/start", request), cancellationToken);
     }
 
-    public Task<ApiResult<HeartbeatData>> HeartbeatAsync(string sessionUuid, CancellationToken cancellationToken = default)
+    public Task<ApiResult<HeartbeatData>> HeartbeatAsync(string sessionUuid, SystemMetricsPayload? metrics = null, CancellationToken cancellationToken = default)
     {
         return SendAsync<HeartbeatData>(
-            CreateRequest(HttpMethod.Post, "sessions/heartbeat", new { session_uuid = sessionUuid }),
+            CreateRequest(HttpMethod.Post, "sessions/heartbeat", new
+            {
+                session_uuid = sessionUuid,
+                cpu_usage_percent = metrics?.CpuPercent,
+                ram_usage_percent = metrics?.RamPercent,
+                ram_total_gb = metrics?.RamTotalGb,
+                gpu_name = metrics?.GpuName,
+            }),
             cancellationToken);
     }
 

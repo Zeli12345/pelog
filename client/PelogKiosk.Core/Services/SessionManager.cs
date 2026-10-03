@@ -77,6 +77,7 @@ public sealed class SessionManager
         try
         {
             var (totalGb, usedGb) = GetSystemStorage();
+            var (ramPercent, ramTotalGb) = SystemMetrics.RamUsage();
 
             var request = new StartSessionRequest
             {
@@ -89,6 +90,10 @@ public sealed class SessionManager
                 StartedAtClient = record.StartedAtClient,
                 StorageTotalGb = totalGb,
                 StorageUsedGb = usedGb,
+                CpuUsagePercent = SystemMetrics.CpuUsagePercent(),
+                RamUsagePercent = ramPercent,
+                RamTotalGb = ramTotalGb,
+                GpuName = SystemMetrics.GpuName(),
             };
 
             return await _api.StartSessionAsync(request, cancellationToken);
@@ -135,7 +140,15 @@ public sealed class SessionManager
 
     public Task<ApiResult<HeartbeatData>> TryRemoteHeartbeatAsync(LocalSessionRecord record, CancellationToken cancellationToken = default)
     {
-        return _api.HeartbeatAsync(record.SessionUuid, cancellationToken);
+        var (ramPercent, ramTotalGb) = SystemMetrics.RamUsage();
+
+        var metrics = new SystemMetricsPayload(
+            SystemMetrics.CpuUsagePercent(),
+            ramPercent,
+            ramTotalGb,
+            SystemMetrics.GpuName());
+
+        return _api.HeartbeatAsync(record.SessionUuid, metrics, cancellationToken);
     }
 
     public LocalSessionRecord Close(LocalSessionRecord record, string? feedback, string? comprehension, string reason = "normal")

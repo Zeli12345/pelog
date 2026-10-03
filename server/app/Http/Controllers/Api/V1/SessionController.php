@@ -31,6 +31,10 @@ class SessionController extends Controller
             'started_at_client' => ['nullable', 'date'],
             'storage_total_gb' => ['nullable', 'integer', 'min:0'],
             'storage_used_gb' => ['nullable', 'integer', 'min:0'],
+            'cpu_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'ram_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'ram_total_gb' => ['nullable', 'integer', 'min:0', 'max:4096'],
+            'gpu_name' => ['nullable', 'string', 'max:120'],
         ]);
 
         /** @var Device $device */
@@ -127,6 +131,10 @@ class SessionController extends Controller
                 'status' => 'in_use',
                 'storage_total_gb' => $data['storage_total_gb'] ?? $lockedDevice->storage_total_gb,
                 'storage_used_gb' => $data['storage_used_gb'] ?? $lockedDevice->storage_used_gb,
+                'cpu_usage_percent' => $data['cpu_usage_percent'] ?? $lockedDevice->cpu_usage_percent,
+                'ram_usage_percent' => $data['ram_usage_percent'] ?? $lockedDevice->ram_usage_percent,
+                'ram_total_gb' => $data['ram_total_gb'] ?? $lockedDevice->ram_total_gb,
+                'gpu_name' => $data['gpu_name'] ?? $lockedDevice->gpu_name,
             ])->save();
 
             return $session;
@@ -164,6 +172,10 @@ class SessionController extends Controller
             'session_uuid' => ['required', 'uuid'],
             'storage_total_gb' => ['nullable', 'integer', 'min:0'],
             'storage_used_gb' => ['nullable', 'integer', 'min:0'],
+            'cpu_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'ram_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'ram_total_gb' => ['nullable', 'integer', 'min:0', 'max:4096'],
+            'gpu_name' => ['nullable', 'string', 'max:120'],
         ]);
 
         /** @var Device $device */
@@ -193,6 +205,17 @@ class SessionController extends Controller
                 'storage_total_gb' => $data['storage_total_gb'] ?? $device->storage_total_gb,
                 'storage_used_gb' => $data['storage_used_gb'] ?? $device->storage_used_gb,
             ])->saveQuietly();
+        }
+
+        $metrics = array_filter([
+            'cpu_usage_percent' => $data['cpu_usage_percent'] ?? null,
+            'ram_usage_percent' => $data['ram_usage_percent'] ?? null,
+            'ram_total_gb' => $data['ram_total_gb'] ?? null,
+            'gpu_name' => $data['gpu_name'] ?? null,
+        ], static fn ($value) => $value !== null);
+
+        if ($metrics !== []) {
+            $device->forceFill($metrics)->saveQuietly();
         }
 
         return ApiResponse::ok([

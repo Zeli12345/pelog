@@ -27,6 +27,10 @@ class Device extends Model
         'windows_version',
         'last_seen_at',
         'screenshot_requested_at',
+        'cpu_usage_percent',
+        'ram_usage_percent',
+        'ram_total_gb',
+        'gpu_name',
         'enrolled_at',
         'is_active',
     ];
@@ -44,6 +48,9 @@ class Device extends Model
             'storage_used_gb' => 'integer',
             'last_seen_at' => 'datetime',
             'screenshot_requested_at' => 'datetime',
+            'cpu_usage_percent' => 'integer',
+            'ram_usage_percent' => 'integer',
+            'ram_total_gb' => 'integer',
             'enrolled_at' => 'datetime',
             'is_active' => 'boolean',
         ];

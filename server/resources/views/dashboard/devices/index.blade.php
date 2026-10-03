@@ -82,6 +82,7 @@
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna Aktif</th>
                                 <th class="px-4 py-2.5 font-semibold">Penyimpanan</th>
+                                <th class="px-4 py-2.5 font-semibold">Performa</th>
                                 <th class="px-4 py-2.5 font-semibold">Agent / OS</th>
                                 <th class="px-4 py-2.5 font-semibold">Terakhir Terlihat</th>
                                 <th class="px-4 py-2.5"></th>
@@ -132,6 +133,14 @@
                                                 </div>
                                                 <span class="font-mono text-[11px] text-ink-faint">{{ $device->storage_used_gb }}/{{ $device->storage_total_gb }} GB</span>
                                             </div>
+                                        @else
+                                            <span class="text-ink-faint">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3 text-xs text-ink-soft">
+                                        @if ($device->cpu_usage_percent !== null || $device->ram_usage_percent !== null)
+                                            <p class="font-mono">CPU {{ $device->cpu_usage_percent ?? '—' }}% · RAM {{ $device->ram_usage_percent ?? '—' }}%</p>
+                                            <p class="text-[11px] text-ink-faint" title="{{ $device->gpu_name ?? '' }}">{{ $device->gpu_name ? \Illuminate\Support\Str::limit($device->gpu_name, 28) : '—' }}</p>
                                         @else
                                             <span class="text-ink-faint">—</span>
                                         @endif
