@@ -164,6 +164,8 @@ public sealed class StartSessionRequest
 
     public int? CpuUsagePercent { get; set; }
 
+    public string? CpuName { get; set; }
+
     public int? RamUsagePercent { get; set; }
 
     public int? RamTotalGb { get; set; }
@@ -201,8 +203,8 @@ public sealed class HeartbeatData
     public bool ScreenshotRequested { get; set; }
 }
 
-/// <summary>Metrik sistem yang dilaporkan kiosk (CPU %, RAM %, total RAM GB, GPU).</summary>
-public sealed record SystemMetricsPayload(int? CpuPercent, int? RamPercent, int? RamTotalGb, string? GpuName);
+/// <summary>Metrik sistem yang dilaporkan kiosk (CPU %, RAM %, total RAM GB, GPU, nama CPU).</summary>
+public sealed record SystemMetricsPayload(int? CpuPercent, int? RamPercent, int? RamTotalGb, string? GpuName, string? CpuName);
 
 public sealed class EndSessionRequest
 {

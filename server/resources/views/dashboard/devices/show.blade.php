@@ -77,7 +77,12 @@
                 </div>
                 <div>
                     <dt class="text-[11px] uppercase tracking-wide text-ink-faint">CPU</dt>
-                    <dd class="mt-0.5 font-mono text-xs text-ink-soft">{{ $device->cpu_usage_percent !== null ? $device->cpu_usage_percent.' %' : '—' }}</dd>
+                    <dd class="mt-0.5 font-mono text-xs text-ink-soft">
+                        {{ $device->cpu_usage_percent !== null ? $device->cpu_usage_percent.' %' : '—' }}
+                        @if ($device->cpu_name)
+                            <span class="mt-0.5 block font-sans text-[11px] text-ink-faint">{{ $device->cpu_name }}</span>
+                        @endif
+                    </dd>
                 </div>
                 <div>
                     <dt class="text-[11px] uppercase tracking-wide text-ink-faint">RAM</dt>

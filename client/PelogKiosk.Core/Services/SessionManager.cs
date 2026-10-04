@@ -91,6 +91,7 @@ public sealed class SessionManager
                 StorageTotalGb = totalGb,
                 StorageUsedGb = usedGb,
                 CpuUsagePercent = SystemMetrics.CpuUsagePercent(),
+                CpuName = SystemMetrics.CpuName(),
                 RamUsagePercent = ramPercent,
                 RamTotalGb = ramTotalGb,
                 GpuName = SystemMetrics.GpuName(),
@@ -146,7 +147,8 @@ public sealed class SessionManager
             SystemMetrics.CpuUsagePercent(),
             ramPercent,
             ramTotalGb,
-            SystemMetrics.GpuName());
+            SystemMetrics.GpuName(),
+            SystemMetrics.CpuName());
 
         return _api.HeartbeatAsync(record.SessionUuid, metrics, cancellationToken);
     }

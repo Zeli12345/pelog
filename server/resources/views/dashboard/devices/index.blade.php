@@ -139,8 +139,8 @@
                                     </td>
                                     <td class="px-4 py-3 text-xs text-ink-soft">
                                         @if ($device->cpu_usage_percent !== null || $device->ram_usage_percent !== null)
-                                            <p class="font-mono">CPU {{ $device->cpu_usage_percent ?? '—' }}% · RAM {{ $device->ram_usage_percent ?? '—' }}%</p>
-                                            <p class="text-[11px] text-ink-faint" title="{{ $device->gpu_name ?? '' }}">{{ $device->gpu_name ? \Illuminate\Support\Str::limit($device->gpu_name, 28) : '—' }}</p>
+                                            <p class="font-mono" title="{{ $device->cpu_name ?? '' }}">CPU {{ $device->cpu_usage_percent ?? '—' }}% · RAM {{ $device->ram_usage_percent ?? '—' }}%</p>
+                                            <p class="text-[11px] text-ink-faint" title="{{ $device->gpu_name ?? '' }}">{{ $device->cpu_name ? \Illuminate\Support\Str::limit($device->cpu_name, 30) : ($device->gpu_name ? \Illuminate\Support\Str::limit($device->gpu_name, 28) : '—') }}</p>
                                         @else
                                             <span class="text-ink-faint">—</span>
                                         @endif

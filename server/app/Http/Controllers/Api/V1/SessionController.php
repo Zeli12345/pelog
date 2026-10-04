@@ -32,6 +32,7 @@ class SessionController extends Controller
             'storage_total_gb' => ['nullable', 'integer', 'min:0'],
             'storage_used_gb' => ['nullable', 'integer', 'min:0'],
             'cpu_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'cpu_name' => ['nullable', 'string', 'max:120'],
             'ram_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
             'ram_total_gb' => ['nullable', 'integer', 'min:0', 'max:4096'],
             'gpu_name' => ['nullable', 'string', 'max:120'],
@@ -132,6 +133,7 @@ class SessionController extends Controller
                 'storage_total_gb' => $data['storage_total_gb'] ?? $lockedDevice->storage_total_gb,
                 'storage_used_gb' => $data['storage_used_gb'] ?? $lockedDevice->storage_used_gb,
                 'cpu_usage_percent' => $data['cpu_usage_percent'] ?? $lockedDevice->cpu_usage_percent,
+                'cpu_name' => $data['cpu_name'] ?? $lockedDevice->cpu_name,
                 'ram_usage_percent' => $data['ram_usage_percent'] ?? $lockedDevice->ram_usage_percent,
                 'ram_total_gb' => $data['ram_total_gb'] ?? $lockedDevice->ram_total_gb,
                 'gpu_name' => $data['gpu_name'] ?? $lockedDevice->gpu_name,
@@ -173,6 +175,7 @@ class SessionController extends Controller
             'storage_total_gb' => ['nullable', 'integer', 'min:0'],
             'storage_used_gb' => ['nullable', 'integer', 'min:0'],
             'cpu_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'cpu_name' => ['nullable', 'string', 'max:120'],
             'ram_usage_percent' => ['nullable', 'integer', 'min:0', 'max:100'],
             'ram_total_gb' => ['nullable', 'integer', 'min:0', 'max:4096'],
             'gpu_name' => ['nullable', 'string', 'max:120'],
@@ -209,6 +212,7 @@ class SessionController extends Controller
 
         $metrics = array_filter([
             'cpu_usage_percent' => $data['cpu_usage_percent'] ?? null,
+            'cpu_name' => $data['cpu_name'] ?? null,
             'ram_usage_percent' => $data['ram_usage_percent'] ?? null,
             'ram_total_gb' => $data['ram_total_gb'] ?? null,
             'gpu_name' => $data['gpu_name'] ?? null,

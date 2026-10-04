@@ -46,6 +46,9 @@ public static class SystemMetrics
     private static string? _gpuName;
     private static bool _gpuResolved;
 
+    private static string? _cpuName;
+    private static bool _cpuResolved;
+
     /// <summary>
     /// CPU % sejak pemanggilan sebelumnya (panggil berkala, mis. tiap heartbeat).
     /// Pemanggilan pertama hanya menyimpan sampel dasar dan mengembalikan null.
@@ -126,10 +129,30 @@ public static class SystemMetrics
         }
 
         _gpuResolved = true;
+        _gpuName = WmicFirstValue("path win32_VideoController get name");
 
+        return _gpuName;
+    }
+
+    /// <summary>Nama/model CPU (dibaca sekali lalu di-cache; null bila tidak terdeteksi).</summary>
+    public static string? CpuName()
+    {
+        if (_cpuResolved)
+        {
+            return _cpuName;
+        }
+
+        _cpuResolved = true;
+        _cpuName = WmicFirstValue("cpu get name");
+
+        return _cpuName;
+    }
+
+    private static string? WmicFirstValue(string query)
+    {
         try
         {
-            var startInfo = new ProcessStartInfo("wmic", "path win32_VideoController get name")
+            var startInfo = new ProcessStartInfo("wmic", query)
             {
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
@@ -146,19 +169,17 @@ public static class SystemMetrics
             var output = process.StandardOutput.ReadToEnd();
             process.WaitForExit(3000);
 
-            var name = output
+            var value = output
                 .Split('\n')
                 .Select(line => line.Trim())
                 .FirstOrDefault(line => line.Length > 0 && !line.Equals("Name", StringComparison.OrdinalIgnoreCase));
 
-            if (name is { Length: > 120 })
+            if (value is { Length: > 120 })
             {
-                name = name[..120];
+                value = value[..120];
             }
 
-            _gpuName = name;
-
-            return _gpuName;
+            return value;
         }
         catch (Exception)
         {

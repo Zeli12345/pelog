@@ -90,6 +90,7 @@ public sealed class PelogApiClient
             {
                 session_uuid = sessionUuid,
                 cpu_usage_percent = metrics?.CpuPercent,
+                cpu_name = metrics?.CpuName,
                 ram_usage_percent = metrics?.RamPercent,
                 ram_total_gb = metrics?.RamTotalGb,
                 gpu_name = metrics?.GpuName,

@@ -28,6 +28,7 @@ class Device extends Model
         'last_seen_at',
         'screenshot_requested_at',
         'cpu_usage_percent',
+        'cpu_name',
         'ram_usage_percent',
         'ram_total_gb',
         'gpu_name',
