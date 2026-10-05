@@ -88,6 +88,7 @@ public sealed class LockscreenForm : Form
     private bool _revokedHandled;
     private int _birthDateAttempts;
     private Task _startupHardening = Task.CompletedTask;
+    private readonly List<ScreenCoverForm> _covers = [];
 
     public LockscreenForm(AppServices services)
     {
@@ -511,6 +512,8 @@ public sealed class LockscreenForm : Form
             CenterCard();
             _identifyInput.Focus();
             ApplyKioskHardening();
+            ShowSecondaryCovers();
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
             TryRecoverSession();
         };
 
@@ -1185,6 +1188,7 @@ public sealed class LockscreenForm : Form
 
     private void LaunchSession(Core.Data.LocalSessionRecord record)
     {
+        HideSecondaryCovers();
         Hide();
 
         // Sesi berjalan: desktop dipakai normal (Run, CMD, Pengaturan, dll. bebas).
@@ -1200,6 +1204,7 @@ public sealed class LockscreenForm : Form
 
             ResetFlow();
             Show();
+            ShowSecondaryCovers();
             Activate();
             _ = RefreshBootstrapQuietlyAsync();
         };
@@ -1481,6 +1486,41 @@ public sealed class LockscreenForm : Form
         }
     }
 
+    /// <summary>
+    /// Tutup seluruh monitor non-utama dengan panel gelap agar tidak ada celah
+    /// layar saat kiosk di layar kunci (monitor kedua tidak dapat dipakai).
+    /// </summary>
+    private void ShowSecondaryCovers()
+    {
+        HideSecondaryCovers();
+
+        foreach (var screen in Screen.AllScreens.Where(item => !item.Primary))
+        {
+            var cover = new ScreenCoverForm(screen.Bounds);
+            cover.Show();
+            _covers.Add(cover);
+        }
+    }
+
+    private void HideSecondaryCovers()
+    {
+        foreach (var cover in _covers)
+        {
+            cover.Close();
+            cover.Dispose();
+        }
+
+        _covers.Clear();
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        if (Visible)
+        {
+            ShowSecondaryCovers();
+        }
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         if (!_allowExit && e.CloseReason == CloseReason.UserClosing)
@@ -1494,6 +1534,8 @@ public sealed class LockscreenForm : Form
         _serverTimer.Stop();
         _syncTimer.Stop();
         _idleTimer.Stop();
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        HideSecondaryCovers();
         _keyboardBlocker.Dispose();
 
         base.OnFormClosing(e);
