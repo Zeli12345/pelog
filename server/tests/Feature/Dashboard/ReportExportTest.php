@@ -7,6 +7,7 @@ use App\Models\Student;
 use App\Models\UsageSession;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
@@ -101,5 +102,44 @@ class ReportExportTest extends TestCase
 
         $this->assertStringContainsString('ZEBRA praktikum jaringan', $text);
         $this->assertStringNotContainsString('OMEGA pemrograman web', $text);
+    }
+
+    public function test_report_date_filter_follows_wita_timezone(): void
+    {
+        // 06 Okt 2026 02:00 WITA = 05 Okt 2026 18:00 UTC — masih tanggal 06 di sekolah.
+        $this->seedSession([
+            'started_at_server' => Carbon::parse('2026-10-05 18:00:00', 'UTC'),
+            'usage_purpose' => 'WITA-PAGI',
+        ]);
+        // 07 Okt 2026 00:30 WITA = 06 Okt 2026 16:30 UTC — sudah lewat tanggal 06 di sekolah.
+        $this->seedSession([
+            'started_at_server' => Carbon::parse('2026-10-06 16:30:00', 'UTC'),
+            'usage_purpose' => 'WITA-LEWAT-TENGAH-MALAM',
+        ]);
+        $admin = User::factory()->adminIt()->create();
+
+        $csv = $this->actingAs($admin)
+            ->get('/reports/export?format=csv&from=2026-10-06&to=2026-10-06')
+            ->streamedContent();
+
+        $this->assertStringContainsString('WITA-PAGI', $csv);
+        $this->assertStringNotContainsString('WITA-LEWAT-TENGAH-MALAM', $csv);
+    }
+
+    public function test_report_includes_offline_synced_sessions_without_started_at_server(): void
+    {
+        // Sesi offline tersinkron: started_at_server NULL, tanggal dari started_at_client.
+        $this->seedSession([
+            'started_at_server' => null,
+            'started_at_client' => Carbon::parse('2026-10-05 19:00:00', 'UTC'), // 06 Okt 03:00 WITA
+            'usage_purpose' => 'SESI-OFFLINE-SINKRON',
+        ]);
+        $admin = User::factory()->adminIt()->create();
+
+        $csv = $this->actingAs($admin)
+            ->get('/reports/export?format=csv&from=2026-10-06&to=2026-10-06')
+            ->streamedContent();
+
+        $this->assertStringContainsString('SESI-OFFLINE-SINKRON', $csv);
     }
 }

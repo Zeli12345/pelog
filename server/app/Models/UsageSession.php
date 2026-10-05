@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 class UsageSession extends Model
 {
@@ -78,6 +79,27 @@ class UsageSession extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereNull('closed_at');
+    }
+
+    /**
+     * Filter rentang tanggal dalam zona waktu sekolah (WITA) — kolom waktu
+     * disimpan UTC, sehingga tanggal "06 Oktober" berarti 06 Okt 00:00 WITA
+     * s.d. 23:59 WITA, dan sesi hasil sinkron offline (started_at_server NULL)
+     * tetap ikut terhitung memakai started_at_client.
+     */
+    public function scopeFilterByDateRange(Builder $query, ?string $from, ?string $to): Builder
+    {
+        $column = 'COALESCE(usage_sessions.started_at_server, usage_sessions.started_at_client, usage_sessions.created_at)';
+
+        if ($from !== null && $from !== '') {
+            $query->whereRaw($column.' >= ?', [Carbon::parse($from, 'Asia/Makassar')->startOfDay()->utc()]);
+        }
+
+        if ($to !== null && $to !== '') {
+            $query->whereRaw($column.' <= ?', [Carbon::parse($to, 'Asia/Makassar')->endOfDay()->utc()]);
+        }
+
+        return $query;
     }
 
     public function isActive(): bool

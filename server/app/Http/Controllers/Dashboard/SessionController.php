@@ -26,8 +26,7 @@ class SessionController extends Controller
 
         $sessions = UsageSession::query()
             ->with(['device', 'student', 'staff', 'subject', 'screenshot'])
-            ->when($filters['from'], fn ($query, $from) => $query->whereDate('started_at_server', '>=', $from))
-            ->when($filters['to'], fn ($query, $to) => $query->whereDate('started_at_server', '<=', $to))
+            ->filterByDateRange($filters['from'], $filters['to'])
             ->when($filters['user_type'], fn ($query, $type) => $query->where('user_type', $type))
             ->when($filters['device_id'], fn ($query, $deviceId) => $query->where('device_id', $deviceId))
             ->when($filters['q'] !== '', function ($query) use ($filters) {

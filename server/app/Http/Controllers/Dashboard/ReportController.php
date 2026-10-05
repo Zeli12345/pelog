@@ -126,11 +126,11 @@ class ReportController extends Controller
 
         return [
             'from' => filled($validated['from'] ?? null)
-                ? Carbon::parse($validated['from'])->toDateString()
-                : now()->startOfMonth()->toDateString(),
+                ? Carbon::parse($validated['from'], 'Asia/Makassar')->toDateString()
+                : now('Asia/Makassar')->startOfMonth()->toDateString(),
             'to' => filled($validated['to'] ?? null)
-                ? Carbon::parse($validated['to'])->toDateString()
-                : now()->toDateString(),
+                ? Carbon::parse($validated['to'], 'Asia/Makassar')->toDateString()
+                : now('Asia/Makassar')->toDateString(),
             'user_type' => $validated['user_type'] ?? null,
             'device_id' => $validated['device_id'] ?? null,
             'q' => trim((string) ($validated['q'] ?? '')),
@@ -155,8 +155,7 @@ class ReportController extends Controller
     private function baseQuery(array $filters): Builder
     {
         return UsageSession::query()
-            ->when($filters['from'], fn ($query, $from) => $query->whereDate('started_at_server', '>=', $from))
-            ->when($filters['to'], fn ($query, $to) => $query->whereDate('started_at_server', '<=', $to))
+            ->filterByDateRange($filters['from'], $filters['to'])
             ->when($filters['user_type'], fn ($query, $type) => $query->where('user_type', $type))
             ->when($filters['device_id'], fn ($query, $deviceId) => $query->where('device_id', $deviceId))
             ->when(($filters['q'] ?? '') !== '', function ($query) use ($filters) {
