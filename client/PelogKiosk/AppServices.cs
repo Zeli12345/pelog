@@ -91,7 +91,7 @@ public sealed class AppServices : IDisposable
         var http = new HttpClient();
         var api = new PelogApiClient(http, clock, config.NormalizedBaseUrl());
         var store = new LocalStore(Path.Combine(dataDirectory, "local.db"));
-        var sessions = new SessionManager(store, api, clock);
+        var sessions = new SessionManager(store, api, clock, dataDirectory);
         var sync = new SyncService(store, api, clock);
         var updates = new UpdateService(store, api, dataDirectory);
 

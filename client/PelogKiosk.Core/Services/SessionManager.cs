@@ -28,11 +28,64 @@ public sealed class SessionManager
 
     private readonly ServerClock _clock;
 
-    public SessionManager(LocalStore store, PelogApiClient api, ServerClock clock)
+    private readonly string? _dataDirectory;
+
+    public SessionManager(LocalStore store, PelogApiClient api, ServerClock clock, string? dataDirectory = null)
     {
         _store = store;
         _api = api;
         _clock = clock;
+        _dataDirectory = dataDirectory;
+    }
+
+    /// <summary>
+    /// Berkas penanda sesi aktif (dibaca agen pembaruan SYSTEM "apply-update.ps1"
+    /// untuk menunda pemasangan update selama sesi berlangsung). Hanya ada saat
+    /// ada sesi terbuka; dihapus saat sesi ditutup/pulih ditutup.
+    /// </summary>
+    private string? SessionMarkerPath => _dataDirectory is null
+        ? null
+        : Path.Combine(_dataDirectory, "session.active");
+
+    private void MarkSessionActive(string sessionUuid)
+    {
+        var path = SessionMarkerPath;
+
+        if (path is null)
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(path, sessionUuid);
+        }
+        catch (Exception)
+        {
+            // penanda bersifat informatif; kegagalan tidak menghambat sesi
+        }
+    }
+
+    private void ClearSessionMarker()
+    {
+        var path = SessionMarkerPath;
+
+        if (path is null)
+        {
+            return;
+        }
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch (Exception)
+        {
+            // abaikan
+        }
     }
 
     public LocalSessionRecord BeginStudent(string nisn, long? subjectId, string purpose)
@@ -50,6 +103,7 @@ public sealed class SessionManager
         };
 
         _store.SaveSession(record);
+        MarkSessionActive(record.SessionUuid);
 
         return record;
     }
@@ -68,6 +122,7 @@ public sealed class SessionManager
         };
 
         _store.SaveSession(record);
+        MarkSessionActive(record.SessionUuid);
 
         return record;
     }
@@ -161,6 +216,7 @@ public sealed class SessionManager
         record.CloseReason = reason;
         record.State = "closed";
         _store.SaveSession(record);
+        ClearSessionMarker();
 
         return record;
     }
@@ -197,6 +253,7 @@ public sealed class SessionManager
         if (openSessions.Count == 0)
         {
             ClearShutdownPending(shutdownPending);
+            ClearSessionMarker();
 
             return new RecoveryResult(RecoveryAction.None, null);
         }
@@ -214,6 +271,7 @@ public sealed class SessionManager
             session.State = "closed";
             _store.SaveSession(session);
             _store.SetKv("shutdown_pending", "");
+            ClearSessionMarker();
 
             return new RecoveryResult(RecoveryAction.ClosedAsRecovery, session);
         }
@@ -222,6 +280,8 @@ public sealed class SessionManager
 
         if (_clock.Now - lastSeen <= ResumeWindow)
         {
+            MarkSessionActive(session.SessionUuid);
+
             return new RecoveryResult(RecoveryAction.Resume, session);
         }
 
@@ -229,6 +289,7 @@ public sealed class SessionManager
         session.CloseReason = "recovery";
         session.State = "closed";
         _store.SaveSession(session);
+        ClearSessionMarker();
 
         return new RecoveryResult(RecoveryAction.ClosedAsRecovery, session);
     }

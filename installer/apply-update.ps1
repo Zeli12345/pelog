@@ -3,9 +3,11 @@
 #
 # Alur: kiosk mengunduh installer + menulis update.json (staging). Saat boot,
 # skrip ini memverifikasi SHA-256 lalu memasang installer secara SENYAP
-# (/VERYSILENT) - tanpa UAC dan tanpa dialog apa pun. Bila kiosk sedang
-# berjalan (sesi berlangsung), update DITUNDA ke boot berikutnya agar siswa
-# tidak terganggu; aplikasi lama tetap berjalan sampai laptop dimatikan.
+# (/VERYSILENT) - tanpa UAC dan tanpa dialog apa pun. Bila SESI kiosk sedang
+# berlangsung (ditandai berkas data\session.active oleh kiosk), update DITUNDA
+# ke boot berikutnya agar siswa tidak terganggu. Kiosk yang hanya berjalan di
+# layar kunci ditutup & dijalankan ulang otomatis oleh Restart Manager Inno
+# Setup, sehingga pembaruan tetap terpasang pada boot yang sama.
 #
 # Manifest diperlakukan TIDAK terpercaya: installer_path wajib berada di dalam
 # folder staging (data\updates) dan sha256 wajib 64 hex yang cocok.
@@ -112,11 +114,16 @@ if ($null -eq $manifest -or [string]::IsNullOrWhiteSpace($manifest.version) -or 
 
 $version = [string]$manifest.version
 $installer = [string]$manifest.installer_path
+$sessionMarker = Join-Path $ConfigDir 'data\session.active'
 
-# Tunda bila kiosk sedang berjalan (sesi aktif) - dicoba lagi pada boot berikutnya.
-if (Get-Process -Name 'PelogKiosk' -ErrorAction SilentlyContinue) {
-    Write-Log ("tunda v{0}: kiosk sedang berjalan" -f $version)
-    Write-Result 'deferred' $version 'kiosk masih berjalan'
+# Tunda HANYA bila sesi kiosk sedang berlangsung (penanda sesi dibuat kiosk).
+# Kiosk yang berjalan di layar kunci tanpa sesi boleh ditutup/dipasang ulang
+# oleh Restart Manager Inno Setup (tanpa /NOCLOSEAPPLICATIONS) lalu dijalankan
+# kembali otomatis; memakai proses kiosk sebagai syarat membuat pembaruan
+# tertunda selamanya karena kiosk selalu autostart sebelum tugas ini berjalan.
+if (Test-Path -LiteralPath $sessionMarker) {
+    Write-Log ("tunda v{0}: sesi kiosk sedang berjalan" -f $version)
+    Write-Result 'deferred' $version 'sesi kiosk sedang berjalan'
     exit 0
 }
 
@@ -175,10 +182,10 @@ if ($hash -ne $expected) {
     exit 0
 }
 
-# Cek sekali lagi: hindari balapan dengan autostart/watchdog kiosk.
-if (Get-Process -Name 'PelogKiosk' -ErrorAction SilentlyContinue) {
-    Write-Log ("tunda v{0}: kiosk muncul saat verifikasi" -f $version)
-    Write-Result 'deferred' $version 'kiosk mulai berjalan'
+# Cek sekali lagi: hindari balapan dengan sesi kiosk yang baru dimulai.
+if (Test-Path -LiteralPath $sessionMarker) {
+    Write-Log ("tunda v{0}: sesi kiosk baru dimulai saat verifikasi" -f $version)
+    Write-Result 'deferred' $version 'sesi kiosk mulai berjalan'
     exit 0
 }
 
@@ -190,7 +197,7 @@ $attempts = Get-Attempts $version
 
 try {
     $process = Start-Process -FilePath $installer `
-        -ArgumentList '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/NOCLOSEAPPLICATIONS', "/LOG=$installLog" `
+        -ArgumentList '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', "/LOG=$installLog" `
         -WindowStyle Hidden -Wait -PassThru
 
     $exitCode = $process.ExitCode

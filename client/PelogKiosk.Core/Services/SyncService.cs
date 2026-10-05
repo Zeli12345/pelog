@@ -26,6 +26,8 @@ public sealed class SyncService
 
     private readonly ServerClock _clock;
 
+    private readonly SemaphoreSlim _screenshotGate = new(1, 1);
+
     public SyncService(LocalStore store, PelogApiClient api, ServerClock clock)
     {
         _store = store;
@@ -145,6 +147,23 @@ public sealed class SyncService
     }
 
     public async Task<int> PushScreenshotsAsync(CancellationToken cancellationToken = default)
+    {
+        // Serialkan unggahan: interval + permintaan manual bisa memicu dua
+        // PushScreenshotsAsync bersamaan yang mengunggah berkas yang sama
+        // (balapan unggahan ganda di server).
+        await _screenshotGate.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await PushScreenshotsCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            _screenshotGate.Release();
+        }
+    }
+
+    private async Task<int> PushScreenshotsCoreAsync(CancellationToken cancellationToken)
     {
         var pending = _store.GetPendingScreenshots();
 

@@ -622,8 +622,15 @@ public sealed class LockscreenForm : Form
         return button;
     }
 
-    private static void OnlyDigits(object? sender, KeyPressEventArgs e)
+    private void OnlyDigits(object? sender, KeyPressEventArgs e)
     {
+        // Filter angka hanya untuk NISN siswa. NIP/NUPTK pegawai dapat memuat
+        // huruf (mis. akun "kepsek") sehingga tidak boleh dipaksa angka.
+        if (_mode != Mode.Student)
+        {
+            return;
+        }
+
         if (!char.IsControl(e.KeyChar) && !char.IsAsciiDigit(e.KeyChar))
         {
             e.Handled = true;
