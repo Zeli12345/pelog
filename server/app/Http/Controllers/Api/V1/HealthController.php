@@ -23,7 +23,7 @@ class HealthController extends Controller
             && Setting::getValue('client_installer_sha256') !== '';
 
         return ApiResponse::ok([
-            'app_version' => config('pelog.version', '1.0.0'),
+            'app_version' => (string) Setting::getValue('app_version', config('pelog.version', '1.0.0')),
             'min_client_version' => config('pelog.min_client_version', '1.0.0'),
             'latest_version' => Setting::getValue('client_latest_version', config('pelog.version', '1.0.0')),
             'update_url' => $hasInstaller ? url('/downloads/client-setup') : null,
