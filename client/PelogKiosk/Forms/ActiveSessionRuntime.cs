@@ -52,8 +52,6 @@ public sealed class ActiveSessionRuntime : Form
 
     private bool _idleTriggered;
 
-    private bool _screenshotTaken;
-
     private bool _manualScreenshotBusy;
 
     private bool _allowClose;
@@ -276,19 +274,33 @@ public sealed class ActiveSessionRuntime : Form
 
     private async void OnScreenshotTick(object? sender, EventArgs e)
     {
-        _screenshotTimer?.Stop();
-
-        if (_screenshotTaken || !_record.IsOpen)
+        if (!_record.IsOpen)
         {
+            _screenshotTimer?.Stop();
+
             return;
+        }
+
+        // Bila masih ada screenshot yang belum terkirim (mis. sedang offline),
+        // jangan menimpa berkas itu — coba kirim dulu; kalau masih gagal,
+        // lewati siklus ini dan coba lagi pada interval berikutnya.
+        if (_services.Store.GetPendingScreenshots().Any(item => item.SessionUuid == _record.SessionUuid))
+        {
+            await _services.Sync.PushScreenshotsAsync();
+
+            if (_services.Store.GetPendingScreenshots().Any(item => item.SessionUuid == _record.SessionUuid))
+            {
+                return;
+            }
         }
 
         var config = _services.Sync.LoadCachedConfig();
         var capturedAt = _services.Clock.Now;
 
+        // Nama berkas unik per capture agar screenshot tidak saling menimpa.
         var path = ScreenCapture.CaptureToFile(
             _services.ScreenshotDirectory,
-            _record.SessionUuid,
+            $"{_record.SessionUuid}-{capturedAt:yyyyMMddHHmmss}",
             config.ImageFormat,
             config.MaxWidth,
             config.WebpQuality,
@@ -296,16 +308,9 @@ public sealed class ActiveSessionRuntime : Form
 
         if (path is null)
         {
-            // Gagal menangkap/menyandi: jangan tandai sesi sudah punya screenshot,
-            // jadwalkan percobaan berikutnya pada interval yang sama.
-            _screenshotTimer?.Start();
-
+            // Gagal menangkap/menyandi: coba lagi pada interval berikutnya.
             return;
         }
-
-        // Tandai hanya setelah capture benar-benar berhasil, supaya kegagalan
-        // tidak menghabiskan jatah satu-satunya screenshot sesi.
-        _screenshotTaken = true;
 
         _services.Sessions.AttachScreenshot(_record, path, capturedAt);
 

@@ -165,10 +165,12 @@ public sealed class SyncService
                 continue;
             }
 
+            var screenshotUuid = DeterministicScreenshotUuid(record);
+
             var result = await _api.UploadScreenshotAsync(
                 record.SessionUuid,
                 record.ScreenshotPath,
-                Guid.NewGuid().ToString(),
+                screenshotUuid,
                 record.ScreenshotCapturedAt ?? record.LastHeartbeatAt ?? _clock.Now,
                 cancellationToken);
 
@@ -211,6 +213,20 @@ public sealed class SyncService
             EndedAtClient = record.EndedAtClient,
             CloseReason = record.CloseReason,
         };
+    }
+
+    /// <summary>
+    /// UUID screenshot deterministik dari (sesi + waktu capture) supaya percobaan
+    /// unggah ulang setelah koneksi putus tidak menggandakan screenshot di server.
+    /// </summary>
+    private static string DeterministicScreenshotUuid(LocalSessionRecord record)
+    {
+        var capturedAt = record.ScreenshotCapturedAt ?? record.LastHeartbeatAt ?? record.CreatedAt;
+        var input = $"{record.SessionUuid}|{capturedAt.UtcTicks}";
+
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
+
+        return new Guid(hash.AsSpan(0, 16)).ToString();
     }
 
     private static IEnumerable<List<T>> Chunk<T>(List<T> source, int size)

@@ -40,9 +40,13 @@ class DeviceController extends Controller
         );
 
         if ($statusFilter !== '') {
-            $devices = $devices->filter(
-                fn (Device $device) => $statuses[$device->id]->value === $statusFilter
-            )->values();
+            $devices = $devices->filter(function (Device $device) use ($statusFilter, $statuses, $onlineWindow) {
+                if ($statusFilter === 'offline') {
+                    return DeviceStatusResolver::isOffline($device, $onlineWindow);
+                }
+
+                return $statuses[$device->id]->value === $statusFilter;
+            })->values();
         }
 
         return view('dashboard.devices.index', [
@@ -66,6 +70,7 @@ class DeviceController extends Controller
 
         $history = $device->sessions()
             ->with(['student', 'staff', 'subject', 'screenshot'])
+            ->withCount('screenshots')
             ->orderByDesc('started_at_server')
             ->orderByDesc('started_at_client')
             ->limit(50)

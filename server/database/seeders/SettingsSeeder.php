@@ -22,7 +22,7 @@ class SettingsSeeder extends Seeder
             'max_width' => 1280,
             'retention_days' => 0,          // 0 = simpan permanen
             'disk_budget_gb' => 20,
-            'screenshot_minute' => 30,      // ambil screenshot di menit ke-30
+            'screenshot_minute' => 15,      // interval screenshot otomatis (menit); 0 = nonaktif
 
             // Sesi & sinkronisasi
             'stale_session_minutes' => 15,  // sesi tanpa heartbeat > X menit dianggap menggantung

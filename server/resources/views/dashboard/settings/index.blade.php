@@ -23,7 +23,7 @@
                 {{-- Screenshot --}}
                 <section class="card p-5">
                     <h2 class="text-sm font-semibold text-ink">Screenshot</h2>
-                    <p class="text-xs text-ink-faint">Diambil otomatis 1× per sesi siswa, lalu diunggah ke server.</p>
+                    <p class="text-xs text-ink-faint">Diambil otomatis secara berkala selama sesi siswa, lalu diunggah ke server.</p>
                     <div class="mt-4 space-y-4">
                         <label class="flex items-center gap-2 text-sm text-ink-soft">
                             <input type="checkbox" name="screenshot_enabled" value="1" @checked(old('screenshot_enabled', $settings['screenshot_enabled'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
@@ -51,8 +51,9 @@
                                 <input type="number" id="max_width" name="max_width" min="640" max="3840" value="{{ old('max_width', $settings['max_width']) }}" class="input text-sm">
                             </div>
                             <div>
-                                <label class="label" for="screenshot_minute">Menit ke-</label>
-                                <input type="number" id="screenshot_minute" name="screenshot_minute" min="1" max="240" value="{{ old('screenshot_minute', $settings['screenshot_minute']) }}" class="input text-sm">
+                                <label class="label" for="screenshot_minute">Interval screenshot (menit)</label>
+                                <input type="number" id="screenshot_minute" name="screenshot_minute" min="0" max="240" value="{{ old('screenshot_minute', $settings['screenshot_minute']) }}" class="input text-sm">
+                                <p class="mt-1 text-[11px] text-ink-faint">Screenshot otomatis tiap X menit selama sesi siswa; 0 = nonaktif.</p>
                             </div>
                             <div>
                                 <label class="label" for="retention_days">Retensi (hari)</label>

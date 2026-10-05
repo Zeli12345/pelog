@@ -199,7 +199,15 @@
                                         <p class="truncate text-ink-soft" title="{{ $session->usage_purpose }}">{{ $session->usage_purpose }}</p>
                                         <p class="text-[11px] text-ink-faint">{{ $session->subject?->name ?? '—' }}</p>
                                     </td>
-                                    <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $session->duration_minutes }} mnt</td>
+                                    <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">
+                                        @php
+                                            $rowStart = $session->started_at_server ?? $session->started_at_client;
+                                            $rowDuration = $session->isActive() && $rowStart !== null
+                                                ? max(0, (int) $rowStart->diffInMinutes(now()))
+                                                : $session->duration_minutes;
+                                        @endphp
+                                        {{ $rowDuration }} mnt
+                                    </td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $session->close_reason?->label() ?? '—' }}</td>
                                     <td class="px-4 py-2.5">
                                         @if ($session->screenshot)
@@ -207,6 +215,9 @@
                                                 <x-icon name="image" size="h-3.5 w-3.5" />
                                                 Lihat
                                             </a>
+                                            @if (($session->screenshots_count ?? 0) > 1)
+                                                <span class="ml-1 text-[11px] text-ink-faint" title="Jumlah screenshot sesi ini">({{ $session->screenshots_count }}×)</span>
+                                            @endif
                                         @else
                                             <span class="text-xs text-ink-faint">—</span>
                                         @endif

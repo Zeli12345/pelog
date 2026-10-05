@@ -22,16 +22,21 @@ class ReportController extends Controller
 
         $query = $this->baseQuery($filters);
 
+        // Durasi live: sesi yang masih berjalan dihitung sampai detik ini.
+        $liveDuration = 'CASE WHEN usage_sessions.closed_at IS NULL
+                THEN GREATEST(0, TIMESTAMPDIFF(MINUTE, COALESCE(usage_sessions.started_at_server, usage_sessions.started_at_client, usage_sessions.created_at), NOW()))
+                ELSE usage_sessions.duration_minutes END';
+
         $summary = (clone $query)->reorder()->selectRaw('
                 COUNT(*) as total_sessions,
-                COALESCE(SUM(duration_minutes), 0) as total_minutes,
+                COALESCE(SUM('.$liveDuration.'), 0) as total_minutes,
                 SUM(CASE WHEN user_type = "student" THEN 1 ELSE 0 END) as student_sessions,
                 SUM(CASE WHEN user_type = "staff" THEN 1 ELSE 0 END) as staff_sessions
             ')->first();
 
         $bySubject = (clone $query)
             ->join('subjects', 'subjects.id', '=', 'usage_sessions.subject_id')
-            ->selectRaw('subjects.name as subject_name, COUNT(*) as total, COALESCE(SUM(usage_sessions.duration_minutes), 0) as total_minutes')
+            ->selectRaw('subjects.name as subject_name, COUNT(*) as total, COALESCE(SUM('.$liveDuration.'), 0) as total_minutes')
             ->groupBy('subjects.name')
             ->orderByDesc('total')
             ->limit(10)
@@ -80,6 +85,11 @@ class ReportController extends Controller
             ]);
 
             foreach ($sessions as $session) {
+                $startedAt = $session->started_at_server ?? $session->started_at_client;
+                $duration = $session->closed_at === null && $startedAt !== null
+                    ? max(0, (int) $startedAt->diffInMinutes(now()))
+                    : $session->duration_minutes;
+
                 fputcsv($output, [
                     ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('Y-m-d') ?? '-',
                     $this->csvText($session->device?->label ?? $session->device?->hostname) ?? '-',
@@ -90,7 +100,7 @@ class ReportController extends Controller
                     $this->csvText($session->usage_purpose),
                     ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('H:i') ?? '-',
                     $session->closed_at?->timezone('Asia/Makassar')->format('H:i') ?? '-',
-                    $session->duration_minutes,
+                    $duration,
                     $this->csvText($session->close_reason?->label()) ?? '-',
                 ]);
             }

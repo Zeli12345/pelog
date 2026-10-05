@@ -32,7 +32,9 @@ class DashboardController extends Controller
             'total' => $devices->count(),
             'in_use' => $statuses->filter(fn (DeviceStatus $status) => $status === DeviceStatus::InUse)->count(),
             'available' => $statuses->filter(fn (DeviceStatus $status) => $status === DeviceStatus::Available)->count(),
-            'offline' => $statuses->filter(fn (DeviceStatus $status) => $status === DeviceStatus::Offline)->count(),
+            'offline' => $devices->filter(
+                fn (Device $device) => DeviceStatusResolver::isOffline($device, $onlineWindow)
+            )->count(),
             'maintenance' => $statuses->filter(fn (DeviceStatus $status) => $status === DeviceStatus::Maintenance)->count(),
             'sessions_today' => UsageSession::query()
                 ->where(function ($query) {

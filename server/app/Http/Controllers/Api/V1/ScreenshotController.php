@@ -36,17 +36,19 @@ class ScreenshotController extends Controller
             return ApiResponse::error('session_not_found', 'Sesi tidak ditemukan.', 404);
         }
 
-        // Idempotensi dibatasi pada sesi ini; uuid milik sesi/perangkat lain tidak
-        // boleh dianggap sebagai ringkasan milik sesi ini.
+        // Idempotensi per-batch: unggahan ulang dengan screenshot_uuid yang sama
+        // (mis. retry setelah koneksi putus) tidak menggandakan data; uuid baru
+        // dianggap screenshot baru — satu sesi boleh punya banyak screenshot
+        // (terjadwal tiap interval + permintaan manual dari dashboard).
         $existing = Screenshot::query()
-            ->where('usage_session_id', $session->id)
+            ->where('screenshot_uuid', $data['screenshot_uuid'])
             ->first();
 
         if ($existing !== null) {
             return ApiResponse::ok($this->summary($existing));
         }
 
-        $screenshot = $service->store($request->file('image_file'), $session);
+        $screenshot = $service->store($request->file('image_file'), $session, $data['screenshot_uuid']);
 
         $screenshot->forceFill([
             'screenshot_uuid' => $data['screenshot_uuid'],

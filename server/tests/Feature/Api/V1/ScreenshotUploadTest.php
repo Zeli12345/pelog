@@ -66,23 +66,47 @@ class ScreenshotUploadTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'screenshot_uploaded']);
     }
 
-    public function test_second_upload_for_same_session_is_idempotent(): void
+    public function test_retry_with_same_uuid_is_idempotent(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        $headers = $this->deviceHeaders($token);
+        $uuid = $this->startStudentSession($headers);
+        $screenshotUuid = (string) Str::uuid();
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => $screenshotUuid,
+            'image_file' => UploadedFile::fake()->image('a.jpg', 640, 480),
+        ], $headers)->assertStatus(201);
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => $screenshotUuid,
+            'image_file' => UploadedFile::fake()->image('b.jpg', 640, 480),
+        ], $headers)->assertOk();
+
+        $this->assertDatabaseCount('screenshots', 1);
+    }
+
+    public function test_multiple_screenshots_per_session_are_allowed(): void
     {
         [$device, $token] = $this->enrolledDevice();
         $headers = $this->deviceHeaders($token);
         $uuid = $this->startStudentSession($headers);
 
-        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
-            'screenshot_uuid' => (string) Str::uuid(),
-            'image_file' => UploadedFile::fake()->image('a.jpg', 640, 480),
-        ], $headers)->assertStatus(201);
+        foreach (['a.jpg', 'b.jpg', 'c.jpg'] as $name) {
+            $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+                'screenshot_uuid' => (string) Str::uuid(),
+                'image_file' => UploadedFile::fake()->image($name, 640, 480),
+            ], $headers)->assertStatus(201);
+        }
 
-        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
-            'screenshot_uuid' => (string) Str::uuid(),
-            'image_file' => UploadedFile::fake()->image('b.jpg', 640, 480),
-        ], $headers)->assertOk();
+        $sessionId = Screenshot::query()->value('usage_session_id');
 
-        $this->assertDatabaseCount('screenshots', 1);
+        $this->assertDatabaseCount('screenshots', 3);
+        $this->assertSame(3, Screenshot::query()->where('usage_session_id', $sessionId)->count());
+
+        // Berkas gambar tiap screenshot berbeda (tidak saling menimpa).
+        $paths = Screenshot::query()->pluck('path')->all();
+        $this->assertCount(3, array_unique($paths));
     }
 
     public function test_oversized_file_is_rejected(): void

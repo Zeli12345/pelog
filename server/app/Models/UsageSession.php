@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class UsageSession extends Model
@@ -66,7 +67,12 @@ class UsageSession extends Model
 
     public function screenshot(): HasOne
     {
-        return $this->hasOne(Screenshot::class);
+        return $this->hasOne(Screenshot::class)->latestOfMany('id');
+    }
+
+    public function screenshots(): HasMany
+    {
+        return $this->hasMany(Screenshot::class)->orderBy('captured_at');
     }
 
     public function scopeActive(Builder $query): Builder

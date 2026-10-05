@@ -8,7 +8,11 @@ use App\Models\Device;
 class DeviceStatusResolver
 {
     /**
-     * Status tampilan perangkat berdasarkan sesi aktif dan heartbeat terakhir.
+     * Status tampilan perangkat.
+     *
+     * Perangkat tanpa sesi aktif selalu "Tersedia" (walau sedang dimatikan /
+     * offline) supaya tidak terlihat "stuck" setelah shutdown manual; info
+     * offline ditampilkan terpisah lewat isOffline().
      */
     public static function resolve(Device $device, int $onlineWindowSeconds = 300): DeviceStatus
     {
@@ -16,13 +20,13 @@ class DeviceStatusResolver
             return DeviceStatus::Maintenance;
         }
 
-        $offline = $device->last_seen_at === null
-            || $device->last_seen_at->diffInSeconds(now()) > $onlineWindowSeconds;
-
-        if ($offline) {
-            return DeviceStatus::Offline;
-        }
-
         return $device->sessions->isNotEmpty() ? DeviceStatus::InUse : DeviceStatus::Available;
+    }
+
+    /** Benar bila heartbeat terakhir sudah melewati jendela online (dianggap offline). */
+    public static function isOffline(Device $device, int $onlineWindowSeconds = 300): bool
+    {
+        return $device->last_seen_at === null
+            || $device->last_seen_at->diffInSeconds(now()) > $onlineWindowSeconds;
     }
 }

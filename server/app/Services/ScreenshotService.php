@@ -15,19 +15,25 @@ class ScreenshotService
 
     public const THUMB_QUALITY = 75;
 
-    public function store(UploadedFile $file, UsageSession $session): Screenshot
+    public function store(UploadedFile $file, UsageSession $session, ?string $screenshotUuid = null): Screenshot
     {
         $mime = (string) $file->getMimeType();
         $format = $mime === 'image/webp' ? ScreenshotFormat::Webp : ScreenshotFormat::Jpeg;
         $extension = $format === ScreenshotFormat::Webp ? 'webp' : 'jpg';
 
+        // Nama berkas unik per screenshot: sesi boleh punya banyak screenshot.
+        $suffix = $screenshotUuid !== null && $screenshotUuid !== ''
+            ? $screenshotUuid
+            : (string) str()->uuid();
+        $base = $session->session_uuid.'-'.$suffix;
+
         $directory = 'screenshots/'.now()->format('Y/m');
-        $filename = $session->session_uuid.'.'.$extension;
+        $filename = $base.'.'.$extension;
 
         $path = $file->storeAs($directory, $filename, 'local');
 
         $absolutePath = Storage::disk('local')->path($path);
-        $thumbPath = $this->makeThumbnail($absolutePath, $directory, $session->session_uuid);
+        $thumbPath = $this->makeThumbnail($absolutePath, $directory, $base);
 
         return Screenshot::query()->create([
             'screenshot_uuid' => (string) str()->uuid(),
@@ -41,7 +47,7 @@ class ScreenshotService
         ]);
     }
 
-    private function makeThumbnail(string $absolutePath, string $directory, string $sessionUuid): ?string
+    private function makeThumbnail(string $absolutePath, string $directory, string $base): ?string
     {
         if (! extension_loaded('gd')) {
             return null;
@@ -73,7 +79,7 @@ class ScreenshotService
             $thumb = imagecreatetruecolor($thumbWidth, $thumbHeight);
             imagecopyresampled($thumb, $source, 0, 0, 0, 0, $thumbWidth, $thumbHeight, $width, $height);
 
-            $thumbRelative = $directory.'/'.$sessionUuid.'-thumb.jpg';
+            $thumbRelative = $directory.'/'.$base.'-thumb.jpg';
             $thumbAbsolute = Storage::disk('local')->path($thumbRelative);
 
             imagejpeg($thumb, $thumbAbsolute, self::THUMB_QUALITY);

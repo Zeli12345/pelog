@@ -78,6 +78,11 @@ class SessionsExport extends DefaultValueBinder implements FromQuery, ShouldAuto
      */
     public function map($session): array
     {
+        $startedAt = $session->started_at_server ?? $session->started_at_client;
+        $duration = $session->closed_at === null && $startedAt !== null
+            ? max(0, (int) $startedAt->diffInMinutes(now()))
+            : $session->duration_minutes;
+
         return [
             ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('Y-m-d') ?? '-',
             $session->device?->label ?? $session->device?->hostname ?? '-',
@@ -88,7 +93,7 @@ class SessionsExport extends DefaultValueBinder implements FromQuery, ShouldAuto
             $session->usage_purpose,
             ($session->started_at_server ?? $session->started_at_client)?->timezone('Asia/Makassar')->format('H:i') ?? '-',
             $session->closed_at?->timezone('Asia/Makassar')->format('H:i') ?? '-',
-            $session->duration_minutes,
+            $duration,
             $session->close_reason?->label() ?? '-',
         ];
     }

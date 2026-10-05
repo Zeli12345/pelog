@@ -60,7 +60,7 @@ class SettingsController extends Controller
             'webp_quality' => ['required', 'integer', 'min:10', 'max:100'],
             'jpeg_quality' => ['required', 'integer', 'min:10', 'max:100'],
             'max_width' => ['required', 'integer', 'min:640', 'max:3840'],
-            'screenshot_minute' => ['required', 'integer', 'min:1', 'max:240'],
+            'screenshot_minute' => ['required', 'integer', 'min:0', 'max:240'],
             'retention_days' => ['required', 'integer', 'min:0', 'max:3650'],
             'disk_budget_gb' => ['required', 'integer', 'min:1', 'max:2000'],
             'stale_session_minutes' => ['required', 'integer', 'min:5', 'max:180'],

@@ -109,7 +109,15 @@
                                         <p class="text-[11px] text-ink-faint">{{ $session->student?->class ?? $session->user_type->label() }}</p>
                                     </td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $session->subject?->name ?? '—' }}</td>
-                                    <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $session->duration_minutes }} mnt</td>
+                                    <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">
+                                        @php
+                                            $rowStart = $session->started_at_server ?? $session->started_at_client;
+                                            $rowDuration = $session->isActive() && $rowStart !== null
+                                                ? max(0, (int) $rowStart->diffInMinutes(now()))
+                                                : $session->duration_minutes;
+                                        @endphp
+                                        {{ $rowDuration }} mnt
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
