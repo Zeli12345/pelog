@@ -152,6 +152,32 @@ class SessionLifecycleTest extends TestCase
         ], $this->deviceHeaders($token))->assertOk();
     }
 
+    public function test_idle_close_reason_is_accepted_and_persisted(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        Student::factory()->create(['nisn' => '0051234567']);
+        $uuid = (string) Str::uuid();
+
+        $this->postJson('/api/v1/sessions/start', [
+            'session_uuid' => $uuid,
+            'user_type' => 'student',
+            'nisn' => '0051234567',
+            'usage_purpose' => 'Praktikum lalu idle',
+        ], $this->deviceHeaders($token))->assertStatus(201);
+
+        $this->postJson('/api/v1/sessions/end', [
+            'session_uuid' => $uuid,
+            'close_reason' => 'idle',
+        ], $this->deviceHeaders($token))
+            ->assertOk()
+            ->assertJsonPath('data.active', false)
+            ->assertJsonPath('data.close_reason', 'idle');
+
+        $session = UsageSession::query()->where('session_uuid', $uuid)->firstOrFail();
+        $this->assertSame('idle', $session->close_reason->value);
+        $this->assertSame('available', $device->refresh()->status->value);
+    }
+
     public function test_heartbeat_after_close_reports_inactive(): void
     {
         [$device, $token] = $this->enrolledDevice();

@@ -84,6 +84,25 @@ chmod -R ug+rwx storage bootstrap/cache
 
 > Setiap mengubah `.env`, jalankan ulang `php artisan optimize:clear && php artisan optimize`.
 
+### 3.1 Wajib: matikan intersep error nginx untuk API (kode JSON)
+
+aaPanel memasang `fastcgi_intercept_errors on;` di `nginx.conf` **global** +
+`error_page 404 /404.html;` pada tiap situs. Akibatnya respons **404 dari Laravel**
+(JSON API) diintersep nginx dan request diproses ulang lewat `index.php` sebagai
+**GET** — kiosk menerima balasan menyesatkan "The GET method is not supported for
+route ...". Perbaikan per-situs (tanpa mengubah situs lain):
+
+```
+# /www/server/panel/vhost/nginx/extension/pelog.smkn1mas.sch.id/pelog_api_errors.conf
+fastcgi_intercept_errors off;
+```
+
+Lalu muat ulang nginx: `nginx -t && nginx -s reload` (atau panel: System → nginx
+→ Reload; API: `POST /v2/system?action=ServiceAdmin` `name=nginx&type=reload`).
+Berkas contoh ada di `docs/nginx/pelog_api_errors.conf`. Verifikasi:
+`POST /api/v1/sessions/heartbeat` dengan UUID tak dikenal harus menjawab
+`{"ok":false,...,"code":"session_not_found"}` HTTP 404 (bukan pesan 405/halaman nginx).
+
 ## 4. Akun awal (dibuat seeder)
 
 | Peran | Email | Password awal |
