@@ -6,8 +6,9 @@
 # (/VERYSILENT) - tanpa UAC dan tanpa dialog apa pun. Bila SESI kiosk sedang
 # berlangsung (ditandai berkas data\session.active oleh kiosk), update DITUNDA
 # ke boot berikutnya agar siswa tidak terganggu. Kiosk yang hanya berjalan di
-# layar kunci ditutup & dijalankan ulang otomatis oleh Restart Manager Inno
-# Setup, sehingga pembaruan tetap terpasang pada boot yang sama.
+# layar kunci tetap dibiarkan berjalan: berkas yang sedang dipakai diganti
+# otomatis oleh Windows saat boot berikutnya (/NOCLOSEAPPLICATIONS), sehingga
+# versi baru aktif setelah restart tanpa mengganggu pemakaian.
 #
 # Manifest diperlakukan TIDAK terpercaya: installer_path wajib berada di dalam
 # folder staging (data\updates) dan sha256 wajib 64 hex yang cocok.
@@ -197,7 +198,7 @@ $attempts = Get-Attempts $version
 
 try {
     $process = Start-Process -FilePath $installer `
-        -ArgumentList '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', "/LOG=$installLog" `
+        -ArgumentList '/VERYSILENT', '/NORESTART', '/SUPPRESSMSGBOXES', '/NOCLOSEAPPLICATIONS', "/LOG=$installLog" `
         -WindowStyle Hidden -Wait -PassThru
 
     $exitCode = $process.ExitCode
