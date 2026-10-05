@@ -36,7 +36,9 @@ class ScreenshotService
         $thumbPath = $this->makeThumbnail($absolutePath, $directory, $base);
 
         return Screenshot::query()->create([
-            'screenshot_uuid' => (string) str()->uuid(),
+            'screenshot_uuid' => $screenshotUuid !== null && $screenshotUuid !== ''
+                ? $screenshotUuid
+                : (string) str()->uuid(),
             'usage_session_id' => $session->id,
             'format' => $format,
             'path' => $path,

@@ -9,6 +9,7 @@ use App\Models\UsageSession;
 use App\Services\ScreenshotService;
 use App\Support\ApiResponse;
 use App\Support\Audit;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -48,7 +49,22 @@ class ScreenshotController extends Controller
             return ApiResponse::ok($this->summary($existing));
         }
 
-        $screenshot = $service->store($request->file('image_file'), $session, $data['screenshot_uuid']);
+        try {
+            $screenshot = $service->store($request->file('image_file'), $session, $data['screenshot_uuid']);
+        } catch (QueryException $exception) {
+            // Balapan unggah ganda: dua permintaan dengan screenshot_uuid yang
+            // sama lolos pemeriksaan di atas, lalu salah satunya kalah oleh
+            // unique constraint. Perlakukan sebagai idempoten (200) alih-alih 500.
+            $existing = Screenshot::query()
+                ->where('screenshot_uuid', $data['screenshot_uuid'])
+                ->first();
+
+            if ($existing === null) {
+                throw $exception;
+            }
+
+            return ApiResponse::ok($this->summary($existing));
+        }
 
         $screenshot->forceFill([
             'screenshot_uuid' => $data['screenshot_uuid'],

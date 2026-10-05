@@ -4,6 +4,9 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Screenshot;
 use App\Models\Student;
+use App\Models\UsageSession;
+use App\Services\ScreenshotService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -107,6 +110,71 @@ class ScreenshotUploadTest extends TestCase
         // Berkas gambar tiap screenshot berbeda (tidak saling menimpa).
         $paths = Screenshot::query()->pluck('path')->all();
         $this->assertCount(3, array_unique($paths));
+    }
+
+    public function test_screenshot_uuid_is_used_for_row_and_file_path(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        $headers = $this->deviceHeaders($token);
+        $uuid = $this->startStudentSession($headers);
+        $screenshotUuid = (string) Str::uuid();
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => $screenshotUuid,
+            'image_file' => UploadedFile::fake()->image('a.jpg', 640, 480),
+        ], $headers)->assertStatus(201);
+
+        $screenshot = Screenshot::query()->firstOrFail();
+
+        // Jalur berkas dan UUID baris harus memakai UUID permintaan. Baris dengan
+        // UUID acak sementara (sisa balapan unggah ganda) akan salah merujuk
+        // berkas milik screenshot yang sama.
+        $this->assertSame($screenshotUuid, $screenshot->screenshot_uuid);
+        $this->assertStringContainsString($screenshotUuid, $screenshot->path);
+    }
+
+    public function test_losing_duplicate_race_returns_existing_screenshot(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        $headers = $this->deviceHeaders($token);
+        $uuid = $this->startStudentSession($headers);
+        $screenshotUuid = (string) Str::uuid();
+
+        // Simulasikan balapan: permintaan lain menang lebih dulu (baris sudah
+        // ada), lalu penyimpanan kita kalah oleh unique constraint.
+        $this->instance(ScreenshotService::class, new class($screenshotUuid) extends ScreenshotService
+        {
+            public function __construct(private string $racingUuid) {}
+
+            public function store(UploadedFile $file, UsageSession $session, ?string $screenshotUuid = null): Screenshot
+            {
+                Screenshot::query()->create([
+                    'screenshot_uuid' => $this->racingUuid,
+                    'usage_session_id' => $session->id,
+                    'format' => \App\Enums\ScreenshotFormat::Jpeg,
+                    'path' => 'screenshots/2026/10/race-winner.jpg',
+                    'thumb_path' => null,
+                    'size_bytes' => 10,
+                    'captured_at' => now(),
+                ]);
+
+                throw new QueryException(
+                    'mysql',
+                    'insert into `screenshots` ...',
+                    [],
+                    new \PDOException('SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry', 23000),
+                );
+            }
+        });
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => $screenshotUuid,
+            'image_file' => UploadedFile::fake()->image('b.jpg', 640, 480),
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.screenshot_uuid', $screenshotUuid);
+
+        $this->assertDatabaseCount('screenshots', 1);
     }
 
     public function test_oversized_file_is_rejected(): void
