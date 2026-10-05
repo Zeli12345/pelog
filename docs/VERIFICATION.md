@@ -260,3 +260,50 @@ Batasan (batas OS, bukan bug aplikasi):
 
 - `shutdown /f` (paksa) dan tahan tombol power 5 detik tidak dapat diintersep; sesi tetap tercatat `shutdown` lewat hook/tanda.
 - Bila pengguna memilih "Shut down anyway", refleksi terlewat (sesi tetap ditutup `shutdown`).
+
+---
+
+## 10. Verifikasi Produksi & VM (2026-10-06)
+
+Kampanye verifikasi menyeluruh terhadap **produksi** (<https://pelog.smkn1mas.sch.id>) dan VM
+`JOINER2` (Windows 10, kiosk 1.0.0 -> 1.0.1). Semua temuan di bawah sudah diperbaiki, diuji,
+dan (untuk perubahan server) sudah dideploy ke produksi.
+
+### 10.1 Bug ditemukan & diperbaiki
+
+| # | Bug | Bukti | Perbaikan |
+|---|---|---|---|
+| 1 | `close_reason='idle'` ditolak MySQL (enum lama tanpa `idle`) sehingga sesi idle gagal ditutup (HTTP 500 pada `end`/`sync`) | `SQLSTATE 1265 Data truncated` (produksi); fitur idle shutdown repo tidak pernah jalan | migrasi `2026_10_06_000001_add_idle_to_close_reason_enum` + tes; terverifikasi di produksi & VM (sesi `reason=idle` + auto power-off) |
+| 2 | Intersep 404 nginx (`fastcgi_intercept_errors on` + `error_page 404` tanpa 404.html) memproses ulang respons 404 API sebagai GET -> kiosk menerima "The GET method is not supported" | `POST /api/v1/sessions/heartbeat` (uuid tak dikenal) -> 404 berisi pesan 405 | override per-situs `fastcgi_intercept_errors off;` (docs/nginx/) + dokumentasi deploy; API 404 kembali JSON |
+| 3 | Filter tanggal laporan memakai tanggal UTC (bukan WITA) | filter `from=to=06 Okt` -> 0 baris padahal 10 sesi berjalan 06 Okt WITA | scope `filterByDateRange` (WITA -> UTC) di laporan & sesi |
+| 4 | Sesi sinkron offline (`started_at_server` NULL) tidak pernah muncul di laporan/CSV/XLSX | 13 sesi di DB, laporan hanya 11 | COALESCE(server, client, created_at) pada filter tanggal + tes |
+| 5 | Balapan unggah screenshot dengan uuid sama -> HTTP 500 + baris yatim menunjuk berkas sesi lain | 3 unggah pada detik yang sama; baris #42 path milik #41; nginx log 500 | INSERT memakai uuid permintaan + tangkap pelanggaran unique (idempoten) + serialisasi unggahan di klien |
+| 6 | Kiosk menolak NIP pegawai non-angka (akun `kepsek` tidak bisa login) | filter `OnlyDigits` berlaku untuk mode guru | filter hanya untuk NISN siswa; terverifikasi login `QATEST2026001` di VM |
+| 7 | Auto-update tidak pernah diterapkan pada mesin autologon: task SYSTEM menunda bila proses kiosk berjalan | `update-agent.log`: `tunda v1.0.1: kiosk sedang berjalan` setiap boot | tunda hanya bila **sesi aktif** (berkas penanda `data\session.active` dari kiosk) + `restartreplace` pada installer agar berkas terkunci dijadwalkan ganti saat restart; terverifikasi: jalur `installed` dan jalur `deferred` (sesi aktif) |
+
+### 10.2 Verifikasi kunci di VM (kiosk 1.0.1)
+
+- Enroll (kode tertanam benar; kode salah -> pesan error), autostart + autologon, kiosk terkunci.
+- Login siswa NISN + tanggal lahir (3 format diterima: `dd-mm-yyyy`, `dd/mm/yyyy`, `yyyy-mm-dd`;
+  salah 5x -> kembali ke NISN), nama & kelas dari produksi tampil.
+- Login guru NIP (termasuk NIP berhuruf), sesi tanpa mapel/feedback, berakhir normal.
+- Sesi: kiosk tersembunyi, heartbeat 60 detik, metrik CPU/RAM/nama CPU/GPU muncul di dashboard,
+  screenshot berkala tiap menit (banyak berkas unik + thumbnail), "Minta Screenshot" dashboard
+  diproses pada heartbeat berikutnya, laporan durasi live tumbuh.
+- `Ctrl+Alt+S` -> konfirmasi -> sesi normal; **kill proses + reboot -> sesi pulih (resume)**;
+  tutup paksa dashboard -> `close_reason=admin` + **PC mati otomatis**; idle 3 menit ->
+  `close_reason=idle` + **PC mati otomatis** (pengaturan dikembalikan ke 90).
+- `Matikan` layar kunci -> konfirmasi -> shutdown bersih. Hardening: Win+R & Task Manager
+  diblokir saat kiosk terkunci; MODE ADMIN (password) dapat CMD/PowerShell/Regedit.
+- Hapus perangkat di dashboard -> kiosk **self-wipe** total (aplikasi, data, task, autostart).
+- Auto-update: unduh + verifikasi SHA + staging `update.json`, diterapkan task SYSTEM saat boot
+  (setelah perbaikan #7), ditunda saat sesi aktif.
+
+### 10.3 Batasan yang tidak dapat diuji
+
+- Multi-monitor (host hanya 1 layar) - jalur kode diverifikasi logika.
+- Wi-Fi scan/koneksi penuh (VM tanpa adapter Wi-Fi; dialog & empty-state terverifikasi).
+- Sinkronisasi offline penuh pada kampanye ini tidak diulang di VM (tercakup tes unit/API
+  `sync/sessions` idempoten); unggah/pembaruan mode offline sudah diuji pada sesi sebelumnya.
+- Jalur 410 `device_revoked` diverifikasi lewat tes otomatis (produksi tidak menyisakan
+  perangkat soft-deleted dengan token yang diketahui setelah pembersihan).
