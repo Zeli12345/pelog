@@ -1,5 +1,6 @@
 using PelogKiosk.App.Services;
 using PelogKiosk.Core.Data;
+using PelogKiosk.Core.Services;
 using Microsoft.Win32;
 using Timer = System.Windows.Forms.Timer;
 
@@ -45,7 +46,11 @@ public sealed class ActiveSessionRuntime : Form
 
     private readonly Timer? _screenshotTimer;
 
+    private readonly Timer _idleCheckTimer = new() { Interval = 60_000 };
+
     private readonly Timer _sessionEndingFallback = new() { Interval = 2_000 };
+
+    private bool _idleTriggered;
 
     private bool _screenshotTaken;
 
@@ -85,9 +90,11 @@ public sealed class ActiveSessionRuntime : Form
 
         _heartbeatTimer.Tick += OnHeartbeatTick;
         _syncTimer.Tick += OnSyncTick;
+        _idleCheckTimer.Tick += OnIdleCheckTick;
 
         _heartbeatTimer.Start();
         _syncTimer.Start();
+        _idleCheckTimer.Start();
 
         SystemEvents.SessionEnding += OnSystemSessionEnding;
 
@@ -352,6 +359,7 @@ public sealed class ActiveSessionRuntime : Form
     {
         _heartbeatTimer.Start();
         _syncTimer.Start();
+        _idleCheckTimer.Start();
         _screenshotTimer?.Start();
     }
 
@@ -359,7 +367,67 @@ public sealed class ActiveSessionRuntime : Form
     {
         _heartbeatTimer.Stop();
         _syncTimer.Stop();
+        _idleCheckTimer.Stop();
         _screenshotTimer?.Stop();
+    }
+
+    /// <summary>
+    /// Robust: bila tidak ada input mouse/keyboard melebihi ambang (default 90 menit,
+    /// dari pengaturan server), sesi ditutup dengan alasan "idle" lalu Windows dimatikan.
+    /// 0 = nonaktif. Hanya berjalan sekali per sesi.
+    /// </summary>
+    private void OnIdleCheckTick(object? sender, EventArgs e)
+    {
+        if (_idleTriggered || _finishing || _shutdownHandled || !_record.IsOpen)
+        {
+            return;
+        }
+
+        var minutes = _services.Sync.LoadCachedConfig().IdleShutdownMinutes;
+
+        if (minutes <= 0 || IdleDetector.IdleTime() < TimeSpan.FromMinutes(minutes))
+        {
+            return;
+        }
+
+        _idleTriggered = true;
+
+        try
+        {
+            LocalLog.Write(_services.DataDirectory, $"tidak ada aktivitas > {minutes} menit — sesi ditutup (idle) & Windows dimatikan");
+
+            _services.Sessions.Close(_record, null, null, "idle");
+
+            try
+            {
+                using var endTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+                Task.Run(() => _services.Sessions.TryRemoteEndAsync(_record, endTimeout.Token))
+                    .Wait(TimeSpan.FromSeconds(3));
+            }
+            catch (Exception)
+            {
+                // Antrean lokal akan menyusul saat aplikasi jalan lagi.
+            }
+
+            try
+            {
+                using var flushTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+                Task.Run(() => _services.Sync.PushSessionsAsync(flushTimeout.Token))
+                    .Wait(TimeSpan.FromSeconds(3));
+            }
+            catch (Exception)
+            {
+                // Diabaikan.
+            }
+        }
+        catch (Exception)
+        {
+            // Apa pun yang terjadi, shutdown tetap dijalankan.
+        }
+
+        ShutdownWindows();
     }
 
     /// <summary>

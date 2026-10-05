@@ -54,7 +54,7 @@ class SyncController extends Controller
             'usage_purpose' => ['required', 'string', 'max:500'],
             'started_at_client' => ['nullable', 'date'],
             'ended_at_client' => ['nullable', 'date'],
-            'close_reason' => ['nullable', 'in:normal,recovery,shutdown,admin'],
+            'close_reason' => ['nullable', 'in:normal,recovery,shutdown,admin,idle'],
         ]);
 
         if ($validator->fails()) {

@@ -232,7 +232,7 @@ class SessionController extends Controller
     {
         $data = $request->validate([
             'session_uuid' => ['required', 'uuid'],
-            'close_reason' => ['nullable', 'in:normal,recovery,shutdown,admin'],
+            'close_reason' => ['nullable', 'in:normal,recovery,shutdown,admin,idle'],
             'ended_at_client' => ['nullable', 'date'],
         ]);
 

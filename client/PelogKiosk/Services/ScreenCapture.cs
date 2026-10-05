@@ -14,7 +14,14 @@ public static class ScreenCapture
         {
             Directory.CreateDirectory(outputDirectory);
 
-            var bounds = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1280, 720);
+            // Semua monitor: virtual screen mencakup seluruh layar yang terpasang
+            // (termasuk koordinat negatif), sehingga tidak ada layar yang terlewat.
+            var bounds = SystemInformation.VirtualScreen;
+
+            if (bounds.Width <= 0 || bounds.Height <= 0)
+            {
+                bounds = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1280, 720);
+            }
 
             using var bitmap = new Bitmap(bounds.Width, bounds.Height);
 

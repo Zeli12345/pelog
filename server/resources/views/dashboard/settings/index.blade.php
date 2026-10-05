@@ -87,6 +87,11 @@
                             <label class="label" for="device_online_window_seconds">Jendela online (detik)</label>
                             <input type="number" id="device_online_window_seconds" name="device_online_window_seconds" min="60" max="3600" value="{{ old('device_online_window_seconds', $settings['device_online_window_seconds']) }}" class="input text-sm">
                         </div>
+                        <div>
+                            <label class="label" for="idle_shutdown_minutes">Matikan otomatis jika idle (menit)</label>
+                            <input type="number" id="idle_shutdown_minutes" name="idle_shutdown_minutes" min="0" max="1440" value="{{ old('idle_shutdown_minutes', $settings['idle_shutdown_minutes']) }}" class="input text-sm">
+                            <p class="mt-1 text-[11px] text-ink-faint">Tanpa input mouse/keyboard. 0 = nonaktif; default 90 menit.</p>
+                        </div>
                     </div>
 
                     <label class="mt-4 flex items-center gap-2 text-sm text-ink-soft">

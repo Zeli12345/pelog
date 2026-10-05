@@ -28,6 +28,7 @@ class SettingsSeeder extends Seeder
             'stale_session_minutes' => 15,  // sesi tanpa heartbeat > X menit dianggap menggantung
             'bootstrap_refresh_minutes' => 15,
             'device_online_window_seconds' => 300,
+            'idle_shutdown_minutes' => 90,  // matikan otomatis bila tidak ada input; 0 = nonaktif
             'single_active_session' => false,
 
             // Enrollment (hash diisi dari dashboard saat kode dibuat)

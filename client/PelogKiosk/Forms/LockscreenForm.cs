@@ -44,6 +44,8 @@ public sealed class LockscreenForm : Form
     private readonly Label _clockLabel;
     private readonly Label _serverLabel;
     private readonly Button _wifiButton;
+
+    private readonly Button _shutdownButton;
     private WifiForm? _wifiDialog;
 
     private readonly Button _studentModeButton;
@@ -73,6 +75,8 @@ public sealed class LockscreenForm : Form
     private readonly Timer _clockTimer;
     private readonly Timer _serverTimer;
     private readonly Timer _syncTimer;
+
+    private readonly Timer _idleTimer;
 
     private Mode _mode = Mode.Student;
     private CachedStudent? _student;
@@ -191,9 +195,29 @@ public sealed class LockscreenForm : Form
         _wifiButton.FlatAppearance.BorderColor = Gold;
         _wifiButton.Click += (_, _) => OpenWifiDialog();
 
-        footer.Controls.AddRange([_serverLabel, deviceLabel, _wifiButton]);
+        // Tombol Matikan: mematikan laptop langsung dari layar kunci (dengan konfirmasi).
+        _shutdownButton = new Button
+        {
+            Text = "⏻  Matikan",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.White,
+            BackColor = Navy,
+            FlatStyle = FlatStyle.Flat,
+            Size = new Size(118, 28),
+            Location = new Point(472, 6),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Cursor = Cursors.Hand,
+            TabStop = false,
+        };
+
+        _shutdownButton.FlatAppearance.BorderSize = 1;
+        _shutdownButton.FlatAppearance.BorderColor = Color.FromArgb(200, 96, 86);
+        _shutdownButton.Click += (_, _) => ConfirmShutdown();
+
+        footer.Controls.AddRange([_serverLabel, deviceLabel, _wifiButton, _shutdownButton]);
         footer.Resize += (_, _) =>
         {
+            _shutdownButton.Location = new Point(footer.Width - 724, 6);
             _wifiButton.Location = new Point(footer.Width - 596, 6);
             deviceLabel.Location = new Point(footer.Width - 456, 10);
         };
@@ -474,6 +498,10 @@ public sealed class LockscreenForm : Form
         _syncTimer = new Timer { Interval = 60_000 };
         _syncTimer.Tick += async (_, _) => await SyncIdleAsync();
         _syncTimer.Start();
+
+        _idleTimer = new Timer { Interval = 60_000 };
+        _idleTimer.Tick += (_, _) => CheckIdleShutdown();
+        _idleTimer.Start();
 
         SetMode(Mode.Student);
         ShowStep(Step.Identify);
@@ -1388,6 +1416,71 @@ public sealed class LockscreenForm : Form
         _keyboardBlocker.SetEnabled(true);
     }
 
+    /// <summary>
+    /// Matikan laptop dari layar kunci: konfirmasi dulu, lalu shutdown Windows.
+    /// (Di layar kunci tidak ada sesi aktif yang perlu ditutup.)
+    /// </summary>
+    private void ConfirmShutdown()
+    {
+        var confirm = MessageBox.Show(
+            "Matikan laptop sekarang?",
+            "PELOG",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question,
+            MessageBoxDefaultButton.Button2);
+
+        if (confirm != DialogResult.Yes)
+        {
+            return;
+        }
+
+        LocalLog.Write(_services.DataDirectory, "tombol matikan (layar kunci) — Windows dimatikan");
+        _idleTimer.Stop();
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("shutdown.exe", "/s /t 0 /f")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            });
+        }
+        catch (Exception)
+        {
+            // Diabaikan; laptop tetap bisa dimatikan lewat menu Windows.
+        }
+    }
+
+    /// <summary>
+    /// Auto-shutdown saat idle di layar kunci (ambang dari pengaturan server;
+    /// 0 = nonaktif). Tanpa input mouse/keyboard melebihi ambang → Windows dimatikan.
+    /// </summary>
+    private void CheckIdleShutdown()
+    {
+        var minutes = _services.Sync.LoadCachedConfig().IdleShutdownMinutes;
+
+        if (minutes <= 0 || IdleDetector.IdleTime() < TimeSpan.FromMinutes(minutes))
+        {
+            return;
+        }
+
+        LocalLog.Write(_services.DataDirectory, $"layar kunci idle > {minutes} menit — Windows dimatikan");
+        _idleTimer.Stop();
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("shutdown.exe", "/s /t 0 /f")
+            {
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            });
+        }
+        catch (Exception)
+        {
+            // Diabaikan.
+        }
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         if (!_allowExit && e.CloseReason == CloseReason.UserClosing)
@@ -1400,6 +1493,7 @@ public sealed class LockscreenForm : Form
         _clockTimer.Stop();
         _serverTimer.Stop();
         _syncTimer.Stop();
+        _idleTimer.Stop();
         _keyboardBlocker.Dispose();
 
         base.OnFormClosing(e);

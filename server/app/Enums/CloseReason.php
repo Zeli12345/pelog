@@ -8,6 +8,7 @@ enum CloseReason: string
     case Recovery = 'recovery';
     case Shutdown = 'shutdown';
     case Admin = 'admin';
+    case Idle = 'idle';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum CloseReason: string
             self::Recovery => 'Ditutup otomatis (recovery)',
             self::Shutdown => 'Laptop dimatikan',
             self::Admin => 'Ditutup admin',
+            self::Idle => 'Tidak ada aktivitas (idle)',
         };
     }
 }

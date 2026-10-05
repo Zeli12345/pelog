@@ -76,6 +76,7 @@ class DeviceController extends Controller
             'status' => $status,
             'activeSession' => $device->sessions->first(),
             'history' => $history,
+            'idleShutdownMinutes' => (int) Setting::getValue('idle_shutdown_minutes', 90),
         ]);
     }
 

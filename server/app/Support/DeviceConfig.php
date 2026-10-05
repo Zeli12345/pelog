@@ -25,6 +25,7 @@ class DeviceConfig
             'stale_session_minutes' => (int) Setting::getValue('stale_session_minutes', 15),
             'bootstrap_refresh_minutes' => (int) Setting::getValue('bootstrap_refresh_minutes', 15),
             'device_online_window_seconds' => (int) Setting::getValue('device_online_window_seconds', 300),
+            'idle_shutdown_minutes' => (int) Setting::getValue('idle_shutdown_minutes', 90),
         ];
     }
 }

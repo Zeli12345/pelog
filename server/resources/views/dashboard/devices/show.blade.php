@@ -114,6 +114,10 @@
                     <dt class="text-[11px] uppercase tracking-wide text-ink-faint">Aktif</dt>
                     <dd class="mt-0.5">{{ $device->is_active ? 'Ya' : 'Tidak (nonaktif)' }}</dd>
                 </div>
+                <div>
+                    <dt class="text-[11px] uppercase tracking-wide text-ink-faint">Auto-shutdown Idle</dt>
+                    <dd class="mt-0.5 text-ink-soft">{{ ($idleShutdownMinutes ?? 0) > 0 ? $idleShutdownMinutes.' menit' : 'Nonaktif' }}</dd>
+                </div>
             </dl>
         </section>
 

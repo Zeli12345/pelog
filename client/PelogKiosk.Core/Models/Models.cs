@@ -43,6 +43,9 @@ public sealed class ClientConfig
     public int BootstrapRefreshMinutes { get; set; } = 15;
 
     public int DeviceOnlineWindowSeconds { get; set; } = 300;
+
+    /// <summary>Matikan Windows otomatis bila tidak ada input mouse/keyboard selama X menit (0 = nonaktif).</summary>
+    public int IdleShutdownMinutes { get; set; } = 90;
 }
 
 public sealed class EnrollRequest
