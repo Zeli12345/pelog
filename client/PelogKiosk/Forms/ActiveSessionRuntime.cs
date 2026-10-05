@@ -405,10 +405,12 @@ public sealed class ActiveSessionRuntime : Form
 
             try
             {
-                using var endTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                // Budget lebih longgar dari jalur shutdown sistem: laporan "idle"
+                // sebaiknya sampai ke server sebelum Windows dimatikan.
+                using var endTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
 
                 Task.Run(() => _services.Sessions.TryRemoteEndAsync(_record, endTimeout.Token))
-                    .Wait(TimeSpan.FromSeconds(3));
+                    .Wait(TimeSpan.FromSeconds(8));
             }
             catch (Exception)
             {
@@ -417,10 +419,10 @@ public sealed class ActiveSessionRuntime : Form
 
             try
             {
-                using var flushTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                using var flushTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
 
                 Task.Run(() => _services.Sync.PushSessionsAsync(flushTimeout.Token))
-                    .Wait(TimeSpan.FromSeconds(3));
+                    .Wait(TimeSpan.FromSeconds(8));
             }
             catch (Exception)
             {

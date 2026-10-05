@@ -23,8 +23,10 @@ class ReportController extends Controller
         $query = $this->baseQuery($filters);
 
         // Durasi live: sesi yang masih berjalan dihitung sampai detik ini.
+        // Pakai UTC_TIMESTAMP() karena kolom waktu disimpan dalam UTC, sedangkan
+        // server MySQL berjalan di zona waktu lokal (WITA).
         $liveDuration = 'CASE WHEN usage_sessions.closed_at IS NULL
-                THEN GREATEST(0, TIMESTAMPDIFF(MINUTE, COALESCE(usage_sessions.started_at_server, usage_sessions.started_at_client, usage_sessions.created_at), NOW()))
+                THEN GREATEST(0, TIMESTAMPDIFF(MINUTE, COALESCE(usage_sessions.started_at_server, usage_sessions.started_at_client, usage_sessions.created_at), UTC_TIMESTAMP()))
                 ELSE usage_sessions.duration_minutes END';
 
         $summary = (clone $query)->reorder()->selectRaw('
