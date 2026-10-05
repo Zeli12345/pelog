@@ -31,7 +31,10 @@ Name: "watchdog"; Description: "Pasang pengawas otomatis (menjalankan ulang kios
 
 [Files]
 ; 1) Aplikasi hasil publish (tanpa file debug *.pdb / dokumentasi *.xml.docs)
-Source: "E:\pelog-build\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb,*.xml.docs"
+; restartreplace: saat pembaruan otomatis (SYSTEM) kiosk sedang berjalan,
+; berkas yang terkunci dijadwalkan diganti Windows pada restart berikutnya
+; alih-alih menggagalkan pemasangan (exit code 5).
+Source: "E:\pelog-build\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs restartreplace; Excludes: "*.pdb,*.xml.docs"
 
 ; 2) Konfigurasi client (dibuat oleh scripts\build-installer.ps1)
 Source: "pelog.client.json"; DestDir: "{commonappdata}\PELOG"; DestName: "pelog.json"; Flags: onlyifdoesntexist
@@ -40,10 +43,10 @@ Source: "pelog.client.json"; DestDir: "{commonappdata}\PELOG"; DestName: "pelog.
 Source: "enrollment.txt"; DestDir: "{commonappdata}\PELOG"; Flags: onlyifdoesntexist skipifsourcedoesntexist
 
 ; 4) Alat pemulihan & hardening untuk Admin IT
-Source: "unlock-admin.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "hardening.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "apply-update.ps1"; DestDir: "{app}"; Flags: ignoreversion
-Source: "README-OPS.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "unlock-admin.ps1"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "hardening.ps1"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "apply-update.ps1"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "README-OPS.txt"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 
 [Icons]
 Name: "{autoprograms}\PELOG Kiosk"; Filename: "{app}\PelogKiosk.exe"
