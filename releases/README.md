@@ -2,9 +2,19 @@
 
 Installer siap pakai untuk mesin baru.
 
-## PELOG 1.0.0
+## PELOG 1.0.1
 
-- Berkas   : `PELOG_Setup_1.0.0.exe` (51.9 MB, Inno Setup)
-- SHA-256  : `ce4f44a376f134ab3f39d1390c7771274a31b2c657e2be1bb0b6bcab93aa8b41`
-- Varian tanpa kode enrollment: kode diisi manual saat instalasi (dibuat dari dashboard admin > Pengaturan).
-- Build server/auto-update memakai varian berkode untuk pengisian otomatis.
+- Berkas   : `PELOG_Setup_1.0.1.exe` (51.9 MB, Inno Setup)
+- SHA-256  : `c9b12ae95c5106fd8fa3477ea25af6e1dfafcf95936dce4895fda118a31ef24d`
+- Fitur    : penutup **semua monitor** saat layar kunci, screenshot berkala
+  (interval dari Pengaturan) + minta screenshot manual, durasi live di laporan,
+  status **Tersedia** setelah shutdown, auto-shutdown idle, tombol Matikan,
+  metrik CPU/RAM/GPU + nama CPU, shutdown otomatis saat sesi ditutup admin.
+- Perangkat yang masih memakai **1.0.0 akan memperbarui diri otomatis** ke 1.0.1
+  (server mengiklankan rilis ini sebagai pembaruan).
+- Varian di repo/Release ini **tanpa kode enrollment** (diisi manual saat instalasi).
+  Build server/auto-update memakai varian berkode untuk pengisian otomatis.
+
+## PELOG 1.0.0 (arsip)
+
+- Berkas   : `PELOG_Setup_1.0.0.exe`
