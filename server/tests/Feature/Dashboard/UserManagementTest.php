@@ -290,4 +290,27 @@ class UserManagementTest extends TestCase
             ->put("/users/{$viewer->id}", ['name' => 'Tetap', 'email' => 'dipakai.lain@pelog.local', 'role' => 'viewer'])
             ->assertSessionHasErrors('email');
     }
+
+    public function test_form_pengguna_tanpa_toggle_aktif_dan_kartu_peran_reaktif(): void
+    {
+        $this->actingAs($this->adminUtama())
+            ->get('/users/create')
+            ->assertOk()
+            ->assertDontSee('Akun aktif')
+            ->assertDontSee('Sampaikan kata sandi')
+            ->assertSee('peer-checked:border-navy-500', false)
+            ->assertSee('value="sub_admin"', false)
+            ->assertSee('value="viewer"', false);
+    }
+
+    public function test_akun_baru_selalu_aktif(): void
+    {
+        $this->actingAs($this->adminUtama())
+            ->post('/users', $this->payload())
+            ->assertRedirect(route('users.index'));
+
+        $this->assertTrue(
+            User::query()->where('email', 'pengguna.baru@pelog.local')->firstOrFail()->is_active
+        );
+    }
 }

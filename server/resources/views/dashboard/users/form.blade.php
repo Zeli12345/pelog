@@ -39,17 +39,18 @@
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     @foreach ($roles as $role)
                         @php $checked = old('role', $user->role?->value) === $role->value; @endphp
-                        <label class="relative cursor-pointer rounded-xl border bg-white p-4 transition hover:border-navy-300
-                                      {{ $checked ? 'border-navy-500 ring-1 ring-navy-500' : 'border-line' }}">
+                        <label class="relative cursor-pointer">
                             <input type="radio" name="role" value="{{ $role->value }}" @checked($checked) class="peer sr-only">
-                            <p class="text-sm font-semibold text-ink">{{ $role->label() }}</p>
-                            <p class="mt-1 text-xs leading-relaxed text-ink-soft">
-                                @if ($role->value === 'sub_admin')
-                                    Kelola siswa, guru &amp; pegawai, mapel, perangkat, sesi, laporan, dan pengaturan.
-                                @else
-                                    Hanya melihat data, perangkat, dan laporan (baca-saja) + ekspor.
-                                @endif
-                            </p>
+                            <span class="block rounded-xl border border-line bg-white p-4 transition hover:border-navy-300 peer-checked:border-navy-500 peer-checked:ring-1 peer-checked:ring-navy-500 peer-focus-visible:ring-2 peer-focus-visible:ring-gold-400">
+                                <span class="block text-sm font-semibold text-ink">{{ $role->label() }}</span>
+                                <span class="mt-1 block text-xs leading-relaxed text-ink-soft">
+                                    @if ($role->value === 'sub_admin')
+                                        Kelola siswa, guru &amp; pegawai, mapel, perangkat, sesi, laporan, dan pengaturan.
+                                    @else
+                                        Hanya melihat data, perangkat, dan laporan (baca-saja) + ekspor.
+                                    @endif
+                                </span>
+                            </span>
                         </label>
                     @endforeach
                 </div>
@@ -86,15 +87,7 @@
                     <input type="checkbox" x-on:change="show = $event.target.checked" class="rounded border-line text-navy-700 focus:ring-navy-500">
                     Tampilkan kata sandi
                 </label>
-                <p class="text-xs text-ink-faint">Minimal 8 karakter. Sampaikan kata sandi ke pengguna setelah dibuat.</p>
-            </div>
-
-            <div class="border-t border-line pt-5">
-                <input type="hidden" name="is_active" value="0">
-                <label class="flex items-center gap-2 text-sm text-ink-soft">
-                    <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $user->exists ? $user->is_active : true)) class="rounded border-line text-navy-700 focus:ring-navy-500">
-                    Akun aktif (boleh login ke dashboard)
-                </label>
+                <p class="text-xs text-ink-faint">Minimal 8 karakter.</p>
             </div>
 
             <div class="flex items-center gap-2 border-t border-line pt-4">
