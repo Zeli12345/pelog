@@ -26,7 +26,7 @@ class AdminUserSeeder extends Seeder
             // Jangan pernah menimpa password yang sudah diubah admin. Rotasi hanya
             // bila PELOG_ADMIN_PASSWORD diberikan secara eksplisit (mis. reset).
             $attributes = [
-                'name' => 'Admin IT PELOG',
+                'name' => 'Admin PELOG',
                 'role' => 'admin_utama',
                 'is_active' => true,
                 'email_verified_at' => $existing->email_verified_at ?? now(),
@@ -47,7 +47,7 @@ class AdminUserSeeder extends Seeder
 
         User::query()->create([
             'email' => $email,
-            'name' => 'Admin IT PELOG',
+            'name' => 'Admin PELOG',
             'password' => $envPassword !== '' ? $envPassword : self::DEFAULT_PASSWORD,
             'role' => 'admin_utama',
             'is_active' => true,

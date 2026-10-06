@@ -241,4 +241,53 @@ class UserManagementTest extends TestCase
             ->get('/dashboard')
             ->assertRedirect('/login');
     }
+
+    public function test_sub_admin_tidak_bisa_menaikkan_viewer_menjadi_admin(): void
+    {
+        $sub = $this->subAdmin();
+        $viewer = User::factory()->viewer()->create();
+
+        $this->actingAs($sub)
+            ->put("/users/{$viewer->id}", [
+                'name' => $viewer->name,
+                'email' => $viewer->email,
+                'role' => 'sub_admin',
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->assertTrue($viewer->refresh()->isViewer());
+    }
+
+    public function test_halaman_tambah_pengguna_tidak_menawarkan_peran_admin_utama(): void
+    {
+        $this->actingAs($this->adminUtama())
+            ->get('/users/create')
+            ->assertOk()
+            ->assertSee('value="sub_admin"', false)
+            ->assertSee('value="viewer"', false)
+            ->assertDontSee('value="admin_utama"', false);
+
+        $this->actingAs($this->subAdmin())
+            ->get('/users/create')
+            ->assertOk()
+            ->assertSee('value="viewer"', false)
+            ->assertDontSee('value="sub_admin"', false);
+    }
+
+    public function test_email_boleh_tetap_saat_edit_tapi_tidak_boleh_duplikat(): void
+    {
+        $admin = $this->adminUtama();
+        $viewer = User::factory()->viewer()->create(['email' => 'edit.email@pelog.local']);
+        User::factory()->viewer()->create(['email' => 'dipakai.lain@pelog.local']);
+
+        // Tetap memakai email sendiri: boleh.
+        $this->actingAs($admin)
+            ->put("/users/{$viewer->id}", ['name' => 'Tetap', 'email' => 'edit.email@pelog.local', 'role' => 'viewer'])
+            ->assertSessionHasNoErrors();
+
+        // Memakai email akun lain: ditolak.
+        $this->actingAs($admin)
+            ->put("/users/{$viewer->id}", ['name' => 'Tetap', 'email' => 'dipakai.lain@pelog.local', 'role' => 'viewer'])
+            ->assertSessionHasErrors('email');
+    }
 }

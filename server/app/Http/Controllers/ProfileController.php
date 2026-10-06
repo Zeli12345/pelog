@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -47,6 +49,22 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+
+        // Akun Admin Utama terakhir tidak boleh terhapus dari halaman Profil:
+        // tanpa akun admin, halaman Pengguna tidak bisa dikelola lagi.
+        if ($user instanceof User && $user->isAdminUtama()) {
+            $hasOtherActiveAdmin = User::query()
+                ->where('role', UserRole::AdminUtama->value)
+                ->where('is_active', true)
+                ->whereKeyNot($user->getKey())
+                ->exists();
+
+            if (! $hasOtherActiveAdmin) {
+                return Redirect::back()->withErrors([
+                    'password' => 'Akun admin utama terakhir tidak dapat dihapus.',
+                ], 'userDeletion');
+            }
+        }
 
         Auth::logout();
 

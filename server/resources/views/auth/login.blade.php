@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="mb-6">
         <h1 class="text-xl font-bold text-ink">Masuk Dashboard</h1>
-        <p class="mt-1 text-sm text-ink-faint">Gunakan akun yang diberikan oleh Admin IT sekolah.</p>
+        <p class="mt-1 text-sm text-ink-faint">Gunakan akun yang diberikan oleh Admin sekolah.</p>
     </div>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />

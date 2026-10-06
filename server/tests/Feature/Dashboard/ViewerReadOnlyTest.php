@@ -88,6 +88,8 @@ class ViewerReadOnlyTest extends TestCase
         $this->actingAs($viewer)->post('/staff', ['nip_id' => '12345678', 'name' => 'Selundupan', 'role' => 'teacher'])->assertForbidden();
         $this->actingAs($viewer)->post('/subjects', ['code' => 'X', 'name' => 'Selundupan'])->assertForbidden();
         $this->actingAs($viewer)->put("/subjects/{$subject->id}", ['code' => 'X', 'name' => 'Selundupan'])->assertForbidden();
+        $this->actingAs($viewer)->get('/students/import')->assertForbidden();
+        $this->actingAs($viewer)->get('/staff/import')->assertForbidden();
     }
 
     public function test_viewer_tidak_bisa_membuka_halaman_khusus_admin(): void

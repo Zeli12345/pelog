@@ -121,7 +121,7 @@
             </dl>
         </section>
 
-        {{-- Pengaturan perangkat (Admin IT) --}}
+        {{-- Pengaturan perangkat (Admin) --}}
         @if (auth()->user()->isAdmin())
             <section class="card p-4">
                 <header class="mb-3 flex flex-wrap items-center justify-between gap-2">

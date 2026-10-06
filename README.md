@@ -20,7 +20,7 @@ SMK Negeri 1 Mas, Ubud (*Kriya Kencana Raksa*).
 - **Login guru:** NIP (tanpa PIN, tanpa feedback, tanpa screenshot)
 - **Screenshot:** 1x per sesi di menit ke-30 (WebP q70, fallback JPEG q60, maks 1280 px)
 - **Offline:** cache siswa/guru/mapel + antrean sinkronisasi otomatis
-- **Dashboard:** admin IT (penuh) + guru (read-only)
+- **Dashboard:** Admin (penuh; tipe Admin Utama/Sub Admin tampil sama "Admin") + Viewer (baca-saja)
 - **Storage:** retensi permanen + alert disk + backup
 
 ## Development

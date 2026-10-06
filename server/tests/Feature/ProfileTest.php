@@ -96,4 +96,22 @@ class ProfileTest extends TestCase
 
         $this->assertNotNull($user->fresh());
     }
+
+    public function test_admin_utama_terakhir_tidak_bisa_menghapus_akunnya_dari_profil(): void
+    {
+        $admin = User::factory()->adminUtama()->create();
+
+        $response = $this
+            ->actingAs($admin)
+            ->from('/profile')
+            ->delete('/profile', [
+                'password' => 'password',
+            ]);
+
+        $response
+            ->assertSessionHasErrorsIn('userDeletion', 'password')
+            ->assertRedirect('/profile');
+
+        $this->assertNotNull($admin->fresh());
+    }
 }

@@ -61,7 +61,7 @@ class LoginRequest extends FormRequest
             $this->session()->regenerateToken();
 
             throw ValidationException::withMessages([
-                'email' => 'Akun ini dinonaktifkan. Hubungi admin IT.',
+                'email' => 'Akun ini dinonaktifkan. Hubungi Admin.',
             ]);
         }
     }

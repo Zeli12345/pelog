@@ -9,14 +9,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Restrukturisasi peran akun dashboard:
-        //   admin_it  -> admin_utama  (Admin Utama: pemegang akun awal)
-        //   guru      -> viewer       (Viewer: akun baca-saja)
-        // Nilai data lama diperbarui DULU sebelum enum diubah agar baris
-        // yang ada tetap valid ketika kolom diubah (MySQL strict mode).
+        // Longgarkan enum dulu (superset) agar baris lama
+        // (admin_it/guru) tetap valid saat kolom diubah — MySQL strict
+        // menolak UPDATE ke nilai di luar enum.
+        Schema::table('users', function (Blueprint $table) {
+            $table->enum('role', ['admin_it', 'guru', 'admin_utama', 'sub_admin', 'viewer'])
+                ->default('guru')
+                ->change();
+        });
+
+        // Konversi data: admin_it -> admin_utama, guru -> viewer.
         DB::table('users')->where('role', 'admin_it')->update(['role' => 'admin_utama']);
         DB::table('users')->where('role', 'guru')->update(['role' => 'viewer']);
 
+        // Sempitkan ke daftar peran final.
         Schema::table('users', function (Blueprint $table) {
             $table->enum('role', ['admin_utama', 'sub_admin', 'viewer'])
                 ->default('viewer')

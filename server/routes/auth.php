@@ -10,7 +10,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
-// Registrasi publik ditutup - akun dashboard hanya dibuat oleh Admin IT.
+// Registrasi publik ditutup - akun dashboard hanya dibuat oleh Admin.
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
