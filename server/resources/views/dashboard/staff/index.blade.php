@@ -1,6 +1,9 @@
 <x-dashboard-layout title="Guru & Pegawai" subtitle="Master data guru & pegawai">
+    @php $isAdmin = auth()->user()->isAdmin(); @endphp
+
     <x-slot:actions>
         <div class="flex items-center gap-2">
+            @if ($isAdmin)
             <a href="{{ route('staff.import.form') }}" class="btn-secondary !py-1.5 text-xs">
                 <x-icon name="upload" size="h-3.5 w-3.5" />
                 Impor
@@ -9,6 +12,7 @@
                 <x-icon name="plus" size="h-3.5 w-3.5" />
                 Tambah
             </a>
+            @endif
         </div>
     </x-slot:actions>
 
@@ -20,12 +24,14 @@
         </div>
 
         <section class="card overflow-hidden">
+            @if ($isAdmin)
             <form id="staff-bulk-delete-form" method="POST" action="{{ route('staff.bulk-delete') }}" data-confirm="Hapus guru/pegawai terpilih? Riwayat sesi mereka tetap tersimpan.">
                 @csrf
             </form>
             <form id="staff-bulk-restore-form" method="POST" action="{{ route('staff.bulk-restore') }}" data-confirm="Pulihkan guru/pegawai terpilih?">
                 @csrf
             </form>
+            @endif
 
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <form method="GET" action="{{ route('staff.index') }}" class="flex items-center gap-2">
@@ -38,6 +44,7 @@
                 <span class="font-mono text-xs text-ink-faint">{{ $staff->total() }} orang</span>
             </header>
 
+            @if ($isAdmin)
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-navy-50/40 px-4 py-2 text-xs">
                 <div class="flex flex-wrap items-center gap-3">
                     <label class="flex items-center gap-1.5 text-ink-soft">
@@ -65,6 +72,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             @if ($staff->isEmpty())
                 <div class="px-4 py-12 text-center">
@@ -75,22 +83,28 @@
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
                             <tr class="table-head">
+                                @if ($isAdmin)
                                 <th class="w-8 px-4 py-2.5"></th>
+                                @endif
                                 <th class="px-4 py-2.5 font-semibold">NIP / NUPTK</th>
                                 <th class="px-4 py-2.5 font-semibold">Nama</th>
                                 <th class="px-4 py-2.5 font-semibold">Peran</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
+                                @if ($isAdmin)
                                 <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-line/70">
                             @foreach ($staff as $member)
                                 <tr class="table-row {{ ! $member->is_active ? 'opacity-60' : '' }}">
+                                    @if ($isAdmin)
                                     <td class="px-4 py-2.5">
                                         <input type="checkbox" name="ids[]" value="{{ $member->id }}"
                                             form="{{ $trashed ? 'staff-bulk-restore-form' : 'staff-bulk-delete-form' }}"
                                             data-bulk-checkbox class="rounded border-line text-navy-700 focus:ring-navy-500">
                                     </td>
+                                    @endif
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $member->nip_id }}</td>
                                     <td class="px-4 py-2.5 font-medium text-ink">{{ $member->name }}</td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $member->role->label() }}</td>
@@ -103,6 +117,7 @@
                                             <span class="badge-danger">Nonaktif</span>
                                         @endif
                                     </td>
+                                    @if ($isAdmin)
                                     <td class="px-4 py-2.5">
                                         <div class="flex items-center justify-end gap-1.5">
                                             @if ($trashed)
@@ -126,6 +141,7 @@
                                             @endif
                                         </div>
                                     </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>

@@ -21,11 +21,11 @@
         ['route' => 'screenshots.index', 'label' => 'Screenshot', 'icon' => 'camera'],
     ];
 
-    $master = $isAdmin ? [
+    $master = [
         ['route' => 'students.index', 'label' => 'Siswa', 'icon' => 'users'],
         ['route' => 'staff.index', 'label' => 'Guru & Pegawai', 'icon' => 'user-check'],
         ['route' => 'subjects.index', 'label' => 'Mata Pelajaran', 'icon' => 'book-open'],
-    ] : [];
+    ];
 
     $system = $isAdmin ? [
         ['route' => 'users.index', 'label' => 'Pengguna', 'icon' => 'key'],

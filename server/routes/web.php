@@ -43,6 +43,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/screenshots/{screenshot}/thumb', [ScreenshotController::class, 'thumb'])->name('screenshots.thumb');
     Route::get('/screenshots/{screenshot}/file', [ScreenshotController::class, 'file'])->name('screenshots.file');
 
+    // Master data hanya-baca untuk semua pengguna dashboard (termasuk Viewer).
+    Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+    Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+    Route::get('/subjects', [SubjectController::class, 'index'])->name('subjects.index');
+
     Route::middleware('admin')->group(function () {
         Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 
@@ -69,7 +74,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/students/bulk-delete', [StudentController::class, 'bulkDestroy'])->name('students.bulk-delete');
         Route::post('/students/bulk-restore', [StudentController::class, 'bulkRestore'])->name('students.bulk-restore');
         Route::post('/students/{student}/restore', [StudentController::class, 'restore'])->whereNumber('student')->name('students.restore');
-        Route::resource('students', StudentController::class)->except(['show']);
+        Route::resource('students', StudentController::class)->except(['show', 'index']);
 
         // Guru / Pegawai
         Route::get('/staff/import', [StaffImportController::class, 'form'])->name('staff.import.form');
@@ -78,10 +83,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/staff/bulk-delete', [StaffController::class, 'bulkDestroy'])->name('staff.bulk-delete');
         Route::post('/staff/bulk-restore', [StaffController::class, 'bulkRestore'])->name('staff.bulk-restore');
         Route::post('/staff/{staff}/restore', [StaffController::class, 'restore'])->whereNumber('staff')->name('staff.restore');
-        Route::resource('staff', StaffController::class)->except(['show']);
+        Route::resource('staff', StaffController::class)->except(['show', 'index']);
 
-        // Mata pelajaran
-        Route::get('/subjects', [SubjectController::class, 'index'])->name('subjects.index');
+        // Mata pelajaran (rute baca ada di grup auth — bisa diakses Viewer)
         Route::post('/subjects', [SubjectController::class, 'store'])->name('subjects.store');
         Route::put('/subjects/{subject}', [SubjectController::class, 'update'])->name('subjects.update');
         Route::delete('/subjects/{subject}', [SubjectController::class, 'destroy'])->name('subjects.destroy');

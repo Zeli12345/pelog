@@ -1,4 +1,5 @@
 <x-dashboard-layout title="Perangkat" subtitle="Status & riwayat seluruh perangkat">
+    @php $isAdmin = auth()->user()->isAdmin(); @endphp
     <x-slot:actions>
         <a href="{{ route('client.download') }}" class="btn-secondary !py-1.5 text-xs" title="Unduh installer untuk perangkat baru">
             <x-icon name="download" size="h-3.5 w-3.5" />
@@ -27,24 +28,29 @@
 
     <div class="space-y-4">
         <section class="card overflow-hidden">
+            @if ($isAdmin)
             <form id="devices-bulk-delete-form" method="POST" action="{{ route('devices.bulk-delete') }}" data-confirm="Hapus perangkat terpilih? Kiosk perangkat akan menghapus dirinya sendiri saat boot berikutnya.">
                 @csrf
             </form>
             <form id="devices-bulk-restore-form" method="POST" action="{{ route('devices.bulk-restore') }}" data-confirm="Pulihkan perangkat terpilih? Token lama akan berlaku kembali.">
                 @csrf
             </form>
+            @endif
 
             <header class="flex items-center justify-between border-b border-line px-4 py-3">
                 <div>
                     <h2 class="text-sm font-semibold text-ink">Daftar Perangkat</h2>
                     <p class="text-xs text-ink-faint">{{ $devices->count() }} perangkat ditampilkan · offline jika tanpa heartbeat &gt; {{ max(1, intdiv($onlineWindow, 60)) }} menit</p>
                 </div>
+                @if ($isAdmin)
                 <a href="{{ $trashed ? route('devices.index', request()->except('trashed')) : route('devices.index', array_merge(request()->query(), ['trashed' => 1])) }}" class="btn-secondary !py-1.5 text-xs">
                     <x-icon :name="$trashed ? 'arrow-left' : 'trash'" size="h-3.5 w-3.5" />
                     {{ $trashed ? 'Kembali ke daftar aktif' : 'Tampilkan yang terhapus' }}
                 </a>
+                @endif
             </header>
 
+            @if ($isAdmin)
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-navy-50/40 px-4 py-2 text-xs">
                 <div class="flex flex-wrap items-center gap-3">
                     <label class="flex items-center gap-1.5 text-ink-soft">
@@ -66,6 +72,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             @if ($devices->isEmpty())
                 <div class="px-4 py-12 text-center">
@@ -77,7 +84,9 @@
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
                             <tr class="table-head">
+                                @if ($isAdmin)
                                 <th class="w-8 px-4 py-2.5"></th>
+                                @endif
                                 <th class="px-4 py-2.5 font-semibold">Perangkat</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
                                 <th class="px-4 py-2.5 font-semibold">Pengguna Aktif</th>
@@ -98,11 +107,13 @@
                                         : 0;
                                 @endphp
                                 <tr class="table-row">
+                                    @if ($isAdmin)
                                     <td class="px-4 py-3">
                                         <input type="checkbox" name="ids[]" value="{{ $device->id }}"
                                             form="{{ $trashed ? 'devices-bulk-restore-form' : 'devices-bulk-delete-form' }}"
                                             data-bulk-checkbox class="rounded border-line text-navy-700 focus:ring-navy-500">
                                     </td>
+                                    @endif
                                     <td class="px-4 py-3">
                                         <p class="font-semibold text-navy-900">{{ $device->label ?? $device->hostname }}</p>
                                         <p class="font-mono text-[11px] text-ink-faint">{{ $device->hostname }}{{ $device->location_label ? ' · '.$device->location_label : '' }}</p>
@@ -165,6 +176,7 @@
                                             @unless ($trashed)
                                                 <a href="{{ route('devices.show', $device) }}" class="btn-secondary !py-1 text-xs">Detail</a>
                                             @endunless
+                                            @if ($isAdmin)
                                             @if ($trashed)
                                                 <form method="POST" action="{{ route('devices.restore', $device) }}" data-confirm="Pulihkan perangkat {{ $device->hostname }}? Token lama akan berlaku kembali.">
                                                     @csrf
@@ -180,6 +192,7 @@
                                                         <x-icon name="trash" size="h-3.5 w-3.5" />
                                                     </button>
                                                 </form>
+                                            @endif
                                             @endif
                                         </div>
                                     </td>

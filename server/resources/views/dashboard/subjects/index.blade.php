@@ -1,6 +1,7 @@
 <x-dashboard-layout title="Mata Pelajaran" subtitle="Daftar mata pelajaran aktif">
+    @php $isAdmin = auth()->user()->isAdmin(); @endphp
     <div class="space-y-4">
-        @if ($editing)
+        @if ($editing && $isAdmin)
             <section class="card border-navy-200 p-5">
                 <h2 class="text-sm font-semibold text-ink">Edit Mata Pelajaran</h2>
                 <form method="POST" action="{{ route('subjects.update', $editing) }}" class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
@@ -28,6 +29,7 @@
             </section>
         @endif
 
+        @if ($isAdmin)
         <section class="card p-5">
             <h2 class="text-sm font-semibold text-ink">Tambah Mata Pelajaran</h2>
             <form method="POST" action="{{ route('subjects.store') }}" class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
@@ -54,6 +56,7 @@
                 </div>
             </form>
         </section>
+        @endif
 
         <section class="card overflow-hidden">
             <header class="flex items-center justify-between border-b border-line px-4 py-3">
@@ -72,7 +75,9 @@
                             <th class="px-4 py-2.5 font-semibold">Nama</th>
                             <th class="px-4 py-2.5 font-semibold">Dipakai</th>
                             <th class="px-4 py-2.5 font-semibold">Status</th>
+                            @if ($isAdmin)
                             <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-line/70">
@@ -88,6 +93,7 @@
                                         <span class="badge-danger">Nonaktif</span>
                                     @endif
                                 </td>
+                                @if ($isAdmin)
                                 <td class="px-4 py-2.5">
                                     <div class="flex items-center justify-end gap-1.5">
                                         <a href="{{ route('subjects.index', ['edit' => $subject->id]) }}" class="btn-secondary !px-2 !py-1 text-xs" title="Edit">
@@ -102,6 +108,7 @@
                                         </form>
                                     </div>
                                 </td>
+                                @endif
                             </tr>
                         @empty
                             <tr>

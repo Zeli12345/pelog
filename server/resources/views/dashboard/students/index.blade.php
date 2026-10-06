@@ -1,6 +1,9 @@
 <x-dashboard-layout title="Siswa" subtitle="Master data siswa">
+    @php $isAdmin = auth()->user()->isAdmin(); @endphp
+
     <x-slot:actions>
         <div class="flex items-center gap-2">
+            @if ($isAdmin)
             <a href="{{ route('students.import.form') }}" class="btn-secondary !py-1.5 text-xs">
                 <x-icon name="upload" size="h-3.5 w-3.5" />
                 Impor
@@ -9,6 +12,7 @@
                 <x-icon name="plus" size="h-3.5 w-3.5" />
                 Tambah Siswa
             </a>
+            @endif
         </div>
     </x-slot:actions>
 
@@ -20,12 +24,14 @@
         </div>
 
         <section class="card overflow-hidden">
+            @if ($isAdmin)
             <form id="students-bulk-delete-form" method="POST" action="{{ route('students.bulk-delete') }}" data-confirm="Hapus siswa terpilih? Riwayat sesi mereka tetap tersimpan.">
                 @csrf
             </form>
             <form id="students-bulk-restore-form" method="POST" action="{{ route('students.bulk-restore') }}" data-confirm="Pulihkan siswa terpilih?">
                 @csrf
             </form>
+            @endif
 
             <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
                 <form method="GET" action="{{ route('students.index') }}" class="flex flex-wrap items-center gap-2">
@@ -47,6 +53,7 @@
                 <span class="font-mono text-xs text-ink-faint">{{ $students->total() }} siswa</span>
             </header>
 
+            @if ($isAdmin)
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-navy-50/40 px-4 py-2 text-xs">
                 <div class="flex flex-wrap items-center gap-3">
                     <label class="flex items-center gap-1.5 text-ink-soft">
@@ -74,6 +81,7 @@
                     @endif
                 </div>
             </div>
+            @endif
 
             @if ($students->isEmpty())
                 <div class="px-4 py-12 text-center">
@@ -85,23 +93,29 @@
                     <table class="min-w-full divide-y divide-line text-sm">
                         <thead>
                             <tr class="table-head">
+                                @if ($isAdmin)
                                 <th class="w-8 px-4 py-2.5"></th>
+                                @endif
                                 <th class="px-4 py-2.5 font-semibold">NISN</th>
                                 <th class="px-4 py-2.5 font-semibold">Nama</th>
                                 <th class="px-4 py-2.5 font-semibold">Kelas</th>
                                 <th class="px-4 py-2.5 font-semibold">Tanggal Lahir</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
+                                @if ($isAdmin)
                                 <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-line/70">
                             @foreach ($students as $student)
                                 <tr class="table-row {{ ! $student->is_active ? 'opacity-60' : '' }}">
+                                    @if ($isAdmin)
                                     <td class="px-4 py-2.5">
                                         <input type="checkbox" name="ids[]" value="{{ $student->id }}"
                                             form="{{ $trashed ? 'students-bulk-restore-form' : 'students-bulk-delete-form' }}"
                                             data-bulk-checkbox class="rounded border-line text-navy-700 focus:ring-navy-500">
                                     </td>
+                                    @endif
                                     <td class="px-4 py-2.5 font-mono text-xs text-ink-soft">{{ $student->nisn }}</td>
                                     <td class="px-4 py-2.5 font-medium text-ink">{{ $student->name }}</td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $student->class }}</td>
@@ -117,6 +131,7 @@
                                             <span class="badge-danger">Nonaktif</span>
                                         @endif
                                     </td>
+                                    @if ($isAdmin)
                                     <td class="px-4 py-2.5">
                                         <div class="flex items-center justify-end gap-1.5">
                                             @if ($trashed)
@@ -140,6 +155,7 @@
                                             @endif
                                         </div>
                                     </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>
