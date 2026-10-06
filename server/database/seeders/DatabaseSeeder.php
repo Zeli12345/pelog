@@ -7,7 +7,7 @@ use Illuminate\Database\Seeder;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seeder produksi HANYA membuat akun awal (admin + guru) dan nilai
+     * Seeder produksi HANYA membuat akun admin utama dan nilai
      * pengaturan default. Tidak ada data contoh di produksi.
      *
      * Data siswa/guru/staf diimpor lewat dashboard; mata pelajaran dikelola
@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminUserSeeder::class,
-            GuruUserSeeder::class,
             SettingsSeeder::class,
         ]);
 

@@ -38,7 +38,7 @@ class ReportExportTest extends TestCase
     public function test_reports_page_renders(): void
     {
         $this->seedSession();
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)->get('/reports')->assertOk();
     }
@@ -46,7 +46,7 @@ class ReportExportTest extends TestCase
     public function test_csv_export_downloads(): void
     {
         $this->seedSession();
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $response = $this->actingAs($admin)->get('/reports/export?format=csv');
 
@@ -57,7 +57,7 @@ class ReportExportTest extends TestCase
     public function test_xlsx_export_downloads(): void
     {
         $this->seedSession();
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $response = $this->actingAs($admin)->get('/reports/export?format=xlsx');
 
@@ -68,7 +68,7 @@ class ReportExportTest extends TestCase
     public function test_csv_export_neutralises_formula_injection(): void
     {
         $this->seedSession(['usage_purpose' => '=SUM(A1:A2)']);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $from = now()->subDays(2)->toDateString();
         $to = now()->addDay()->toDateString();
@@ -87,7 +87,7 @@ class ReportExportTest extends TestCase
     {
         $this->seedSession(['usage_purpose' => 'ZEBRA praktikum jaringan']);
         $this->seedSession(['usage_purpose' => 'OMEGA pemrograman web']);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $from = now()->subDays(2)->toDateString();
         $to = now()->addDay()->toDateString();
@@ -116,7 +116,7 @@ class ReportExportTest extends TestCase
             'started_at_server' => Carbon::parse('2026-10-06 16:30:00', 'UTC'),
             'usage_purpose' => 'WITA-LEWAT-TENGAH-MALAM',
         ]);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $csv = $this->actingAs($admin)
             ->get('/reports/export?format=csv&from=2026-10-06&to=2026-10-06')
@@ -134,7 +134,7 @@ class ReportExportTest extends TestCase
             'started_at_client' => Carbon::parse('2026-10-05 19:00:00', 'UTC'), // 06 Okt 03:00 WITA
             'usage_purpose' => 'SESI-OFFLINE-SINKRON',
         ]);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $csv = $this->actingAs($admin)
             ->get('/reports/export?format=csv&from=2026-10-06&to=2026-10-06')

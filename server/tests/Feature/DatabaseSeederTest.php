@@ -22,9 +22,11 @@ class DatabaseSeederTest extends TestCase
 
         (new DatabaseSeeder)->run();
 
-        $this->assertSame(2, User::query()->count(), 'Produksi hanya boleh punya akun admin & guru.');
-        $this->assertNotNull(User::query()->where('email', 'admin@pelog.local')->first());
-        $this->assertNotNull(User::query()->where('email', 'guru@pelog.local')->first());
+        $this->assertSame(1, User::query()->count(), 'Produksi hanya boleh punya satu akun admin utama.');
+        $admin = User::query()->where('email', 'admin@pelog.local')->first();
+        $this->assertNotNull($admin);
+        $this->assertTrue($admin->isAdminUtama());
+        $this->assertSame('Admin', $admin->role->label());
 
         $this->assertSame(0, Student::query()->withTrashed()->count(), 'Tidak ada siswa contoh.');
         $this->assertSame(0, StaffMember::query()->withTrashed()->count(), 'Tidak ada guru/staf contoh.');

@@ -50,8 +50,26 @@ class User extends Authenticatable
         ];
     }
 
-    public function isAdminIt(): bool
+    public function isAdminUtama(): bool
     {
-        return $this->role === UserRole::AdminIt;
+        return $this->role === UserRole::AdminUtama;
+    }
+
+    public function isSubAdmin(): bool
+    {
+        return $this->role === UserRole::SubAdmin;
+    }
+
+    /**
+     * Admin Utama maupun Sub Admin — keduanya "Admin" di UI.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->isAdminUtama() || $this->isSubAdmin();
+    }
+
+    public function isViewer(): bool
+    {
+        return $this->role === UserRole::Viewer;
     }
 }

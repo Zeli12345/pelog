@@ -62,7 +62,7 @@
                                 <th class="px-4 py-2.5 font-semibold">Mapel &amp; Tujuan</th>
                                 <th class="px-4 py-2.5 font-semibold">Durasi</th>
                                 <th class="px-4 py-2.5 font-semibold">Status</th>
-                                @if (auth()->user()->isAdminIt())
+                                @if (auth()->user()->isAdmin())
                                     <th class="px-4 py-2.5 text-right font-semibold">Aksi</th>
                                 @endif
                             </tr>
@@ -105,7 +105,7 @@
                                             <span class="badge-muted">{{ $session->close_reason?->label() ?? 'Selesai' }}</span>
                                         @endif
                                     </td>
-                                    @if (auth()->user()->isAdminIt())
+                                    @if (auth()->user()->isAdmin())
                                         <td class="px-4 py-2.5 text-right">
                                             @if ($session->isActive())
                                                 <form method="POST" action="{{ route('sessions.close', $session) }}" onsubmit="return confirm('Tutup paksa sesi ini? Perangkat akan kembali tersedia.')">

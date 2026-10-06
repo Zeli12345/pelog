@@ -26,7 +26,7 @@ class ScreenshotFilterTest extends TestCase
         $older = $this->makeScreenshot($deviceA, $studentA, 'Latihan sistem operasi', now()->subDay());
         $newer = $this->makeScreenshot($deviceB, $studentB, 'Ujian jaringan komputer', now());
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->get('/screenshots')

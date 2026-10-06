@@ -19,7 +19,7 @@ class SettingsInstallerUploadTest extends TestCase
     {
         Storage::fake('local');
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post(route('settings.client-installer'), [
@@ -50,7 +50,7 @@ class SettingsInstallerUploadTest extends TestCase
 
     public function test_halaman_pengaturan_menampilkan_tombol_unduh_installer(): void
     {
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         // Sebelum ada installer: halaman tetap tampil dengan ajakan unggah.
         $this->actingAs($admin)

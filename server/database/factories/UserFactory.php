@@ -30,7 +30,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
-            'role' => UserRole::Guru,
+            'role' => UserRole::Viewer,
             'is_active' => true,
         ];
     }
@@ -45,10 +45,24 @@ class UserFactory extends Factory
         ]);
     }
 
-    public function adminIt(): static
+    public function adminUtama(): static
     {
         return $this->state(fn (array $attributes) => [
-            'role' => UserRole::AdminIt,
+            'role' => UserRole::AdminUtama,
+        ]);
+    }
+
+    public function subAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::SubAdmin,
+        ]);
+    }
+
+    public function viewer(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Viewer,
         ]);
     }
 }

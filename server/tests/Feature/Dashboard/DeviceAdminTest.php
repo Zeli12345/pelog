@@ -18,7 +18,7 @@ class DeviceAdminTest extends TestCase
     public function test_admin_can_rename_device_and_set_maintenance(): void
     {
         $device = Device::factory()->create(['hostname' => 'DESKTOP-X1', 'label' => null]);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->put("/devices/{$device->id}", [
@@ -39,7 +39,7 @@ class DeviceAdminTest extends TestCase
     public function test_device_detail_page_shows_admin_panel(): void
     {
         $device = Device::factory()->create();
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->get("/devices/{$device->id}")
@@ -47,12 +47,12 @@ class DeviceAdminTest extends TestCase
             ->assertSee('Pengaturan Perangkat');
     }
 
-    public function test_guru_cannot_change_device(): void
+    public function test_viewer_cannot_change_device(): void
     {
         $device = Device::factory()->create();
-        $guru = User::factory()->create(['role' => 'guru']);
+        $viewer = User::factory()->viewer()->create();
 
-        $this->actingAs($guru)
+        $this->actingAs($viewer)
             ->put("/devices/{$device->id}", ['status' => 'maintenance'])
             ->assertForbidden();
     }
@@ -72,7 +72,7 @@ class DeviceAdminTest extends TestCase
             'last_heartbeat_at' => now()->subMinutes(2),
         ]);
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post("/sessions/{$session->id}/close")
@@ -86,7 +86,7 @@ class DeviceAdminTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'session_closed_admin']);
     }
 
-    public function test_guru_cannot_force_close_session(): void
+    public function test_viewer_cannot_force_close_session(): void
     {
         $device = Device::factory()->create(['status' => 'in_use']);
         $student = Student::factory()->create();
@@ -96,14 +96,14 @@ class DeviceAdminTest extends TestCase
             'device_id' => $device->id,
             'user_type' => 'student',
             'student_id' => $student->id,
-            'usage_purpose' => 'Sesi guru tidak boleh tutup',
+            'usage_purpose' => 'Sesi viewer tidak boleh tutup',
             'started_at_server' => now()->subMinutes(10),
             'last_heartbeat_at' => now()->subMinute(),
         ]);
 
-        $guru = User::factory()->create(['role' => 'guru']);
+        $viewer = User::factory()->viewer()->create();
 
-        $this->actingAs($guru)
+        $this->actingAs($viewer)
             ->post("/sessions/{$session->id}/close")
             ->assertForbidden();
 
@@ -117,7 +117,7 @@ class DeviceAdminTest extends TestCase
             Device::factory()->create(['hostname' => 'LAB-BULK-02']),
             Device::factory()->create(['hostname' => 'LAB-BULK-03']),
         ]);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post('/devices/bulk-delete', ['ids' => $devices->pluck('id')->all()])
@@ -146,7 +146,7 @@ class DeviceAdminTest extends TestCase
     public function test_admin_can_restore_device_and_its_token_works_again(): void
     {
         [$device, $token] = $this->enrolledDevice(['hostname' => 'LAB-RESTORE-01']);
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->delete("/devices/{$device->id}")
@@ -179,7 +179,7 @@ class DeviceAdminTest extends TestCase
             $device->delete();
         }
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post('/devices/bulk-restore', ['ids' => $devices->pluck('id')->all()])
@@ -195,9 +195,9 @@ class DeviceAdminTest extends TestCase
     public function test_bulk_delete_requires_admin(): void
     {
         $device = Device::factory()->create();
-        $guru = User::factory()->create(['role' => 'guru']);
+        $viewer = User::factory()->viewer()->create();
 
-        $this->actingAs($guru)
+        $this->actingAs($viewer)
             ->post('/devices/bulk-delete', ['ids' => [$device->id]])
             ->assertForbidden();
 
@@ -219,7 +219,7 @@ class DeviceAdminTest extends TestCase
             'last_heartbeat_at' => now()->subMinute(),
         ]);
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->delete("/devices/{$device->id}")

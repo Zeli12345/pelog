@@ -33,7 +33,7 @@
                         <p class="text-xs text-ink-soft">{{ $activeSession->student?->class ?? 'Guru / Pegawai' }} · {{ $activeSession->subject?->name ?? 'tanpa mapel' }}</p>
                         <p class="mt-1 font-mono text-xs text-moss-700">Durasi {{ $start ? $start->diff(now())->format('%H:%I') : '—' }}</p>
 
-                        @if (auth()->user()->isAdminIt())
+                        @if (auth()->user()->isAdmin())
                             <div class="mt-2 flex flex-wrap gap-2">
                                 <form method="POST" action="{{ route('sessions.close', $activeSession) }}" onsubmit="return confirm('Tutup paksa sesi ini? Laptop akan dimatikan otomatis oleh kiosk.')">
                                     @csrf
@@ -122,7 +122,7 @@
         </section>
 
         {{-- Pengaturan perangkat (Admin IT) --}}
-        @if (auth()->user()->isAdminIt())
+        @if (auth()->user()->isAdmin())
             <section class="card p-4">
                 <header class="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold text-ink">Pengaturan Perangkat</h3>

@@ -37,7 +37,7 @@ class StudentStaffAdminTest extends TestCase
             'duration_minutes' => 10,
         ]);
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
         $ids = $students->pluck('id')->all();
 
         $this->actingAs($admin)
@@ -86,7 +86,7 @@ class StudentStaffAdminTest extends TestCase
         $student = Student::factory()->create(['name' => 'Siswa Pulih Sendiri']);
         $student->delete();
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post("/students/{$student->id}/restore")
@@ -103,7 +103,7 @@ class StudentStaffAdminTest extends TestCase
             StaffMember::factory()->create(['name' => 'Pegawai Bulk Dua']),
         ]);
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
         $ids = $members->pluck('id')->all();
 
         $this->actingAs($admin)
@@ -142,17 +142,17 @@ class StudentStaffAdminTest extends TestCase
             ->assertSee('Pegawai Bulk Satu');
     }
 
-    public function test_guru_cannot_bulk_delete_students_or_staff(): void
+    public function test_viewer_cannot_bulk_delete_students_or_staff(): void
     {
         $student = Student::factory()->create(['name' => 'Siswa Dilindungi']);
         $member = StaffMember::factory()->create(['name' => 'Pegawai Dilindungi']);
-        $guru = User::factory()->create(['role' => 'guru']);
+        $viewer = User::factory()->viewer()->create();
 
-        $this->actingAs($guru)
+        $this->actingAs($viewer)
             ->post('/students/bulk-delete', ['ids' => [$student->id]])
             ->assertForbidden();
 
-        $this->actingAs($guru)
+        $this->actingAs($viewer)
             ->post('/staff/bulk-delete', ['ids' => [$member->id]])
             ->assertForbidden();
 
@@ -170,7 +170,7 @@ class StudentStaffAdminTest extends TestCase
         $deletedMember = StaffMember::factory()->create(['name' => 'Pegawai Sudah Dihapus']);
         $deletedMember->delete();
 
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->get('/students?trashed=1')
@@ -187,7 +187,7 @@ class StudentStaffAdminTest extends TestCase
 
     public function test_bulk_delete_rejects_more_than_200_ids(): void
     {
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post('/students/bulk-delete', ['ids' => range(1, 201)])
@@ -200,7 +200,7 @@ class StudentStaffAdminTest extends TestCase
 
     public function test_student_store_rejects_empty_birth_date(): void
     {
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post('/students', [
@@ -215,7 +215,7 @@ class StudentStaffAdminTest extends TestCase
 
     public function test_student_store_persists_birth_date(): void
     {
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $this->actingAs($admin)
             ->post('/students', [
@@ -234,7 +234,7 @@ class StudentStaffAdminTest extends TestCase
 
     public function test_student_import_accepts_two_date_formats_and_reports_missing_date(): void
     {
-        $admin = User::factory()->adminIt()->create();
+        $admin = User::factory()->adminUtama()->create();
 
         $csv = implode("\n", [
             'NISN,NAMA,KELAS,TANGGAL LAHIR',

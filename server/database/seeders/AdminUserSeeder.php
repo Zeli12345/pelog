@@ -27,7 +27,7 @@ class AdminUserSeeder extends Seeder
             // bila PELOG_ADMIN_PASSWORD diberikan secara eksplisit (mis. reset).
             $attributes = [
                 'name' => 'Admin IT PELOG',
-                'role' => 'admin_it',
+                'role' => 'admin_utama',
                 'is_active' => true,
                 'email_verified_at' => $existing->email_verified_at ?? now(),
             ];
@@ -49,7 +49,7 @@ class AdminUserSeeder extends Seeder
             'email' => $email,
             'name' => 'Admin IT PELOG',
             'password' => $envPassword !== '' ? $envPassword : self::DEFAULT_PASSWORD,
-            'role' => 'admin_it',
+            'role' => 'admin_utama',
             'is_active' => true,
             'email_verified_at' => now(),
         ]);

@@ -21,7 +21,7 @@ class AdminUserSeederTest extends TestCase
         $admin = User::query()->where('email', 'admin@pelog.local')->first();
 
         $this->assertNotNull($admin);
-        $this->assertTrue($admin->isAdminIt());
+        $this->assertTrue($admin->isAdminUtama());
         $this->assertTrue($admin->is_active);
         $this->assertTrue(
             Hash::check(AdminUserSeeder::DEFAULT_PASSWORD, $admin->password),

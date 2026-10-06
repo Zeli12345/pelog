@@ -2,7 +2,7 @@
 
 @php
     $user = auth()->user();
-    $isAdmin = (bool) $user?->isAdminIt();
+    $isAdmin = (bool) $user?->isAdmin();
     $current = request()->route()?->getName();
 
     $isActive = function (string $name) use ($current): bool {
