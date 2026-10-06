@@ -28,6 +28,7 @@
     ] : [];
 
     $system = $isAdmin ? [
+        ['route' => 'users.index', 'label' => 'Pengguna', 'icon' => 'key'],
         ['route' => 'audit.index', 'label' => 'Audit', 'icon' => 'shield-check'],
         ['route' => 'settings.index', 'label' => 'Pengaturan', 'icon' => 'settings'],
     ] : [];

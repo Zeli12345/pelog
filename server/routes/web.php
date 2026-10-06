@@ -13,6 +13,7 @@ use App\Http\Controllers\Dashboard\StaffImportController;
 use App\Http\Controllers\Dashboard\StudentController;
 use App\Http\Controllers\Dashboard\StudentImportController;
 use App\Http\Controllers\Dashboard\SubjectController;
+use App\Http\Controllers\Dashboard\UserController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -90,6 +91,15 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
         Route::post('/settings/enrollment-code', [SettingsController::class, 'generateEnrollmentCode'])->name('settings.enrollment-code');
         Route::post('/settings/client-installer', [SettingsController::class, 'uploadClientInstaller'])->name('settings.client-installer');
+
+        // Pengguna dashboard (akun yang bisa login ke dasbor)
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::post('/users/{user}/toggle', [UserController::class, 'toggleActive'])->name('users.toggle');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
