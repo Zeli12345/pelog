@@ -46,9 +46,13 @@ Akses dashboard: <http://127.0.0.1:8000>
 ## Produksi
 
 - URL: <https://pelog.smkn1mas.sch.id> (aaPanel: Nginx + PHP 8.4, MySQL)
-- Akun awal (dibuat seeder): `admin@pelog.local` / `Pelog!Admin2026` dan
-  `guru@pelog.local` / `Pelog!Guru2026` — **ganti setelah instalasi**. Seeder
-  produksi hanya membuat akun awal + pengaturan; tanpa data contoh.
+- Akun awal (dibuat seeder): `admin@pelog.local` / `Pelog!Admin2026` —
+  **ganti setelah instalasi**. Seeder produksi hanya membuat akun admin
+  utama + pengaturan; tanpa data contoh.
+- Peran dashboard: **Admin** (kelola semua; tipe Admin Utama/Sub Admin
+  keduanya tampil sebagai "Admin") dan **Viewer** (baca-saja: pemantauan +
+  lihat Siswa/Guru & Pegawai/Mapel + ekspor). Akun dikelola dari menu
+  **Pengguna** (khusus Admin).
 - Base URL client: `https://pelog.smkn1mas.sch.id` (installer menulisnya ke
   `C:\ProgramData\PELOG\pelog.json`).
 - Panduan deploy/operasional lengkap: [`docs/DEPLOY-PRODUCTION.md`](docs/DEPLOY-PRODUCTION.md).

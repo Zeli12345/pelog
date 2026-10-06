@@ -103,19 +103,26 @@ Berkas contoh ada di `docs/nginx/pelog_api_errors.conf`. Verifikasi:
 `POST /api/v1/sessions/heartbeat` dengan UUID tak dikenal harus menjawab
 `{"ok":false,...,"code":"session_not_found"}` HTTP 404 (bukan pesan 405/halaman nginx).
 
-## 4. Akun awal (dibuat seeder)
+## 4. Akun awal & peran (dibuat seeder)
 
-| Peran | Email | Password awal |
+| Peran tampil | Email | Password awal |
 |---|---|---|
-| Admin IT | `admin@pelog.local` | `Pelog!Admin2026` |
-| Guru | `guru@pelog.local` | `Pelog!Guru2026` |
+| Admin | `admin@pelog.local` | `Pelog!Admin2026` |
 
 - **Wajib** ganti password setelah instalasi (dashboard → Profil), atau set
-  `PELOG_ADMIN_PASSWORD` / `PELOG_GURU_PASSWORD` di `.env` lalu jalankan ulang
-  `php artisan db:seed --force` (password akun lama TIDAK ditimpa tanpa variabel ini).
-- Seeder produksi **hanya** membuat akun di atas + pengaturan default.
+  `PELOG_ADMIN_PASSWORD` di `.env` lalu jalankan ulang `php artisan db:seed --force`
+  (password akun lama TIDAK ditimpa tanpa variabel ini).
+- Seeder produksi **hanya** membuat akun admin utama + pengaturan default.
   Data siswa/guru diimpor lewat dashboard; mapel dikelola dari menu Mapel.
   Data contoh hanya ada saat `APP_ENV=local`.
+- **Peran akun dashboard** (dikelola dari menu **Pengguna**, khusus Admin):
+  - **Admin** — dua tingkat internal: *Admin Utama* (kelola semua akun) dan
+    *Sub Admin* (kelola semua data & pengaturan, **tidak bisa** mengelola akun
+    admin). Keduanya tampil sebagai "Admin" di UI.
+  - **Viewer** — baca-saja: pemantauan (termasuk ekspor) + lihat Siswa,
+    Guru & Pegawai, dan Mapel tanpa aksi tulis.
+  - Akun bawaan `guru@pelog.local` dihapus; peran `guru` lama dikonversi
+    menjadi `viewer` oleh migrasi `2026_10_06_000002_restructure_user_roles`.
 
 ## 5. Penjadwal (wajib)
 
