@@ -51,7 +51,7 @@
         {{-- Ringkasan --}}
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <x-stat-card label="Total Sesi" :value="number_format($summary->total_sessions ?? 0)" icon="file-text" tone="navy" />
-            <x-stat-card label="Total Durasi" :value="number_format($summary->total_minutes ?? 0).' mnt'" icon="clock" tone="moss" />
+            <x-stat-card label="Total Durasi" :value="\App\Support\Duration::human($summary->total_minutes ?? 0)" icon="clock" tone="moss" />
             <x-stat-card label="Sesi Siswa" :value="number_format($summary->student_sessions ?? 0)" icon="users" tone="navy" />
             <x-stat-card label="Sesi Guru/Pegawai" :value="number_format($summary->staff_sessions ?? 0)" icon="user-check" tone="navy" />
         </div>
@@ -68,7 +68,7 @@
                         @foreach ($bySubject as $row)
                             <tr>
                                 <td class="py-2 text-ink-soft">{{ $row->subject_name }}</td>
-                                <td class="py-2 text-right font-mono text-xs text-ink-faint">{{ $row->total }} sesi · {{ number_format($row->total_minutes) }} mnt</td>
+                                <td class="py-2 text-right font-mono text-xs text-ink-faint">{{ $row->total }} sesi · {{ \App\Support\Duration::human($row->total_minutes) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -116,7 +116,7 @@
                                                 ? max(0, (int) $rowStart->diffInMinutes(now()))
                                                 : $session->duration_minutes;
                                         @endphp
-                                        {{ $rowDuration }} mnt
+                                        {{ \App\Support\Duration::human($rowDuration) }}
                                     </td>
                                 </tr>
                             @endforeach

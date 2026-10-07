@@ -90,7 +90,7 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 font-mono text-xs text-ink-soft">
-                                        {{ $start ? $start->diff(now())->format('%H:%I') : '—' }}
+                                        {{ $start ? \App\Support\Duration::human((int) $start->diffInMinutes(now())) : '—' }}
                                     </td>
                                     <td class="px-4 py-3">
                                         @if ($device->storage_total_gb > 0)

@@ -31,7 +31,7 @@
                         <p class="text-[11px] font-semibold uppercase tracking-wide text-moss-700">Sesi Berjalan</p>
                         <p class="text-sm font-semibold text-ink">{{ $activeSession->student?->name ?? $activeSession->staff?->name }}</p>
                         <p class="text-xs text-ink-soft">{{ $activeSession->student?->class ?? 'Guru / Pegawai' }} · {{ $activeSession->subject?->name ?? 'tanpa mapel' }}</p>
-                        <p class="mt-1 font-mono text-xs text-moss-700">Durasi {{ $start ? $start->diff(now())->format('%H:%I') : '—' }}</p>
+                        <p class="mt-1 font-mono text-xs text-moss-700">Durasi {{ $start ? \App\Support\Duration::human((int) $start->diffInMinutes(now())) : '—' }}</p>
 
                         @if (auth()->user()->isAdmin())
                             <div class="mt-2 flex flex-wrap gap-2">
@@ -206,7 +206,7 @@
                                                 ? max(0, (int) $rowStart->diffInMinutes(now()))
                                                 : $session->duration_minutes;
                                         @endphp
-                                        {{ $rowDuration }} mnt
+                                        {{ \App\Support\Duration::human($rowDuration) }}
                                     </td>
                                     <td class="px-4 py-2.5 text-xs text-ink-soft">{{ $session->close_reason?->label() ?? '—' }}</td>
                                     <td class="px-4 py-2.5">

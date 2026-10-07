@@ -96,7 +96,7 @@
                                                 ? max(0, (int) $rowStart->diffInMinutes(now()))
                                                 : $session->duration_minutes;
                                         @endphp
-                                        {{ $rowDuration }} mnt
+                                        {{ \App\Support\Duration::human($rowDuration) }}
                                     </td>
                                     <td class="px-4 py-2.5">
                                         @if ($session->isActive())
