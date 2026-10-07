@@ -6,6 +6,8 @@ Installer siap pakai untuk mesin baru.
 
 - Berkas   : `PELOG_Setup_1.0.2.exe` (51.9 MB, Inno Setup)
 - SHA-256  : `4ca5a868a80193d5ef837f6b3bda8f04af4e56c695c1cf8ced01227d4ed2f885`
+- Build produksi (berkode kode enrollment — untuk auto-update & unduhan dashboard):
+  SHA-256 `95a95f7693042c715c17ef692cf8e3ecf25eccbeffbb62b0a736d9903c344518` (51.9 MB)
 - Perbaikan: **anti-dobel screenshot** — capture manual & terjadwal kini saling
   menghormati (jarak minimum 90 detik) dan mengirim capture tertunda alih-alih
   menangkap ulang; server juga menggabungkan unggahan dengan isi identik dalam
