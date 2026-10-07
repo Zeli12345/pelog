@@ -294,6 +294,14 @@ public sealed class ActiveSessionRuntime : Form
             }
         }
 
+        // Hormati jarak minimum antar-capture: jangan menambah capture baru
+        // hanya karena tick interval jatuh beberapa detik setelah capture
+        // manual (atau sebaliknya) — penyebab baris dobel berisi gambar sama.
+        if (!ScreenshotPolicy.ShouldCapture(_record.ScreenshotCapturedAt, hasPendingCapture: false, _services.Clock.Now))
+        {
+            return;
+        }
+
         var config = _services.Sync.LoadCachedConfig();
         var capturedAt = _services.Clock.Now;
 
@@ -609,6 +617,24 @@ public sealed class ActiveSessionRuntime : Form
 
         try
         {
+            // Bila masih ada capture tertunda untuk sesi ini, kirim itu dulu —
+            // jangan menangkap ulang (permintaan dashboard tetap dilayani oleh
+            // capture pending yang belum terkirim).
+            if (_services.Store.GetPendingScreenshots().Any(item => item.SessionUuid == _record.SessionUuid))
+            {
+                await _services.Sync.PushScreenshotsAsync();
+
+                return;
+            }
+
+            // Capture baru saja diambil (mis. oleh tick interval) — anggap
+            // permintaan manual terpenuhi oleh capture segar tersebut dan
+            // jangan menambah capture kedua dalam hitungan detik.
+            if (!ScreenshotPolicy.ShouldCapture(_record.ScreenshotCapturedAt, hasPendingCapture: false, _services.Clock.Now))
+            {
+                return;
+            }
+
             var config = _services.Sync.LoadCachedConfig();
             var capturedAt = _services.Clock.Now;
 

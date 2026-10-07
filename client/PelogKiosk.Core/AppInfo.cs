@@ -6,5 +6,5 @@ namespace PelogKiosk.Core;
 /// </summary>
 public static class AppInfo
 {
-    public const string Version = "1.0.1";
+    public const string Version = "1.0.2";
 }
