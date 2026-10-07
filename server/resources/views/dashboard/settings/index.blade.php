@@ -172,26 +172,39 @@
             </section>
 
             {{-- Enrollment --}}
-            <section class="card p-5">
+            <section class="card p-5" x-data="{ copied: false }">
                 <h2 class="text-sm font-semibold text-ink">Enrollment Perangkat</h2>
-                @if ($enrollmentEnabled)
+
+                @if ($enrollmentCode)
+                    <p class="mt-2 flex items-center gap-2 text-xs text-moss-700">
+                        <span class="h-2 w-2 rounded-full bg-moss-500"></span>
+                        Enrollment aktif — kode berlaku untuk pendaftaran perangkat baru.
+                    </p>
+
+                    <div class="mt-3 rounded-md border border-gold-300 bg-gold-50 p-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-gold-700">Kode aktif</p>
+                        <div class="mt-1 flex flex-wrap items-center justify-between gap-2">
+                            <p class="select-all font-mono text-lg font-bold tracking-wider text-gold-900">{{ $enrollmentCode }}</p>
+                            <button type="button"
+                                    class="btn-secondary !py-1.5 text-xs"
+                                    x-on:click="navigator.clipboard.writeText(@js($enrollmentCode)); copied = true; setTimeout(() => copied = false, 2000)">
+                                <x-icon name="check" size="h-3.5 w-3.5" />
+                                <span x-text="copied ? 'Tersalin!' : 'Salin'">Salin</span>
+                            </button>
+                        </div>
+                        <p class="mt-1 text-[11px] text-gold-800">Masukkan kode ini di aplikasi kiosk saat pertama kali dijalankan (juga terisi otomatis pada installer yang dibangun dari dashboard).</p>
+                    </div>
+                @elseif ($enrollmentEnabled)
                     <p class="mt-2 flex items-center gap-2 text-xs text-moss-700">
                         <span class="h-2 w-2 rounded-full bg-moss-500"></span>
                         Enrollment aktif — kode sudah pernah dibuat.
                     </p>
+                    <p class="mt-2 text-[11px] leading-relaxed text-ink-faint">Kode lama dibuat sebelum fitur tampil-ulang aktif, jadi tidak bisa ditampilkan. Buat kode baru sekali lagi untuk melihat & menyalinnya di sini.</p>
                 @else
                     <p class="mt-2 flex items-center gap-2 text-xs text-gold-700">
                         <span class="h-2 w-2 rounded-full bg-gold-500"></span>
                         Enrollment belum diaktifkan.
                     </p>
-                @endif
-
-                @if ($lastEnrollmentCode)
-                    <div class="mt-3 rounded-md border border-gold-300 bg-gold-50 p-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-gold-700">Kode baru (hanya sekali tampil)</p>
-                        <p class="mt-1 select-all font-mono text-lg font-bold tracking-wider text-gold-900">{{ $lastEnrollmentCode }}</p>
-                        <p class="mt-1 text-[11px] text-gold-800">Masukkan kode ini di aplikasi kiosk saat pertama kali dijalankan.</p>
-                    </div>
                 @endif
 
                 <form method="POST" action="{{ route('settings.enrollment-code') }}" class="mt-3" onsubmit="return confirm('Buat kode enrollment baru? Kode lama tidak berlaku lagi.')">
@@ -203,7 +216,8 @@
                 </form>
 
                 <p class="mt-3 text-[11px] leading-relaxed text-ink-faint">
-                    Kode hanya ditampilkan sekali. Jika hilang, buat kode baru — perangkat yang sudah enrolled tidak terpengaruh.
+                    Kode hanya terlihat oleh Admin di halaman ini. Membuat kode baru membuat kode lama tidak berlaku —
+                    perangkat yang sudah enrolled tidak terpengaruh.
                 </p>
             </section>
 

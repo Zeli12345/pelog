@@ -41,7 +41,7 @@ class SettingsController extends Controller
                 ->mapWithKeys(fn (string $type, string $key) => [$key => Setting::getValue($key)])
                 ->all(),
             'enrollmentEnabled' => is_string(Setting::getValue('enrollment_code_hash')),
-            'lastEnrollmentCode' => session('enrollment_code'),
+            'enrollmentCode' => Setting::getValue('enrollment_code'),
             'clientUpdate' => [
                 'latest_version' => Setting::getValue('client_latest_version'),
                 'sha256' => Setting::getValue('client_installer_sha256'),
@@ -105,6 +105,7 @@ class SettingsController extends Controller
         $code = 'BLG-'.$part().'-'.$part();
 
         Setting::setValue('enrollment_code_hash', hash('sha256', $code));
+        Setting::setValue('enrollment_code', $code);
 
         Audit::log(
             action: 'enrollment_code_generated',
@@ -114,8 +115,7 @@ class SettingsController extends Controller
         );
 
         return redirect()->route('settings.index')
-            ->with('status', 'Kode enrollment baru dibuat. Salin sekarang — kode hanya ditampilkan sekali.')
-            ->with('enrollment_code', $code);
+            ->with('status', 'Kode enrollment baru dibuat — kode aktif bisa dilihat & disalin di kartu Enrollment.');
     }
 
     // / <summary>Unggah installer client baru untuk pembaruan otomatis.</summary>

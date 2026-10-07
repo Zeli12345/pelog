@@ -26,6 +26,9 @@ class GenerateEnrollmentCode extends Command
         $code = 'BLG-'.$part().'-'.$part();
 
         Setting::setValue('enrollment_code_hash', hash('sha256', $code));
+        // Plaintext disimpan agar kode bisa ditampilkan kembali di halaman
+        // Pengaturan (khusus Admin) tanpa harus regenerate.
+        Setting::setValue('enrollment_code', $code);
 
         $this->newLine();
         $this->info('  Kode enrollment baru: '.$code);
