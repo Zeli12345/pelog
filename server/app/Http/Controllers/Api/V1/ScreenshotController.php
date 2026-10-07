@@ -49,6 +49,46 @@ class ScreenshotController extends Controller
             return ApiResponse::ok($this->summary($existing));
         }
 
+        // Dedupe isi: capture identik (mis. layar diam) yang datang dalam
+        // jendela singkat dari capture terakhir sesi yang sama dianggap satu
+        // screenshot — mencegah baris "dobel" ketika capture interval dan
+        // permintaan manual bertabrakan di detik yang sama.
+        $incomingHash = @hash_file('sha256', (string) $request->file('image_file')->getRealPath()) ?: null;
+
+        if ($incomingHash !== null) {
+            $latest = Screenshot::query()
+                ->where('usage_session_id', $session->id)
+                ->orderByDesc('captured_at')
+                ->orderByDesc('id')
+                ->first();
+
+            $incomingCaptured = isset($data['captured_at']) ? Carbon::parse($data['captured_at']) : now();
+            $latestCaptured = $latest?->captured_at ?? $latest?->created_at;
+
+            if ($latest !== null
+                && $latest->content_hash !== null
+                && hash_equals($latest->content_hash, $incomingHash)
+                && $latestCaptured !== null
+                && abs($latestCaptured->diffInSeconds($incomingCaptured)) <= 300) {
+                $device->forceFill(['screenshot_requested_at' => null])->saveQuietly();
+
+                Audit::log(
+                    action: 'screenshot_deduplicated',
+                    entityType: Screenshot::class,
+                    entityId: $latest->id,
+                    metadata: [
+                        'session_uuid' => $session->session_uuid,
+                        'kept_uuid' => $latest->screenshot_uuid,
+                    ],
+                    actorType: 'device',
+                    actorId: $device->id,
+                    request: $request,
+                );
+
+                return ApiResponse::ok($this->summary($latest));
+            }
+        }
+
         try {
             $screenshot = $service->store($request->file('image_file'), $session, $data['screenshot_uuid']);
         } catch (QueryException $exception) {

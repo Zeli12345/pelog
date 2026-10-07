@@ -22,6 +22,12 @@ class ScreenshotController extends Controller
             'sort' => $request->query('sort', 'latest'),
         ];
 
+        // Jumlah kartu per halaman (10/25/50/100); nilai lain kembali ke 25.
+        $perPage = (int) $request->query('per_page');
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
+
         $screenshots = Screenshot::query()
             ->select('screenshots.*')
             ->with(['usageSession.device', 'usageSession.student', 'usageSession.staff'])
@@ -62,7 +68,8 @@ class ScreenshotController extends Controller
         };
 
         return view('dashboard.screenshots.index', [
-            'screenshots' => $screenshots->paginate(24)->withQueryString(),
+            'screenshots' => $screenshots->paginate($perPage)->withQueryString(),
+            'perPage' => $perPage,
             'filters' => $filters,
             'devices' => Device::query()->orderByRaw('label IS NULL, label')->orderBy('hostname')->get(),
         ]);

@@ -1,7 +1,7 @@
 <x-dashboard-layout title="Screenshot" subtitle="Bukti visual aktivitas sesi">
     <div class="space-y-4">
         <section class="card p-4">
-            <form method="GET" action="{{ route('screenshots.index') }}" class="grid grid-cols-2 gap-3 lg:grid-cols-6">
+            <form method="GET" action="{{ route('screenshots.index') }}" id="screenshot-filter" class="grid grid-cols-2 gap-3 lg:grid-cols-6">
                 <div>
                     <label class="label" for="device_id">Perangkat</label>
                     <select id="device_id" name="device_id" class="input text-xs">
@@ -44,7 +44,7 @@
         @if ($screenshots->isEmpty())
             <section class="card px-4 py-16 text-center">
                 <p class="text-sm font-medium text-ink-soft">Belum ada screenshot yang cocok dengan filter.</p>
-                <p class="mt-1 text-xs text-ink-faint">Screenshot diambil otomatis 1x per sesi siswa.</p>
+                <p class="mt-1 text-xs text-ink-faint">Screenshot diambil berkala selama sesi siswa dan bisa diminta dari halaman detail perangkat.</p>
             </section>
         @else
             <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
@@ -63,7 +63,7 @@
                             <p class="truncate text-xs font-semibold text-ink">{{ $session?->student?->name ?? $session?->staff?->name ?? 'Tidak diketahui' }}</p>
                             <p class="truncate text-[11px] text-ink-faint">
                                 {{ $session?->device?->label ?? $session?->device?->hostname }} ·
-                                {{ $screenshot->captured_at?->timezone('Asia/Makassar')->format('d/m H:i') }} WITA
+                                {{ $screenshot->captured_at?->timezone('Asia/Makassar')->format('d/m H:i:s') }} WITA
                             </p>
                             <p class="font-mono text-[10px] uppercase text-ink-faint">{{ $screenshot->format->value }} · {{ number_format($screenshot->size_bytes / 1024, 1) }} KB</p>
                         </figcaption>
@@ -71,8 +71,19 @@
                 @endforeach
             </div>
 
-            <div class="flex items-center justify-between">
-                <p class="text-xs text-ink-faint">{{ $screenshots->total() }} screenshot</p>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-3 text-xs text-ink-faint">
+                    <span>{{ $screenshots->total() }} screenshot</span>
+                    <label class="flex items-center gap-1.5">
+                        Tampilkan
+                        <select name="per_page" form="screenshot-filter" onchange="this.form.submit()" class="input !w-auto py-1 text-xs">
+                            @foreach ([10, 25, 50, 100] as $option)
+                                <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
+                            @endforeach
+                        </select>
+                        per halaman
+                    </label>
+                </div>
                 {{ $screenshots->links() }}
             </div>
         @endif

@@ -21,6 +21,10 @@ class ScreenshotService
         $format = $mime === 'image/webp' ? ScreenshotFormat::Webp : ScreenshotFormat::Jpeg;
         $extension = $format === ScreenshotFormat::Webp ? 'webp' : 'jpg';
 
+        // Sidik isi dihitung sebelum berkas dipindahkan (storeAs memindahkan
+        // berkas temporer).
+        $contentHash = @hash_file('sha256', (string) $file->getRealPath()) ?: null;
+
         // Nama berkas unik per screenshot: sesi boleh punya banyak screenshot.
         $suffix = $screenshotUuid !== null && $screenshotUuid !== ''
             ? $screenshotUuid
@@ -39,6 +43,7 @@ class ScreenshotService
             'screenshot_uuid' => $screenshotUuid !== null && $screenshotUuid !== ''
                 ? $screenshotUuid
                 : (string) str()->uuid(),
+            'content_hash' => $contentHash,
             'usage_session_id' => $session->id,
             'format' => $format,
             'path' => $path,

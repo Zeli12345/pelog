@@ -13,6 +13,7 @@ class Screenshot extends Model
 
     protected $fillable = [
         'screenshot_uuid',
+        'content_hash',
         'usage_session_id',
         'format',
         'path',

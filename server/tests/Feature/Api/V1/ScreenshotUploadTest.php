@@ -95,10 +95,13 @@ class ScreenshotUploadTest extends TestCase
         $headers = $this->deviceHeaders($token);
         $uuid = $this->startStudentSession($headers);
 
-        foreach (['a.jpg', 'b.jpg', 'c.jpg'] as $name) {
+        // Konten harus benar-benar berbeda: fake()->image() menghasilkan byte
+        // yang sama untuk ukuran yang sama, sehingga dedupe isi akan
+        // menggabungkannya (dan itu memang perilaku yang diinginkan).
+        foreach ([['a.jpg', 10, 20, 30], ['b.jpg', 40, 50, 60], ['c.jpg', 70, 80, 90]] as [$name, $r, $g, $b]) {
             $this->post("/api/v1/sessions/{$uuid}/screenshot", [
                 'screenshot_uuid' => (string) Str::uuid(),
-                'image_file' => UploadedFile::fake()->image($name, 640, 480),
+                'image_file' => $this->fixedImage($name, $r, $g, $b),
             ], $headers)->assertStatus(201);
         }
 
@@ -234,5 +237,101 @@ class ScreenshotUploadTest extends TestCase
         ], $this->deviceHeaders($token))
             ->assertStatus(404)
             ->assertJsonPath('error.code', 'session_not_found');
+    }
+
+    public function test_upload_identik_beruntun_dalam_jendela_digabung(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        $headers = $this->deviceHeaders($token);
+        $uuid = $this->startStudentSession($headers);
+
+        $firstUuid = (string) Str::uuid();
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => $firstUuid,
+            'image_file' => $this->fixedImage('a.jpg', 10, 20, 30),
+            'captured_at' => now()->toIso8601String(),
+        ], $headers)->assertStatus(201);
+
+        // Permintaan manual dimisalkan aktif; unggahan kedua yang identik
+        // harus dianggap satu screenshot (tidak menggandakan baris).
+        $device->refresh()->forceFill(['screenshot_requested_at' => now()])->save();
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => (string) Str::uuid(),
+            'image_file' => $this->fixedImage('b.jpg', 10, 20, 30),
+            'captured_at' => now()->addSecond()->toIso8601String(),
+        ], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.screenshot_uuid', $firstUuid);
+
+        $this->assertDatabaseCount('screenshots', 1);
+        $this->assertNull($device->refresh()->screenshot_requested_at);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'screenshot_deduplicated']);
+    }
+
+    public function test_upload_identik_di_luar_jendela_tetap_baris_baru(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        $headers = $this->deviceHeaders($token);
+        $uuid = $this->startStudentSession($headers);
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => (string) Str::uuid(),
+            'image_file' => $this->fixedImage('a.jpg', 10, 20, 30),
+            'captured_at' => now()->toIso8601String(),
+        ], $headers)->assertStatus(201);
+
+        // Capture sebelumnya sudah lewat jendela (mis. screenshot interval
+        // 15 menit) — unggahan identik berikutnya tetap baris baru.
+        Screenshot::query()->firstOrFail()->forceFill(['captured_at' => now()->subMinutes(10)])->save();
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => (string) Str::uuid(),
+            'image_file' => $this->fixedImage('b.jpg', 10, 20, 30),
+            'captured_at' => now()->toIso8601String(),
+        ], $headers)->assertStatus(201);
+
+        $this->assertDatabaseCount('screenshots', 2);
+    }
+
+    public function test_upload_konten_berbeda_tetap_baris_baru(): void
+    {
+        [$device, $token] = $this->enrolledDevice();
+        $headers = $this->deviceHeaders($token);
+        $uuid = $this->startStudentSession($headers);
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => (string) Str::uuid(),
+            'image_file' => $this->fixedImage('a.jpg', 10, 20, 30),
+            'captured_at' => now()->toIso8601String(),
+        ], $headers)->assertStatus(201);
+
+        $this->post("/api/v1/sessions/{$uuid}/screenshot", [
+            'screenshot_uuid' => (string) Str::uuid(),
+            'image_file' => $this->fixedImage('b.jpg', 200, 10, 10),
+            'captured_at' => now()->addSecond()->toIso8601String(),
+        ], $headers)->assertStatus(201);
+
+        $this->assertDatabaseCount('screenshots', 2);
+    }
+
+    /**
+     * Gambar JPEG dengan byte deterministik agar dua unggahan bisa benar-benar
+     * identik (fake()->image() memakai warna acak tiap panggilan).
+     */
+    private function fixedImage(string $name, int $red, int $green, int $blue): UploadedFile
+    {
+        $image = imagecreatetruecolor(64, 48);
+        imagefill($image, 0, 0, imagecolorallocate($image, $red, $green, $blue));
+
+        $path = tempnam(sys_get_temp_dir(), 'pelog_fixed_').'.jpg';
+        imagejpeg($image, $path, 90);
+        imagedestroy($image);
+
+        $content = (string) file_get_contents($path);
+        @unlink($path);
+
+        return UploadedFile::fake()->createWithContent($name, $content);
     }
 }
