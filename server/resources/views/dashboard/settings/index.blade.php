@@ -169,6 +169,16 @@
                         Unggah &amp; Publikasikan
                     </button>
                 </form>
+
+                @if ($repairToolExists)
+                    <div class="mt-4 border-t border-line pt-3">
+                        <a href="{{ route('tool.download') }}" class="inline-flex items-center gap-1.5 text-xs text-navy-700 hover:underline">
+                            <x-icon name="download" size="h-3.5 w-3.5" />
+                            Alat perbaikan laptop (PELOG-Revert.exe)
+                        </a>
+                        <p class="mt-0.5 text-[11px] text-ink-faint">Melepaskan penguncian CMD/Pengaturan pada laptop bermasalah — jalankan sebagai Admin Windows.</p>
+                    </div>
+                @endif
             </section>
 
             {{-- Enrollment --}}

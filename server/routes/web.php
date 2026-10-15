@@ -14,6 +14,7 @@ use App\Http\Controllers\Dashboard\StudentController;
 use App\Http\Controllers\Dashboard\StudentImportController;
 use App\Http\Controllers\Dashboard\SubjectController;
 use App\Http\Controllers\Dashboard\UserController;
+use App\Http\Controllers\ToolDownloadController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -104,6 +105,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::post('/users/{user}/toggle', [UserController::class, 'toggleActive'])->name('users.toggle');
+
+        // Alat perbaikan laptop (PELOG-Revert.exe) — khusus Admin.
+        Route::get('/downloads/repair-tool', [ToolDownloadController::class, 'download'])->name('tool.download');
     });
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

@@ -42,6 +42,7 @@ class SettingsController extends Controller
                 ->all(),
             'enrollmentEnabled' => is_string(Setting::getValue('enrollment_code_hash')),
             'enrollmentCode' => Setting::getValue('enrollment_code'),
+            'repairToolExists' => Storage::disk('local')->exists('tools/PELOG-Revert.exe'),
             'clientUpdate' => [
                 'latest_version' => Setting::getValue('client_latest_version'),
                 'sha256' => Setting::getValue('client_installer_sha256'),
