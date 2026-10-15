@@ -69,12 +69,17 @@ SMK Negeri 1 Mas Ubud
    - Kembalikan ke "Tersedia (normal)" setelah perawatan selesai.
 
 5. JIKA LAPTOP TERKUNCI DAN TIDAK BISA APA-APA
-   - Log in dengan AKUN ADMIN WINDOWS (akun kiosk siswa tidak terpengaruh
-     karena kebijakan hanya dipasang pada akun siswa).
-   - Jalankan: unlock-admin.ps1 (ada di folder instalasi aplikasi) SETELAH
-     login ke akun siswa tersebut. Bisa juga lewat:
-       powershell -ExecutionPolicy Bypass -File unlock-admin.ps1
-   - Untuk membersihkan autostart juga, tambahkan parameter -FullUninstall.
+   - JALANKAN ALAT "PELOG-Revert.exe" (login akun admin Windows, klik
+     "MULAI PERBAIKI"): menghentikan kiosk, melepaskan seluruh kebijakan
+     registry (CMD/Task Manager/Control Panel dsb.), menghapus scheduled
+     task & autostart, memuat ulang Explorer, dan (opsional "total")
+     menjalankan uninstaller + menghapus sisa data PELOG.
+     Log: C:\Users\Public\pelog-revert.log
+   - Alternatif: unlock-admin.ps1 (folder instalasi) SETELAH login ke
+     akun yang terkunci; tambahkan -FullUninstall bila perlu.
+   - Jaring pengaman otomatis: task "PelogParole" melepaskan kebijakan
+     bila kiosk tidak muncul dalam 10 menit setelah login
+     (log: C:\Users\Public\pelog-parole.log).
    - Catatan: saat penguncian aktif, cmd/PowerShell/.bat diblokir di akun
      siswa. Bila perlu pemeliharaan dari akun siswa, gunakan file .vbs
      (contoh: scripts\vm-reset-kiosk.vbs) atau akun admin Windows.

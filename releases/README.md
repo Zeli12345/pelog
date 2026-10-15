@@ -2,20 +2,41 @@
 
 Installer siap pakai untuk mesin baru.
 
-## PELOG 1.0.2
+## PELOG 1.0.2 (build 2, replublished 15 Okt 2026)
 
 - Berkas   : `PELOG_Setup_1.0.2.exe` (51.9 MB, Inno Setup)
-- SHA-256  : `4ca5a868a80193d5ef837f6b3bda8f04af4e56c695c1cf8ced01227d4ed2f885`
+- SHA-256  : `1ffb948e463afa8a05c44d8d34bab8c7e4035fe9a95799526226a601cf7f3eb4`
 - Build produksi (berkode kode enrollment — untuk auto-update & unduhan dashboard):
-  SHA-256 `11798d3d6d2be6f4c1e65876a32c9ee3a258eb8b5f0eeda2e2e95cb81e401c8a` (51.9 MB)
-- Perbaikan: **anti-dobel screenshot** — capture manual & terjadwal kini saling
-  menghormati (jarak minimum 90 detik) dan mengirim capture tertunda alih-alih
-  menangkap ulang; server juga menggabungkan unggahan dengan isi identik dalam
-  jendela 5 menit (satu baris, tercatat di Audit sebagai `screenshot_deduplicated`).
-- Fitur lain di sisi server: pagination halaman Screenshot kustom
-  (10/25/50/100 per halaman) + waktu capture ditampilkan sampai detik.
-- Perangkat **1.0.1 akan memperbarui diri otomatis** ke 1.0.2 (server mengiklankan
-  rilis ini; cek setiap 6 jam / saat boot berikutnya).
+  SHA-256 `88d65ceb2a3cc59b89b6d28ad8ff6d9c18835d39705c854911afab417501a809` (51.9 MB)
+- Perbaikan **FATAL**: laptop bisa jadi "rusak" (CMD/PowerShell/Control Panel/
+  Task Manager terkunci) bila PC dimatikan di **tahap pendaftaran (enroll)** lalu
+  di-boot ulang. Rantai: installer menerapkan policy HKCU saat instalasi → tahap
+  enroll tidak membersihkan/menegakkan apa pun → bila kiosk gagal tampil setelah
+  login, desktop terkunci tanpa jalan keluar. Sekarang:
+  1. **Policy tidak lagi dipasang saat instalasi** — hanya setelah perangkat
+     terdaftar (layar kunci).
+  2. Kiosk **membersihkan policy pada tahap enroll**, saat keluar, dan **saat
+     startup gagal** (langsung HKCU + fallback task elevated
+     `PelogHardeningSuspend` bila key dilindungi ACL).
+  3. **Task baru "PelogParole"** (jaring pengaman): bila kiosk tidak muncul
+     dalam 10 menit setelah login, policy dilepaskan otomatis
+     (log: `C:\Users\Public\pelog-parole.log`).
+- Perbaikan lain 1.0.2 (build 1): **anti-dobel screenshot** (jarak minimum 90
+  detik, pending-aware) + server menggabungkan unggahan identik dalam 5 menit
+  (`screenshot_deduplicated`), pagination halaman Screenshot (10/25/50/100), detik
+  pada waktu capture, format durasi "N jam M menit".
+- Fitur baru (klien): lintasan startup & pendaftaran dibersihkan — hardening
+  kini hanya berlaku setelah perangkat terdaftar; tidak ada lagi jendela
+  terkunci, dengan log publik `C:\Users\Public\pelog-revert.log` di sisi alat.
+- **PELOG-Revert.exe** (alat perbaikan laptop terkunci): `tools/PELOG-Revert.exe`
+  — jalankan dengan akun admin: menghentikan kiosk, melepaskan semua kebijakan
+  registry (semua akun yang ter-muat), menghapus 7 scheduled task + autostart,
+  memuat ulang Explorer; opsi "total" juga uninstaller + hapus data.
+  SHA-256 `a50924c4f430e0e5f919f7a75ee04dbd2442a6a7a6d406e923f747abc033e9e4`.
+- Catatan versi: **tetap 1.0.2** karena hanya perangkat 1.0.1 yang auto-update;
+  varian ini adalah build untuk **instalasi baru/ulang** (hash berbeda dari build
+  pertama karena kode berubah — perangkat yang sudah terpasang 1.0.2 tidak
+  mengunduh ulang otomatis untuk versi yang sama).
 - Varian di repo/Release ini **tanpa kode enrollment** (diisi manual saat instalasi).
   Build server/auto-update memakai varian berkode untuk pengisian otomatis.
 

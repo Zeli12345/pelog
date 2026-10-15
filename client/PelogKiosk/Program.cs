@@ -61,6 +61,13 @@ internal static class Program
 
             if (!hasDeviceToken)
             {
+                // Tahap pendaftaran BUKAN fase penegakan kiosk. Bersihkan sisa
+                // kebijakan hardening (mis. dari installer) agar desktop TIDAK
+                // PERNAH terkunci tanpa kiosk berjalan — termasuk saat laptop
+                // dimatikan di tengah tahap ini dan di-boot ulang. Setelah
+                // pendaftaran sukses, LockscreenForm menerapkan kebijakan lagi.
+                KioskHardening.EnsurePoliciesRemoved();
+
                 using var enroll = new EnrollForm(services);
 
                 if (enroll.ShowDialog() != DialogResult.OK)
@@ -73,8 +80,22 @@ internal static class Program
         }
         catch (Exception ex)
         {
+            // Kiosk gagal berjalan (mis. data lokal rusak akibat mati listrik):
+            // JANGAN meninggalkan desktop terkunci tanpa kiosk. Kebijakan dilepas
+            // sebagai pengguna itu sendiri (HKCU), dengan fallback task elevated.
+            KioskHardening.EnsurePoliciesRemoved();
+
+            LocalLog.Write(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "PELOG",
+                    "data"),
+                "startup kiosk GAGAL — kebijakan dilepas, desktop bebas. Penyebab: " + ex.Message);
+
             MessageBox.Show(
-                "Aplikasi gagal dijalankan:\n\n" + ex.Message,
+                "Aplikasi gagal dijalankan:\n\n" + ex.Message + "\n\n" +
+                "Penguncian kiosk dilepas agar laptop tetap normal.\n" +
+                "IT dapat memperbaiki lalu menjalankan ulang PELOG.",
                 "PELOG — Kesalahan",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);

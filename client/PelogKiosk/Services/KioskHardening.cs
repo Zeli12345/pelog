@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Microsoft.Win32;
+using PelogKiosk.Core.Services;
 
 namespace PelogKiosk.App.Services;
 
@@ -11,30 +11,14 @@ namespace PelogKiosk.App.Services;
 /// Setelah penangguhan, shell (explorer) dimuat ulang karena Explorer yang sudah
 /// berjalan dapat men-cache kebijakan lama ("Accessing the resource ... has been
 /// disallowed") sampai dimuat ulang / logon berikutnya.
+/// Definisi kebijakan bersumber dari PelogKiosk.Core.Services.KioskPolicy
+/// (satu sumber kebenaran bersama alat PELOG-Revert & hardening.ps1).
 /// </summary>
 internal static class KioskHardening
 {
     public const string SuspendTaskName = "PelogHardeningSuspend";
 
     public const string ApplyTaskName = "PelogHardeningApply";
-
-    // Lokasi kanonik DisableTaskMgr/DisableRegistryTools (lihat hardening.ps1
-    // $polSystem) — bukan Software\Policies\... yang hanya dipakai DisableCMD.
-    private const string SystemPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\System";
-
-    private const string ExplorerPolicyKey = @"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";
-
-    private const string CmdPolicyKey = @"Software\Policies\Microsoft\Windows\System";
-
-    private static readonly (string Key, string Value)[] PolicyProbes =
-    [
-        (SystemPolicyKey, "DisableTaskMgr"),
-        (SystemPolicyKey, "DisableRegistryTools"),
-        (ExplorerPolicyKey, "NoRun"),
-        (ExplorerPolicyKey, "NoControlPanel"),
-        (ExplorerPolicyKey, "DisallowRun"),
-        (CmdPolicyKey, "DisableCMD"),
-    ];
 
     // Serialisasi Apply/Suspend agar dua permintaan yang berdekatan tidak saling
     // menimpa (mis. sesi dimulai saat Apply startup masih berjalan).
@@ -80,6 +64,46 @@ internal static class KioskHardening
         finally
         {
             Gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Fallback bila pembersihan langsung ditolak ACL kebijakan Windows
+    /// (beberapa key Policies dilindungi): jalankan Scheduled Task elevated
+    /// (PelogHardeningSuspend) yang dibuat installer.
+    /// </summary>
+    public static bool RemovePoliciesElevated()
+    {
+        return RunTask(SuspendTaskName, policyShouldExist: false);
+    }
+
+    /// <summary>
+    /// Jaminan desktop tidak terkunci tanpa kiosk: coba pembersihan langsung
+    /// (HKCU tanpa UAC) dan bila masih ada sisa, jalankan task elevated.
+    /// Dipakai kiosk pada tahap pendaftaran, saat startup gagal, dan saat
+    /// keluar. Selalu best-effort — tidak melempar.
+    /// </summary>
+    public static void EnsurePoliciesRemoved()
+    {
+        try
+        {
+            if (KioskPolicy.RemoveForCurrentUser())
+            {
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            // langsung ke fallback elevated
+        }
+
+        try
+        {
+            RemovePoliciesElevated();
+        }
+        catch (Exception)
+        {
+            // best-effort — task "PELOG Parole" installer menjadi jaring pamungkas.
         }
     }
 
@@ -183,16 +207,6 @@ internal static class KioskHardening
     /// </summary>
     private static bool IsPolicyPresent()
     {
-        foreach (var (keyPath, valueName) in PolicyProbes)
-        {
-            using var key = Registry.CurrentUser.OpenSubKey(keyPath);
-
-            if (key?.GetValue(valueName) is not null)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return KioskPolicy.AnyPolicyPresentForCurrentUser();
     }
 }

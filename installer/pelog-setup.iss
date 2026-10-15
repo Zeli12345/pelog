@@ -26,7 +26,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Buat ikon Desktop"; GroupDescription: "Ikon:"; Flags: unchecked
-Name: "hardening"; Description: "Terapkan penguncian kiosk (Task Manager, CMD, Regedit, Win+R)"; GroupDescription: "Pengamanan:"; Flags: checkedonce
+Name: "hardening"; Description: "Siapkan alat penguncian kiosk (task Apply/Suspend — dipakai layar kunci & mode admin)"; GroupDescription: "Pengamanan:"; Flags: checkedonce
 Name: "watchdog"; Description: "Pasang pengawas otomatis (menjalankan ulang kiosk bila tertutup)"; GroupDescription: "Pengamanan:"; Flags: checkedonce
 
 [Files]
@@ -59,10 +59,11 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 [Run]
 ; Izin akses data untuk semua akun (kiosk berjalan sebagai akun siswa, installer sebagai Admin)
 Filename: "icacls.exe"; Parameters: """{commonappdata}\PELOG"" /grant *S-1-5-32-545:(OI)(CI)M /T /C"; Flags: runhidden; StatusMsg: "Menyiapkan izin folder data..."
-; CATATAN: entri di bawah hanya untuk instalasi INTERAKTIF (mode senyap = pembaruan
-; otomatis oleh SYSTEM; task sudah ada dan policy HKCU-SYSTEM tidak relevan).
-; Terapkan penguncian kiosk untuk akun yang sedang login (installer berjalan sebagai admin)
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\hardening.ps1"" -Apply"; Flags: runhidden; Tasks: hardening; Check: NotSilent; StatusMsg: "Menerapkan penguncian kiosk..."
+; CATATAN: kebijakan HKCU TIDAK lagi diterapkan saat instalasi — dahulu ini
+; menyebabkan laptop "terkunci" bila PC dimatikan di tahap pendaftaran lalu
+; di-boot ulang. Sekarang: layar kunci menerapkan kebijakan setelah perangkat
+; TERDAFTAR, dan task "PelogParole" melepaskannya bila kiosk gagal tampil.
+; Pemblokiran kiosk masih aktif untuk TAHAPAN KIOSK sesudahnya (LockscreenForm).
 ; Autostart saat logon (scheduled task, semua pengguna; berjalan sebagai pengguna yang login)
 Filename: "schtasks.exe"; Parameters: "/Create /F /TN ""PELOG Kiosk (Logon)"" /SC ONLOGON /TR ""{app}\PelogKiosk.exe"""; Flags: runhidden; Check: NotSilent; StatusMsg: "Mendaftarkan autostart kiosk..."
 ; Watchdog: cek tiap 2 menit, jalankan kiosk bila tidak berjalan
@@ -76,6 +77,7 @@ Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PELOG Kiosk (Watchdog)""
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogHardeningSuspend"""; Flags: runhidden; RunOnceId: "DelTaskSuspend"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogHardeningApply"""; Flags: runhidden; RunOnceId: "DelTaskApply"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogAutoUpdate"""; Flags: runhidden; RunOnceId: "DelTaskAutoUpdate"
+Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogParole"""; Flags: runhidden; RunOnceId: "DelTaskParole"
 Filename: "schtasks.exe"; Parameters: "/Delete /F /TN ""PelogSelfWipe"""; Flags: runhidden; RunOnceId: "DelTaskSelfWipe"
 
 [UninstallDelete]
@@ -98,6 +100,7 @@ const
   SuspendTaskName = 'PelogHardeningSuspend';
   ApplyTaskName = 'PelogHardeningApply';
   SelfWipeTaskName = 'PelogSelfWipe';
+  ParoleTaskName = 'PelogParole';
 
 function NotSilent(): Boolean;
 begin
@@ -253,6 +256,49 @@ begin
   DeleteFile(XmlPath);
 end;
 
+// Task parole (anti-laptop-terkunci): setiap login (+2 menit) bila kiosk
+// TIDAK muncul sampai 10 menit, kebijakan penguncian dilepaskan agar desktop
+// tetap normal (crash startup/PC dimatikan di tahap pendaftaran tidak lagi
+// membuat kiosk-laptop "rusak"). Dibuat selalu (interaktif maupun senyap).
+procedure CreateParoleTask();
+var
+  XmlPath: string;
+  Args: string;
+  ResultCode: Integer;
+begin
+  Args := '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File &quot;' +
+          ExpandConstant('{app}') + '\hardening.ps1&quot; -Parole';
+
+  XmlPath := ExpandConstant('{tmp}\PelogParole.xml');
+  SaveStringToFile(XmlPath, BuildTaskXml(Args,
+    'PELOG parole - lepaskan kunci bila kiosk gagal tampil setelah login',
+    '  <Triggers>' + #13#10 +
+    '    <LogonTrigger>' + #13#10 +
+    '      <Enabled>true</Enabled>' + #13#10 +
+    '      <Delay>PT2M</Delay>' + #13#10 +
+    '    </LogonTrigger>' + #13#10 +
+    '  </Triggers>' + #13#10,
+    '  <Principals>' + #13#10 +
+    '    <Principal id="Author">' + #13#10 +
+    '      <LogonType>InteractiveToken</LogonType>' + #13#10 +
+    '      <RunLevel>HighestAvailable</RunLevel>' + #13#10 +
+    '    </Principal>' + #13#10 +
+    '  </Principals>' + #13#10), False);
+
+  if not Exec('schtasks.exe',
+      '/Create /F /TN "PelogParole" /XML "' + XmlPath + '"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Log('PELOG: gagal menjalankan schtasks untuk PelogParole');
+  end
+  else if ResultCode <> 0 then
+  begin
+    Log('PELOG: schtasks PelogParole keluar dengan kode ' + IntToStr(ResultCode));
+  end;
+
+  DeleteFile(XmlPath);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
@@ -263,6 +309,8 @@ begin
     // Task self-wipe juga selalu dibuat supaya penghapusan perangkat dari
     // dashboard dapat memicu wipe penuh tanpa prompt UAC.
     CreateSelfWipeTask();
+    // Task parole (anti-laptop-terkunci) juga selalu dibuat.
+    CreateParoleTask();
   end;
 
   if (CurStep = ssPostInstall) and WizardIsTaskSelected('hardening') then

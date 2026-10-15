@@ -7,13 +7,17 @@
 param(
     [switch]$Apply,
     [switch]$Suspend,
-    [switch]$Wipe
+    [switch]$Wipe,
+    [switch]$Parole
 )
 
 $ErrorActionPreference = 'Continue'
 
 # Log publik self-wipe (dibaca Admin IT setelah perangkat dihapus dari dashboard).
 $WipeLogPath = 'C:\Users\Public\pelog-wipe.log'
+
+# Log publik parole (dibaca Admin IT saat diagnosa laptop yang "terkunci").
+$ParoleLogPath = 'C:\Users\Public\pelog-parole.log'
 
 function Write-WipeLog([string]$Message) {
     try {
@@ -25,6 +29,19 @@ function Write-WipeLog([string]$Message) {
         Add-Content -LiteralPath $WipeLogPath -Value $line -Encoding ASCII -ErrorAction SilentlyContinue
     } catch {
         # logging tidak boleh menggagalkan wipe
+    }
+}
+
+function Write-ParoleLog([string]$Message) {
+    try {
+        if (-not (Test-Path -LiteralPath $ParoleLogPath)) {
+            New-Item -Path $ParoleLogPath -ItemType File -Force -ErrorAction SilentlyContinue | Out-Null
+        }
+
+        $line = '{0} {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Message
+        Add-Content -LiteralPath $ParoleLogPath -Value $line -Encoding ASCII -ErrorAction SilentlyContinue
+    } catch {
+        # logging tidak boleh menggagalkan parole
     }
 }
 
@@ -45,6 +62,20 @@ function Set-Dword($path, $name, $value) {
 
 function Remove-Value($path, $name) {
     Remove-ItemProperty -Path $path -Name $name -ErrorAction SilentlyContinue
+}
+
+# ---------------------------------------------------------------------------
+# CLEANUP BERSAMA: melepaskan kebijakan kiosk HKCU. Dipakai -Suspend, -Wipe,
+# dan -Parole supaya daftar nilai TIDAK PERNAH meleset antar-jalur.
+# ---------------------------------------------------------------------------
+function Remove-KioskPolicies {
+    Remove-Value $polSystem 'DisableTaskMgr'
+    Remove-Value $polSystem 'DisableRegistryTools'
+    Remove-Value $polExplorer 'NoRun'
+    Remove-Value $polExplorer 'NoControlPanel'
+    Remove-Value $polCmd 'DisableCMD'
+    Remove-Value $polExplorer 'DisallowRun'
+    Remove-Item $disallow -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # ---------------------------------------------------------------------------
@@ -79,6 +110,7 @@ if ($Wipe) {
         'PELOG Kiosk (Watchdog)',
         'PELOG Kiosk (Logon)',
         'PelogAutoUpdate',
+        'PelogParole',
         'PelogHardeningApply',
         'PelogHardeningSuspend',
         'PelogSelfWipe'
@@ -105,13 +137,7 @@ if ($Wipe) {
     # 4) Bersihkan kebijakan kiosk HKCU (best-effort, sama seperti -Suspend)
     #    supaya akun siswa tidak terkunci setelah aplikasi dihapus.
     try {
-        Remove-Value $polSystem 'DisableTaskMgr'
-        Remove-Value $polSystem 'DisableRegistryTools'
-        Remove-Value $polExplorer 'NoRun'
-        Remove-Value $polExplorer 'NoControlPanel'
-        Remove-Value $polCmd 'DisableCMD'
-        Remove-Value $polExplorer 'DisallowRun'
-        Remove-Item $disallow -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-KioskPolicies
         Write-WipeLog 'kebijakan kiosk HKCU dibersihkan.'
     } catch {
         Write-WipeLog ('GAGAL membersihkan kebijakan HKCU: ' + $_.Exception.Message)
@@ -245,19 +271,47 @@ if ($Apply) {
 }
 
 if ($Suspend) {
-    Remove-Value $polSystem 'DisableTaskMgr'
-    Remove-Value $polSystem 'DisableRegistryTools'
-    Remove-Value $polExplorer 'NoRun'
-    Remove-Value $polExplorer 'NoControlPanel'
-    Remove-Value $polCmd 'DisableCMD'
-    Remove-Value $polExplorer 'DisallowRun'
-
-    Remove-Item $disallow -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-KioskPolicies
 
     Write-Host '[hardening] Kebijakan kiosk DITANGGUHKAN untuk akun: ' -NoNewline
     Write-Host $env:USERNAME -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host 'Gunakan -Apply, -Suspend, atau -Wipe.'
+# ---------------------------------------------------------------------------
+# PAROLE (anti-laptop-terkunci): dijalankan task ONLOGON + 2 menit oleh
+# installer. Bila kiosk TIDAK muncul dalam 10 menit setelah login (crash,
+# task rusak, dsb.) maka kebijakan penguncian dilepaskan agar desktop tetap
+# normal — bukan "laptop rusak tanpa jalan keluar". Bila kiosk berjalan,
+# parole keluar tanpa mengubah apa pun.
+# ---------------------------------------------------------------------------
+if ($Parole) {
+    Write-ParoleLog 'parole mulai: menunggu kiosk tampil (maks 10 menit)...'
+
+    $deadline = (Get-Date).AddMinutes(10)
+    $kioskFound = $false
+
+    while ((Get-Date) -lt $deadline) {
+        $running = Get-Process -Name 'PelogKiosk' -ErrorAction SilentlyContinue
+
+        if ($running) {
+            $kioskFound = $true
+            break
+        }
+
+        Start-Sleep -Seconds 5
+    }
+
+    if ($kioskFound) {
+        Write-ParoleLog 'kiosk terdeteksi berjalan — parole selesai tanpa perubahan.'
+        exit 0
+    }
+
+    Write-ParoleLog 'kiosk TIDAK muncul dalam 10 menit — melepaskan kebijakan kiosk (anti-laptop-terkunci).'
+    Remove-KioskPolicies
+    Write-ParoleLog 'kebijakan kiosk dilepaskan; desktop kembali normal. Kiosk dapat diperbaiki IT lalu dijalankan ulang.'
+    exit 0
+}
+
+Write-Host 'Gunakan -Apply, -Suspend, -Wipe, atau -Parole.'
 exit 1
