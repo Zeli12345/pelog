@@ -3,12 +3,17 @@
 **Buku Aktivitas Laptop & Informasi Device Log** — Sistem monitoring aktivitas komputer & laptop
 SMK Negeri 1 Mas, Ubud (*Kriya Kencana Raksa*).
 
+> 📘 **Sesi baru (manusia/agen)? Baca [`INFORMATION.md`](INFORMATION.md) dulu** — berisi
+> ringkasan lengkap sistem, peta repo, prosedur deploy ke produksi, konvensi kerja, dan
+> daftar jebakan/insiden historis. Kredensial ada di `LOCAL-SECRETS.md` (file lokal,
+> **tidak** di-commit).
+
 ## Komponen
 
 | Folder | Isi |
 |---|---|
 | `server/` | Laravel 12 — REST API v1 + dashboard web (Blade + Tailwind + Alpine) |
-| `client/` | Aplikasi kiosk Windows (WinForms .NET 8) — *Fase 4* |
+| `client/` | Aplikasi kiosk Windows (WinForms .NET 8) + alat perbaikan `PELOG-Revert.exe` — *Fase 4* |
 | `installer/` | Inno Setup + script hardening/tooling — *Fase 5* |
 | `scripts/` | Script development (env, database, serve, build) |
 | `docs/` | Dokumentasi proyek (arsitektur, API, DB, SOP, privasi, verifikasi) |

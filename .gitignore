@@ -11,5 +11,8 @@ Desktop.ini
 # Log lokal
 *.local.log
 
+# Kredensial & catatan rahasia lokal (JANGAN pernah di-commit)
+LOCAL-SECRETS.md
+
 # Artefak build installer (berisi kode enrollment aktif)
 installer/enrollment.txt
