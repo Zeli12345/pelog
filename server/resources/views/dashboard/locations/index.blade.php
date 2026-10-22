@@ -131,6 +131,7 @@
                                         <input name="sort_order" type="number" min="0" max="9999" class="input text-sm" :value="manage.sort_order">
                                     </div>
                                     <label class="flex items-end gap-2 pb-2 text-sm text-ink-soft">
+                                        <input type="hidden" name="is_active" value="0">
                                         <input type="checkbox" name="is_active" value="1" :checked="manage.is_active" class="rounded border-line text-navy-700">
                                         Aktif
                                     </label>

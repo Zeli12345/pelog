@@ -77,7 +77,9 @@ public static class UpdateGate
                     attempts);
             }
 
-            if (newer && stateName is "checking" or "downloading" or "staged" or "deferred" or "installing" or "installed_pending_reboot" or "failed_retry")
+            var pendingReboot = stateName == "installed_pending_reboot";
+
+            if (pendingReboot || (newer && stateName is "checking" or "downloading" or "staged" or "deferred" or "installing" or "failed_retry"))
             {
                 var message = stateName switch
                 {
@@ -85,6 +87,7 @@ public static class UpdateGate
                     "downloading" => "Mengunduh installer pembaruan. Jangan matikan komputer.",
                     "deferred" => "Ada sesi yang masih aktif. Restart komputer untuk menyelesaikan pembaruan.",
                     "installing" => "Installer sedang berjalan. Jangan matikan komputer.",
+                    "installed_pending_reboot" => "Pembaruan sudah dipasang. Restart komputer untuk mengaktifkannya.",
                     "failed_retry" => "Percobaan pembaruan gagal. Akan dicoba lagi saat boot berikutnya.",
                     _ => "Pembaruan sudah diunduh dan menunggu dipasang.",
                 };

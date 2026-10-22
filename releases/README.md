@@ -5,9 +5,9 @@ Installer siap pakai untuk mesin baru.
 ## PELOG 1.0.3 (22 Okt 2026)
 
 - Berkas   : `PELOG_Setup_1.0.3.exe` (55.4 MB, Inno Setup, **tanpa kode enrollment**)
-- SHA-256  : `737011b0885772f32b5486c4204265a5a4f1df1061d02f5ce76930a5ec57851c`
+- SHA-256  : `7e6f37d91d2d448e70f4aa33de16dbd78729069b848c32c452db453cb9bc73b2`
 - Build produksi (berkode `BLG-XMQS-TB3C`, untuk auto-update & dashboard):
-  SHA-256 `ff1ee22329d5279fc1604384ef63558a1a634002a0805dd2f508fdee816f708c`
+  SHA-256 `a3d946f23339173b263ce1cef63e5223bb2d38e15fd742f69645e57c4f384e88`
 - Fitur/Perbaikan:
   - **Galeri Media** (pengganti halaman Screenshot): lihat layar, webcam, atau
     keduanya; filter jenis/perangkat/tanggal (WITA)/pencarian perangkat; lightbox.

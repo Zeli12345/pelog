@@ -214,7 +214,7 @@ public sealed class UpdateForm : Form
             };
             _detail.Text = decision.Message ?? "Jangan matikan komputer. Kiosk akan terbuka otomatis setelah selesai.";
             _retry.Visible = decision.Mode is "failed" or "staged" || decision.Attempts > 0;
-            _restart.Visible = decision.State is "deferred" or "failed_retry" or "failed_permanent";
+            _restart.Visible = decision.State is "deferred" or "installed_pending_reboot" or "failed_retry" or "failed_permanent";
         }
         catch (Exception)
         {
