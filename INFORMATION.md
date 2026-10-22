@@ -183,7 +183,7 @@ screenshot, perangkat, pengaturan, kode enrollment, `user_created|updated|activa
 
 ## 8. Installer (Inno Setup `installer/pelog-setup.iss`)
 
-- AppId tetap (`{8F1A2C64-…}`) agar bisa upgrade; AppVersion = 1.0.2 (harus **selalu sama**
+- AppId tetap (`{8F1A2C64-…}`) agar bisa upgrade; AppVersion = 1.0.3 (harus **selalu sama**
   dengan `AppInfo.Version` + csproj).
 - Yang dipasang: hasil publish → `{app}`; `pelog.json` + `enrollment.txt` → `C:\ProgramData\PELOG`;
   `unlock-admin.ps1`, `hardening.ps1`, `apply-update.ps1`, `README-OPS.txt` → `{app}`.
