@@ -241,6 +241,7 @@ class LocationController extends Controller
             'objects.*.rotation' => ['required', 'integer', 'in:0,90,180,270'],
             'objects.*.color' => ['nullable', 'string', 'max:20'],
             'objects.*.z_index' => ['nullable', 'integer', 'min:0', 'max:999'],
+            'objects.*.is_visible' => ['nullable', 'boolean'],
         ]);
 
         $objects = collect($data['objects'])->map(function (array $object) {
@@ -263,6 +264,7 @@ class LocationController extends Controller
                 'rotation' => (int) $object['rotation'],
                 'color' => $object['color'] ?? null,
                 'z_index' => (int) ($object['z_index'] ?? ($type === 'device' ? 20 : 5)),
+                'is_visible' => (bool) ($object['is_visible'] ?? true),
             ];
         });
 

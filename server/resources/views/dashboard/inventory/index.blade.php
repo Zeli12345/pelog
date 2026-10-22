@@ -198,10 +198,34 @@
             <div x-show="categoryOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4" x-on:keydown.escape.window="categoryOpen = false">
                 <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl" x-on:click.outside="categoryOpen = false">
                     <h2 class="text-sm font-semibold text-ink">Kelola Kategori</h2>
-                    <div class="mt-3 flex flex-wrap gap-1.5">
-                        @foreach ($categories as $category)
-                            <span class="badge-muted">{{ $category->name }}</span>
-                        @endforeach
+                    <div class="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                        @forelse ($categories as $category)
+                            <div class="rounded-md border border-line px-2.5 py-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <form method="POST" action="{{ route('inventory.categories.update', $category) }}" class="flex min-w-0 flex-1 items-center gap-1.5">
+                                        @csrf
+                                        @method('PUT')
+                                        <input name="name" value="{{ $category->name }}" class="input !py-1 text-xs" maxlength="60" required>
+                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-[10px]">Simpan</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('inventory.categories.destroy', $category) }}"
+                                          onsubmit="return confirm('{{ $category->items_count > 0 ? 'Kategori masih dipakai. Arsipkan kategori ini?' : 'Hapus kategori ini?' }}')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-[10px] text-brick-600">
+                                            {{ $category->items_count > 0 ? 'Arsipkan' : 'Hapus' }}
+                                        </button>
+                                    </form>
+                                </div>
+                                <p class="mt-1 text-[10px] text-ink-faint">
+                                    {{ $category->items_count }} barang · {{ $category->is_active ? 'aktif' : 'arsip — klik Simpan untuk mengaktifkan' }}
+                                </p>
+                            </div>
+                        @empty
+                            <p class="rounded-md border border-dashed border-line px-3 py-4 text-center text-[11px] text-ink-faint">
+                                Belum ada kategori. Tambahkan kategori pertama di bawah.
+                            </p>
+                        @endforelse
                     </div>
                     <form method="POST" action="{{ route('inventory.categories.store') }}" class="mt-4 flex gap-2">
                         @csrf

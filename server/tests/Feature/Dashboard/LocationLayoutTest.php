@@ -33,6 +33,15 @@ class LocationLayoutTest extends TestCase
         $this->assertSame(2, $location->refresh()->layout_version);
         $this->assertDatabaseHas('location_layout_objects', ['device_id' => $device->id, 'type' => 'device']);
         $this->assertDatabaseHas('location_layout_objects', ['type' => 'table_circle', 'label' => 'Meja bulat']);
+
+        $this->actingAs($admin)->putJson("/locations/{$location->id}/layout", [
+            'version' => 2,
+            'objects' => [
+                ['type' => 'device', 'device_id' => $device->id, 'x' => 10, 'y' => 10, 'w' => 12, 'h' => 8, 'rotation' => 0, 'is_visible' => false],
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('location_layout_objects', ['device_id' => $device->id, 'is_visible' => false]);
     }
 
     public function test_versi_lama_menghasilkan_konflik(): void

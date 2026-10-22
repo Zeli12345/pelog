@@ -50,7 +50,11 @@ class InventoryController extends Controller
 
         return view('dashboard.inventory.index', [
             'items' => $items,
-            'categories' => InventoryCategory::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'categories' => InventoryCategory::query()
+                ->withCount('items')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
             'locations' => Location::query()->where('is_active', true)->orderBy('name')->get(),
             'search' => $search,
             'categoryId' => $categoryId,
@@ -71,7 +75,7 @@ class InventoryController extends Controller
     {
         return view('dashboard.inventory.form', [
             'item' => new InventoryItem(['unit' => 'pcs', 'condition' => 'good', 'is_active' => true]),
-            'categories' => InventoryCategory::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'categories' => InventoryCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'locations' => Location::query()->where('is_active', true)->orderBy('name')->get(),
             'attributesText' => '',
         ]);
@@ -145,7 +149,7 @@ class InventoryController extends Controller
     {
         return view('dashboard.inventory.form', [
             'item' => $item,
-            'categories' => InventoryCategory::query()->orderBy('sort_order')->orderBy('name')->get(),
+            'categories' => InventoryCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'locations' => Location::query()->where('is_active', true)->orderBy('name')->get(),
             'attributesText' => collect($item->attributes ?? [])->map(fn ($value, $key) => $key.': '.$value)->implode("\n"),
         ]);
@@ -323,6 +327,12 @@ class InventoryController extends Controller
         $existing = InventoryCategory::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
 
         if ($existing !== null) {
+            if (! $existing->is_active) {
+                $existing->forceFill(['is_active' => true])->save();
+
+                return back()->with('status', "Kategori \"{$existing->name}\" diaktifkan kembali.");
+            }
+
             return back()->with('error', "Kategori \"{$name}\" sudah ada.");
         }
 
@@ -343,6 +353,73 @@ class InventoryController extends Controller
         );
 
         return back()->with('status', 'Kategori inventaris ditambahkan.');
+    }
+
+    public function updateCategory(Request $request, InventoryCategory $category): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:60'],
+        ]);
+
+        $name = trim($data['name']);
+        $existing = InventoryCategory::query()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->whereKeyNot($category->id)
+            ->exists();
+
+        if ($existing) {
+            return back()->with('error', "Nama kategori \"{$name}\" sudah dipakai.");
+        }
+
+        $before = $category->name;
+        $category->forceFill(['name' => $name, 'is_active' => true])->save();
+
+        Audit::log(
+            action: 'inventory_category_updated',
+            entityType: InventoryCategory::class,
+            entityId: $category->id,
+            metadata: ['before' => $before, 'after' => $category->name],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return back()->with('status', 'Kategori diperbarui.');
+    }
+
+    public function destroyCategory(Request $request, InventoryCategory $category): RedirectResponse
+    {
+        $count = $category->items()->count();
+
+        if ($count > 0) {
+            $category->forceFill(['is_active' => false])->save();
+
+            Audit::log(
+                action: 'inventory_category_archived',
+                entityType: InventoryCategory::class,
+                entityId: $category->id,
+                metadata: ['name' => $category->name, 'items' => $count],
+                actorType: 'user',
+                actorId: $request->user()->id,
+                request: $request,
+            );
+
+            return back()->with('status', "Kategori \"{$category->name}\" diarsipkan karena masih dipakai {$count} barang.");
+        }
+
+        Audit::log(
+            action: 'inventory_category_deleted',
+            entityType: InventoryCategory::class,
+            entityId: $category->id,
+            metadata: ['name' => $category->name],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        $category->delete();
+
+        return back()->with('status', 'Kategori dihapus.');
     }
 
     public function photo(InventoryItem $item): BinaryFileResponse

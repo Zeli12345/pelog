@@ -103,6 +103,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventory/{item}/archive', [InventoryController::class, 'archive'])->whereNumber('item')->name('inventory.archive');
         Route::post('/inventory/{item}/restore', [InventoryController::class, 'restore'])->whereNumber('item')->name('inventory.restore');
         Route::post('/inventory/categories', [InventoryController::class, 'storeCategory'])->name('inventory.categories.store');
+        Route::put('/inventory/categories/{category}', [InventoryController::class, 'updateCategory'])->whereNumber('category')->name('inventory.categories.update');
+        Route::delete('/inventory/categories/{category}', [InventoryController::class, 'destroyCategory'])->whereNumber('category')->name('inventory.categories.destroy');
 
         // Siswa
         Route::get('/students/import', [StudentImportController::class, 'form'])->name('students.import.form');

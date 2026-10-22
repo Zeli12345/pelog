@@ -11,11 +11,18 @@ if (root) {
     const dirtyBadge = root.querySelector('[data-dirty]');
     const hint = root.querySelector('[data-hint]');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const deviceFilter = root.querySelector('[data-device-filter]');
+    const statusFilter = root.querySelector('[data-status-filter]');
+    const filterCount = root.querySelector('[data-filter-count]');
 
     const savedObjects = JSON.parse(document.getElementById('layout-data')?.textContent || '[]');
     const unplacedDevices = JSON.parse(document.getElementById('layout-unplaced')?.textContent || '[]');
 
-    let objects = savedObjects.map((object) => ({ ...object, key: `db-${object.id}` }));
+    let objects = savedObjects.map((object) => ({
+        ...object,
+        key: `db-${object.id}`,
+        is_visible: object.is_visible !== false,
+    }));
     let editMode = false;
     let selectedKey = null;
     let dirty = false;
@@ -30,6 +37,54 @@ if (root) {
     const isCircle = (object) => object.type === 'table_circle';
     const objectLabel = (object) => object.label || object.device?.name || (isCircle(object) ? 'Meja bulat' : isDevice(object) ? 'Perangkat' : 'Meja');
     const nowKey = () => `tmp-${Date.now()}-${counter++}`;
+
+    function matchesDeviceFilter(object) {
+        if (!isDevice(object)) {
+            return true;
+        }
+
+        const query = (deviceFilter?.value || '').trim().toLowerCase();
+        const status = statusFilter?.value || '';
+        const name = `${object.device?.name || ''} ${object.device?.hostname || ''}`.toLowerCase();
+
+        if (query !== '' && !name.includes(query)) {
+            return false;
+        }
+
+        return status === '' || object.device?.status === status;
+    }
+
+    function applyUnplacedFilter() {
+        let visible = 0;
+        const query = (deviceFilter?.value || '').trim().toLowerCase();
+        const status = statusFilter?.value || '';
+
+        root.querySelectorAll('[data-device-item]').forEach((item) => {
+            const matches = (query === '' || (item.dataset.name || '').includes(query))
+                && (status === '' || item.dataset.status === status);
+            item.classList.toggle('hidden', !matches);
+            if (matches) visible++;
+        });
+
+        if (filterCount) {
+            if (query === '' && status === '') {
+                filterCount.textContent = 'Menampilkan semua perangkat.';
+            } else {
+                const placed = objects.filter((object) => isDevice(object)
+                    && object.is_visible !== false
+                    && matchesDeviceFilter(object)).length;
+                filterCount.textContent = `${placed} di denah · ${visible} belum ditempatkan cocok.`;
+            }
+        }
+    }
+
+    function applyFilter() {
+        render();
+        applyUnplacedFilter();
+    }
+
+    deviceFilter?.addEventListener('input', applyFilter);
+    statusFilter?.addEventListener('change', applyFilter);
 
     function markDirty() {
         dirty = true;
@@ -69,6 +124,13 @@ if (root) {
         element.style.zIndex = String(object.z_index || (isDevice(object) ? 20 : 5));
         element.style.transform = object.rotation ? `rotate(${object.rotation}deg)` : '';
         element.style.touchAction = 'none';
+
+        if (object.is_visible === false && editMode) {
+            element.style.opacity = '0.35';
+            element.style.borderStyle = 'dashed';
+        } else if (!matchesDeviceFilter(object)) {
+            element.style.opacity = '0.15';
+        }
 
         if (isDevice(object)) {
             element.className += ' cursor-pointer rounded-md border-2 border-navy-700 bg-navy-800/95 px-1 py-0.5 text-white shadow-sm';
@@ -162,6 +224,8 @@ if (root) {
         objects
             .slice()
             .sort((a, b) => (a.z_index || 0) - (b.z_index || 0))
+            .filter((object) => (editMode || object.is_visible !== false)
+                && (editMode || matchesDeviceFilter(object)))
             .forEach((object) => objectsLayer.append(createElement(object)));
         renderSelection();
     }
@@ -227,6 +291,17 @@ if (root) {
 
             const actions = document.createElement('div');
             actions.className = 'mt-3 flex flex-wrap gap-1.5';
+
+            const visibility = document.createElement('button');
+            visibility.type = 'button';
+            visibility.className = 'btn-secondary !px-2 !py-1 text-[10px]';
+            visibility.textContent = object.is_visible === false ? 'Tampilkan di denah' : 'Sembunyikan dari denah';
+            visibility.addEventListener('click', () => {
+                object.is_visible = object.is_visible === false;
+                markDirty();
+                render();
+            });
+            actions.append(visibility);
 
             const rotate = document.createElement('button');
             rotate.type = 'button';
@@ -294,6 +369,7 @@ if (root) {
             rotation: 0,
             color: type === 'table_circle' ? '#DCEBE3' : '#F3E3B5',
             z_index: 5,
+            is_visible: true,
         };
         objects.push(object);
         selectedKey = object.key;
@@ -320,6 +396,7 @@ if (root) {
             rotation: 0,
             color: null,
             z_index: 20,
+            is_visible: true,
             device: {
                 name: device.name,
                 hostname: device.hostname,
@@ -354,6 +431,7 @@ if (root) {
                 rotation: 0,
                 color: null,
                 z_index: 20,
+                is_visible: true,
                 device: {
                     name: device.name,
                     hostname: device.hostname,
@@ -491,6 +569,7 @@ if (root) {
                         rotation: Number(object.rotation || 0),
                         color: object.color,
                         z_index: Number(object.z_index || 0),
+                        is_visible: object.is_visible !== false,
                     })),
                 }),
             });
@@ -540,4 +619,5 @@ if (root) {
 
     markClean();
     render();
+    applyUnplacedFilter();
 }

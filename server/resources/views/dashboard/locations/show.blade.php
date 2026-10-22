@@ -14,6 +14,7 @@
                 'rotation' => (int) $object->rotation,
                 'color' => $object->color,
                 'z_index' => (int) $object->z_index,
+                'is_visible' => (bool) $object->is_visible,
                 'device' => $object->device === null ? null : [
                     'name' => $object->device->label ?? $object->device->hostname,
                     'hostname' => $object->device->hostname,
@@ -107,6 +108,19 @@
                 </section>
 
                 <section class="card p-4">
+                    <h3 class="text-sm font-semibold text-ink">Filter Perangkat</h3>
+                    <input type="text" data-device-filter class="input mt-2 text-xs" placeholder="Cari nama / hostname…">
+                    <select data-status-filter class="input mt-2 text-xs">
+                        <option value="">Semua status</option>
+                        <option value="available">Tersedia</option>
+                        <option value="in_use">Digunakan</option>
+                        <option value="maintenance">Perawatan</option>
+                        <option value="offline">Offline</option>
+                    </select>
+                    <p class="mt-2 text-[11px] text-ink-faint" data-filter-count>Menampilkan semua perangkat.</p>
+                </section>
+
+                <section class="card p-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-semibold text-ink">Belum Ditempatkan</h3>
                         <span class="badge-muted">{{ $unplaced->count() }}</span>
@@ -114,7 +128,10 @@
                     <p class="mt-1 text-[11px] text-ink-faint">Perangkat di ruangan ini yang belum punya posisi di denah.</p>
                     <div class="mt-3 space-y-1.5" data-unplaced>
                         @forelse ($unplaced as $device)
-                            <div class="flex items-center justify-between gap-2 rounded-md border border-line px-2 py-1.5">
+                            <div class="flex items-center justify-between gap-2 rounded-md border border-line px-2 py-1.5"
+                                 data-device-item
+                                 data-name="{{ strtolower(($device->label ?? '').' '.$device->hostname) }}"
+                                 data-status="{{ $device->status->value }}">
                                 <span class="min-w-0 truncate text-xs text-ink">{{ $device->label ?? $device->hostname }}</span>
                                 @if ($isAdmin)
                                     <button type="button" class="btn-secondary !px-1.5 !py-0.5 text-[10px]" data-place-device="{{ $device->id }}" data-name="{{ $device->label ?? $device->hostname }}">Tempatkan</button>
