@@ -23,7 +23,10 @@ class ScreenshotController extends Controller
             'image_file' => ['required', 'file', 'max:300', 'mimetypes:image/webp,image/jpeg'],
             'captured_at' => ['nullable', 'date'],
             'captured_at_client' => ['nullable', 'date'],
+            'kind' => ['nullable', 'in:screen,webcam'],
         ]);
+
+        $kind = (string) ($data['kind'] ?? 'screen');
 
         /** @var Device $device */
         $device = $request->attributes->get('pelog_device');
@@ -58,6 +61,7 @@ class ScreenshotController extends Controller
         if ($incomingHash !== null) {
             $latest = Screenshot::query()
                 ->where('usage_session_id', $session->id)
+                ->where('kind', $kind)
                 ->orderByDesc('captured_at')
                 ->orderByDesc('id')
                 ->first();
@@ -90,7 +94,7 @@ class ScreenshotController extends Controller
         }
 
         try {
-            $screenshot = $service->store($request->file('image_file'), $session, $data['screenshot_uuid']);
+            $screenshot = $service->storeWithKind($request->file('image_file'), $session, $data['screenshot_uuid'], $kind);
         } catch (QueryException $exception) {
             // Balapan unggah ganda: dua permintaan dengan screenshot_uuid yang
             // sama lolos pemeriksaan di atas, lalu salah satunya kalah oleh
@@ -108,6 +112,7 @@ class ScreenshotController extends Controller
 
         $screenshot->forceFill([
             'screenshot_uuid' => $data['screenshot_uuid'],
+            'kind' => $kind,
             'captured_at' => isset($data['captured_at']) ? Carbon::parse($data['captured_at']) : now(),
             'captured_at_client' => isset($data['captured_at_client'])
                 ? Carbon::parse($data['captured_at_client'])
@@ -123,6 +128,7 @@ class ScreenshotController extends Controller
             entityId: $screenshot->id,
             metadata: [
                 'session_uuid' => $session->session_uuid,
+                'kind' => $screenshot->kind->value,
                 'format' => $screenshot->format->value,
                 'size_bytes' => $screenshot->size_bytes,
             ],
@@ -142,6 +148,7 @@ class ScreenshotController extends Controller
         return [
             'screenshot_uuid' => $screenshot->screenshot_uuid,
             'usage_session_id' => $screenshot->usage_session_id,
+            'kind' => $screenshot->kind->value,
             'format' => $screenshot->format->value,
             'size_bytes' => $screenshot->size_bytes,
             'thumb_available' => $screenshot->thumb_path !== null,

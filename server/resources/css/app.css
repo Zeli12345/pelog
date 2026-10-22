@@ -10,6 +10,10 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] {
+    display: none !important;
+}
+
 @layer base {
     html {
         -webkit-tap-highlight-color: transparent;

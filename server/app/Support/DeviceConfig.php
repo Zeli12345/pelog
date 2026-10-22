@@ -26,6 +26,13 @@ class DeviceConfig
             'bootstrap_refresh_minutes' => (int) Setting::getValue('bootstrap_refresh_minutes', 15),
             'device_online_window_seconds' => (int) Setting::getValue('device_online_window_seconds', 300),
             'idle_shutdown_minutes' => (int) Setting::getValue('idle_shutdown_minutes', 90),
+            'app_update_check_hours' => (int) Setting::getValue('app_update_check_hours', 6),
+            'min_supported_version' => (string) Setting::getValue('min_supported_version', config('pelog.min_client_version', '1.0.0')),
+            'webcam_enabled' => (bool) Setting::getValue('webcam_enabled', true),
+            'webcam_interval_minutes' => (int) Setting::getValue('webcam_interval_minutes', 15),
+            'webcam_max_width' => (int) Setting::getValue('webcam_max_width', 640),
+            'webcam_quality' => (int) Setting::getValue('webcam_quality', 60),
+            'webcam_students_only' => (bool) Setting::getValue('webcam_students_only', false),
         ];
     }
 }

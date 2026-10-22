@@ -12,7 +12,8 @@ class ReleaseApp extends Command
         {installer : Path ke installer (PELOG_Setup.exe)}
         {version : Versi rilis, mis. 1.1.0}
         {--notes= : Catatan rilis singkat}
-        {--mandatory : Tandai sebagai update wajib}';
+        {--mandatory : Tandai sebagai update wajib}
+        {--force : Izinkan versi sama/lebih lama (untuk perbaikan darurat)}';
 
     protected $description = 'Mempublikasikan rilis installer client agar dapat diunduh & dipasang otomatis oleh kiosk';
 
@@ -29,6 +30,15 @@ class ReleaseApp extends Command
 
         if (! preg_match('/^\d+(\.\d+){1,3}$/', $version)) {
             $this->error('Format versi tidak valid. Contoh: 1.1.0');
+
+            return self::FAILURE;
+        }
+
+        $current = (string) Setting::getValue('app_version', '0.0.0');
+
+        if (! $this->option('force') && version_compare($version, $current, '<=')) {
+            $this->error("Versi {$version} harus lebih baru dari versi aktif {$current}. Gunakan --force hanya untuk darurat.");
+            $this->line('Naikkan versi agar perangkat yang sudah terpasang mau memperbarui (auto-update membandingkan versi).');
 
             return self::FAILURE;
         }
@@ -66,6 +76,9 @@ class ReleaseApp extends Command
             return self::FAILURE;
         }
 
+        Storage::disk('local')->makeDirectory('client');
+        Storage::disk('local')->copy($target, 'client/PELOG_Setup.exe');
+
         Setting::setValue('app_version', $version);
         Setting::setValue('app_installer_file', $target);
         Setting::setValue('app_installer_sha256', $hash);
@@ -73,6 +86,12 @@ class ReleaseApp extends Command
         Setting::setValue('app_update_notes', (string) $this->option('notes'));
         Setting::setValue('app_update_mandatory', (bool) $this->option('mandatory'));
         Setting::setValue('app_updater_enabled', true);
+
+        Setting::setValue('client_latest_version', $version);
+        Setting::setValue('client_installer_sha256', $hash);
+        Setting::setValue('client_installer_size', $size);
+        Setting::setValue('client_update_notes', (string) $this->option('notes'));
+        Setting::setValue('client_installer_uploaded_at', now()->toIso8601String());
 
         $this->newLine();
         $this->info("  Rilis v{$version} dipublikasikan.");

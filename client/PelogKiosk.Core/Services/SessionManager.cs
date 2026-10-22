@@ -241,6 +241,14 @@ public sealed class SessionManager
         _store.SaveSession(record);
     }
 
+    public void AttachWebcamCapture(LocalSessionRecord record, string filePath, DateTimeOffset? capturedAt = null)
+    {
+        record.WebcamPath = filePath;
+        record.WebcamState = "pending";
+        record.WebcamCapturedAt = capturedAt ?? _clock.Now;
+        _store.SaveSession(record);
+    }
+
     /// <summary>
     /// Dipanggil saat aplikasi mulai: mendeteksi sesi yang masih terbuka.
     /// Jika heartbeat terakhir masih baru -> lanjutkan; jika sudah lama -> tutup sebagai recovery.

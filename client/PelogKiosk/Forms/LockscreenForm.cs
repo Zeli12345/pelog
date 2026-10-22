@@ -165,9 +165,19 @@ public sealed class LockscreenForm : Form
             AutoSize = true,
         };
 
+        var cachedLocation = _services.Store.GetKv("device_location");
+
+        if (string.IsNullOrWhiteSpace(cachedLocation))
+        {
+            cachedLocation = _services.Config.DeviceLocation;
+        }
+
+        var webcamNotice = _services.Sync.LoadCachedConfig().WebcamEnabled ? " · Kamera: gambar berkala" : string.Empty;
         var deviceLabel = new Label
         {
-            Text = $"Perangkat: {Environment.MachineName}",
+            Text = string.IsNullOrWhiteSpace(cachedLocation)
+                ? $"Perangkat: {Environment.MachineName}{webcamNotice}"
+                : $"Perangkat: {Environment.MachineName} · Ruang: {cachedLocation}{webcamNotice}",
             Font = new Font("Consolas", 9F),
             ForeColor = Color.FromArgb(150, 175, 200),
             AutoSize = false,
@@ -703,7 +713,8 @@ public sealed class LockscreenForm : Form
             }
 
             // Auto-update: periksa & unduh rilis baru (di-throttle oleh UpdateService).
-            await _services.Updates.CheckAndStageAsync(_services.Config.UpdateCheckHours);
+            // Pembaruan ditangani agen SYSTEM di folder updates; kiosk tidak
+            // mengunduh manifest sendiri agar tidak ada eksekusi file user-writable.
         }
     }
 

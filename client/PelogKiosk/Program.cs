@@ -23,6 +23,23 @@ internal static class Program
         {
             var services = AppServices.Create();
 
+            // Gerbang pembaruan: bila installer sudah diunduh/diverifikasi,
+            // jangan tampilkan enrollment/login sebelum versi baru terpasang.
+            using (var gateTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
+            {
+                var gate = PelogKiosk.Core.Services.UpdateGate
+                    .EvaluateAsync(services.Api, services.DataDirectory, gateTimeout.Token)
+                    .GetAwaiter()
+                    .GetResult();
+
+                if (gate.Block)
+                {
+                    Application.Run(new UpdateForm(services, gate));
+
+                    return;
+                }
+            }
+
             // Muat token perangkat; kalau belum ada atau ditolak server (mis.
             // perangkat dicabut), tampilkan dialog enrollment.
             var hasDeviceToken = services.TryLoadDeviceToken();

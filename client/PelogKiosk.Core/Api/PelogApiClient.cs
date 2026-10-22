@@ -73,6 +73,16 @@ public sealed class PelogApiClient
         return SendAsync<BootstrapData>(CreateRequest(HttpMethod.Get, "bootstrap"), cancellationToken);
     }
 
+    public Task<ApiResult<LocationListData>> GetLocationsAsync(CancellationToken cancellationToken = default)
+    {
+        return SendAsync<LocationListData>(CreateRequest(HttpMethod.Get, "locations", authenticate: false), cancellationToken);
+    }
+
+    public Task<ApiResult<VersionInfo>> GetPublicVersionAsync(CancellationToken cancellationToken = default)
+    {
+        return SendAsync<VersionInfo>(CreateRequest(HttpMethod.Get, "version", authenticate: false), cancellationToken);
+    }
+
     public Task<ApiResult<CachedStudent>> LookupStudentAsync(string nisn, CancellationToken cancellationToken = default)
     {
         return SendAsync<CachedStudent>(CreateRequest(HttpMethod.Get, $"students/{Uri.EscapeDataString(nisn)}"), cancellationToken);
@@ -152,18 +162,40 @@ public sealed class PelogApiClient
         }
     }
 
-    public async Task<ApiResult<ScreenshotData>> UploadScreenshotAsync(
+    public Task<ApiResult<ScreenshotData>> UploadScreenshotAsync(
         string sessionUuid,
         string filePath,
         string screenshotUuid,
         DateTimeOffset capturedAtClient,
         CancellationToken cancellationToken = default)
     {
+        return UploadMediaAsync(sessionUuid, filePath, screenshotUuid, capturedAtClient, "screen", cancellationToken);
+    }
+
+    public Task<ApiResult<ScreenshotData>> UploadWebcamAsync(
+        string sessionUuid,
+        string filePath,
+        string screenshotUuid,
+        DateTimeOffset capturedAtClient,
+        CancellationToken cancellationToken = default)
+    {
+        return UploadMediaAsync(sessionUuid, filePath, screenshotUuid, capturedAtClient, "webcam", cancellationToken);
+    }
+
+    private async Task<ApiResult<ScreenshotData>> UploadMediaAsync(
+        string sessionUuid,
+        string filePath,
+        string screenshotUuid,
+        DateTimeOffset capturedAtClient,
+        string kind,
+        CancellationToken cancellationToken)
+    {
         try
         {
             using var form = new MultipartFormDataContent();
             form.Add(new StringContent(screenshotUuid), "screenshot_uuid");
             form.Add(new StringContent(capturedAtClient.ToUniversalTime().ToString("o")), "captured_at_client");
+            form.Add(new StringContent(kind), "kind");
 
             await using var stream = File.OpenRead(filePath);
             var streamContent = new StreamContent(stream);

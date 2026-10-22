@@ -8,7 +8,7 @@
 > verifikasi), `releases/README.md` (riwayat rilis + SHA), `LOCAL-SECRETS.md`
 > (**tidak** ter-commit — berisi kredensial; lihat catatan di bawah).
 >
-> Dibuat: **21 Okt 2026** · Versi sistem saat dokumen ini ditulis: **1.0.2**
+> Dibuat: **21 Okt 2026** · Versi sistem saat dokumen ini diperbarui: **1.0.3** (22 Okt 2026)
 
 ---
 
@@ -48,7 +48,7 @@
 | Klien | .NET | **8** (net8.0-windows), WinForms, self-contained single-file (169,8 MB publish) |
 | Installer | Inno Setup | 6 (`ISCC.exe`), ~33 detik compile, ~51,9 MB |
 | Tool perbaikan | .NET 8 WinForms | `PELOG-Revert.exe` 68,3 MB (self-contained, UAC admin) |
-| Rilis | — | **1.0.2** (AppInfo, csproj, `pelog-setup.iss`, setelan server) |
+| Rilis | - | **1.0.3** (AppInfo, csproj, `pelog-setup.iss`, setelan server) |
 
 Lokasi build (dev machine): output **`E:\pelog-build`** (`publish/`, `installer/`,
 `client/bin/`), cache `E:\pelog-cache` (nuget/composer/npm/temp) — diatur `scripts/env.ps1`.
@@ -126,7 +126,7 @@ Rate limit: device 180/menit, enroll 10/menit, login 5 percobaan.
 `stale_session_minutes` (5), `bootstrap_refresh_minutes` (15), `device_online_window_seconds` (300),
 `idle_shutdown_minutes` (90), `single_active_session`, `enrollment_code_hash`, `enrollment_code`
 (plaintext, tampil di Pengaturan + tombol Salin), `school_name`, `school_motto`,
-`app_version` (1.0.2), `app_installer_file|sha256|size|notes|mandatory`, `app_updater_enabled`,
+`app_version` (1.0.3), `app_installer_file|sha256|size|notes|mandatory`, `app_updater_enabled`,
 `app_update_check_hours` (6), `client_latest_version`, `client_installer_sha256|size|notes|uploaded_at`.
 
 **Perintah artisan**: `pelog:enrollment-code` (buat kode baru), `pelog:close-stale-sessions`
@@ -233,7 +233,7 @@ Upload tarball (app/ routes/ resources/views/ database/ bootstrap/) → ekstrak 
 
 ### 10.3 Publikasikan rilis client
 1. Build client + installer (berkode & publik).
-2. Unggah installer ke server (chunk) → `php artisan pelog:release-app /tmp/x.exe 1.0.2 --notes="…"`
+2. Unggah installer ke server (chunk) → `php artisan pelog:release-app /tmp/x.exe 1.0.3 --notes="…"`
    → salin ke `storage/app/private/client/PELOG_Setup.exe` (disajikan `/downloads/client-setup`).
 3. Perbarui setelan `client_*` (sha256, size, notes, uploaded_at).
 4. Verifikasi: `GET /api/v1/version` (sha/size cocok) + `HEAD /downloads/client-setup` (Content-Length).
@@ -321,7 +321,7 @@ cd server; npm run build                    # aset Vite (wajib bila view/klass T
 
 ## 16. Status produksi (snapshot 15 Okt 2026)
 
-- Rilis server: **1.0.2**; installer produksi (berkode `BLG-XMQS-TB3C`) sha `88d65ceb…`; publik sha `1ffb948e…`;
+- Rilis server: **1.0.3**; installer produksi (berkode `BLG-XMQS-TB3C`) sha `ff1ee223…`; publik sha `737011b0…`;
   `PELOG-Revert.exe` sha `a50924c4…` (di server & dashboard).
 - Data (per 07 Okt 2026): 1.242 siswa · 105 guru/pegawai · 19 mapel · 3 perangkat · 4 sesi · 2 screenshot.
 - Enrollment aktif: `BLG-XMQS-TB3C` (tampil di Pengaturan + tombol Salin).
@@ -331,7 +331,7 @@ cd server; npm run build                    # aset Vite (wajib bila view/klass T
 
 1. **Revoke token GitHub** (`ghp_…`) setelah selesai dipakai — sudah beberapa kali terekspos di chat.
 2. **Kosongkan recycle bin aaPanel** (pernah runner lama kembali aktif).
-3. **Perangkat yang sudah 1.0.2 tidak menerima perbaikan runtime + task Parole** → bila mau, naikkan ke **1.0.3**.
+3. **Rilis 1.0.3 sudah dipublikasikan** — pantau perangkat yang masih 1.0.2 di dashboard; updater lama akan memasang 1.0.3 saat boot.
 4. **Verifikasi multi-monitor nyata** (panel penutup + screenshot semua layar) di laptop 2-layar asli — belum bisa diuji di VM (host 1 layar).
 5. Ganti password panel & putar entrance setelah paparan ini.
 6. `docs/VERIFICATION.md` perlu diperbarui dengan hasil uji 15–21 Okt 2026.

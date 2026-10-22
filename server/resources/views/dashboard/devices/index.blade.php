@@ -22,6 +22,12 @@
                 <option value="offline" @selected($statusFilter === 'offline')>Offline</option>
                 <option value="maintenance" @selected($statusFilter === 'maintenance')>Perawatan</option>
             </select>
+            <select name="location_id" class="input !w-36 py-1.5 text-xs" onchange="this.form.submit()">
+                <option value="">Semua lokasi</option>
+                @foreach ($locations as $location)
+                    <option value="{{ $location->id }}" @selected((int) $locationFilter === $location->id)>{{ $location->name }}</option>
+                @endforeach
+            </select>
             <button type="submit" class="btn-primary !py-1.5 text-xs">Cari</button>
         </form>
     </x-slot:actions>
@@ -115,8 +121,13 @@
                                     </td>
                                     @endif
                                     <td class="px-4 py-3">
-                                        <p class="font-semibold text-navy-900">{{ $device->label ?? $device->hostname }}</p>
-                                        <p class="font-mono text-[11px] text-ink-faint">{{ $device->hostname }}{{ $device->location_label ? ' · '.$device->location_label : '' }}</p>
+                                        <div class="flex flex-wrap items-center gap-1.5">
+                                            <p class="font-semibold text-navy-900">{{ $device->label ?? $device->hostname }}</p>
+                                            @if (($device->open_notes_count ?? 0) > 0)
+                                                <span class="badge-warn" title="Ada catatan terbuka">Catatan {{ $device->open_notes_count }}</span>
+                                            @endif
+                                        </div>
+                                        <p class="font-mono text-[11px] text-ink-faint">{{ $device->hostname }}{{ ($device->location?->name ?? $device->location_label) ? ' · '.($device->location?->name ?? $device->location_label) : '' }}</p>
                                     </td>
                                     <td class="px-4 py-3">
                                         @if ($trashed)

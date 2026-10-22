@@ -18,6 +18,15 @@ if (-not (Test-Path "E:\pelog-build\publish\PelogKiosk.exe")) {
     throw "Hasil publish tidak ditemukan. Jalankan dulu: .\scripts\build-client.ps1"
 }
 
+$appInfoText = Get-Content -Path "$root\client\PelogKiosk.Core\AppInfo.cs" -Raw
+$appInfoVersion = [regex]::Match($appInfoText, 'const\s+string\s+Version\s*=\s*"([^"]+)"').Groups[1].Value
+$issText = Get-Content -Path "$installerDir\pelog-setup.iss" -Raw
+$issVersion = [regex]::Match($issText, 'AppVersion\s*=\s*([0-9.]+)').Groups[1].Value
+
+if ([version]$appInfoVersion -ne [version]$issVersion) {
+    throw "Versi installer ($issVersion) tidak sama dengan AppInfo ($appInfoVersion)."
+}
+
 # Konfigurasi awal aplikasi client (dibaca dari C:\ProgramData\PELOG\pelog.json)
 # device_label/device_location hanya ditulis bila diisi, dan update_check_hours
 # hanya bila diminta (> 0), agar output default tidak berubah.

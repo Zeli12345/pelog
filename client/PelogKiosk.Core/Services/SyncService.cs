@@ -80,6 +80,13 @@ public sealed class SyncService
             {
                 _store.SetKv("device_label", device.Label);
             }
+
+            _store.SetKv("device_location", device.Location?.Name ?? string.Empty);
+        }
+
+        if (result.Data.Locations.Count > 0)
+        {
+            _store.SetKv("locations_json", JsonSerializer.Serialize(result.Data.Locations, JsonOptions));
         }
 
         _store.SetKv("bootstrap_at", _clock.Now.ToString("o"));
@@ -161,6 +168,77 @@ public sealed class SyncService
         {
             _screenshotGate.Release();
         }
+    }
+
+    public async Task<int> PushWebcamAsync(CancellationToken cancellationToken = default)
+    {
+        await _screenshotGate.WaitAsync(cancellationToken);
+
+        try
+        {
+            var pending = _store.GetPendingWebcams();
+
+            if (pending.Count == 0)
+            {
+                return 0;
+            }
+
+            var pushed = 0;
+
+            foreach (var record in pending)
+            {
+                if (string.IsNullOrEmpty(record.WebcamPath) || !File.Exists(record.WebcamPath))
+                {
+                    _store.MarkWebcamSynced(record.SessionUuid);
+
+                    continue;
+                }
+
+                var captureAt = record.WebcamCapturedAt ?? record.LastHeartbeatAt ?? _clock.Now;
+                var captureUuid = DeterministicWebcamUuid(record);
+
+                var result = await _api.UploadWebcamAsync(
+                    record.SessionUuid,
+                    record.WebcamPath,
+                    captureUuid,
+                    captureAt,
+                    cancellationToken);
+
+                if (!result.Ok)
+                {
+                    LastError = result.ErrorMessage;
+
+                    break;
+                }
+
+                _store.MarkWebcamSynced(record.SessionUuid);
+                pushed++;
+
+                try
+                {
+                    File.Delete(record.WebcamPath);
+                }
+                catch (Exception)
+                {
+                    // file bisa dibersihkan nanti
+                }
+            }
+
+            return pushed;
+        }
+        finally
+        {
+            _screenshotGate.Release();
+        }
+    }
+
+    private static string DeterministicWebcamUuid(LocalSessionRecord record)
+    {
+        var captured = record.WebcamCapturedAt ?? record.LastHeartbeatAt ?? DateTimeOffset.UtcNow;
+        var input = $"{record.SessionUuid}|webcam|{captured.UtcTicks}";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(input));
+
+        return new Guid(hash[..16]).ToString();
     }
 
     private async Task<int> PushScreenshotsCoreAsync(CancellationToken cancellationToken)

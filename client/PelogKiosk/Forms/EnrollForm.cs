@@ -8,6 +8,7 @@ namespace PelogKiosk.App.Forms;
 /// <summary>
 /// Dialog pendaftaran perangkat (sekali per laptop).
 /// Menukar kode enrollment menjadi device token yang disimpan dengan DPAPI.
+/// Lokasi dipilih dari daftar ruangan; admin/guru juga boleh menambah ruangan baru.
 /// </summary>
 public sealed class EnrollForm : Form
 {
@@ -17,11 +18,17 @@ public sealed class EnrollForm : Form
 
     private readonly TextBox _labelInput;
 
-    private readonly TextBox _locationInput;
+    private readonly ComboBox _locationCombo;
+
+    private readonly TextBox _newLocationInput;
+
+    private readonly Label _locationHint;
 
     private readonly Label _statusLabel;
 
     private readonly Button _enrollButton;
+
+    private bool _locationsLoaded;
 
     public EnrollForm(AppServices services)
     {
@@ -34,7 +41,7 @@ public sealed class EnrollForm : Form
         MinimizeBox = false;
         BackColor = Color.FromArgb(15, 34, 55);
         ForeColor = Color.White;
-        ClientSize = new Size(520, 528);
+        ClientSize = new Size(520, 596);
         Font = new Font("Segoe UI", 10F);
 
         var logo = new PictureBox
@@ -42,7 +49,7 @@ public sealed class EnrollForm : Form
             Image = LoadLogo(),
             SizeMode = PictureBoxSizeMode.Zoom,
             Size = new Size(72, 72),
-            Location = new Point((ClientSize.Width - 72) / 2, 24),
+            Location = new Point((ClientSize.Width - 72) / 2, 20),
         };
 
         var title = new Label
@@ -52,7 +59,7 @@ public sealed class EnrollForm : Form
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleCenter,
             Size = new Size(ClientSize.Width, 32),
-            Location = new Point(0, 104),
+            Location = new Point(0, 96),
         };
 
         var subtitle = new Label
@@ -62,8 +69,8 @@ public sealed class EnrollForm : Form
             ForeColor = Color.FromArgb(180, 200, 220),
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleCenter,
-            Size = new Size(ClientSize.Width - 40, 44),
-            Location = new Point(20, 140),
+            Size = new Size(ClientSize.Width - 40, 42),
+            Location = new Point(20, 130),
         };
 
         var codeLabel = new Label
@@ -71,13 +78,13 @@ public sealed class EnrollForm : Form
             Text = "Kode Enrollment",
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.FromArgb(200, 215, 230),
-            Location = new Point(40, 200),
+            Location = new Point(40, 186),
             AutoSize = true,
         };
 
         _codeInput = new TextBox
         {
-            Location = new Point(40, 220),
+            Location = new Point(40, 206),
             Width = ClientSize.Width - 80,
             Height = 40,
             Font = new Font("Consolas", 16F, FontStyle.Bold),
@@ -92,13 +99,13 @@ public sealed class EnrollForm : Form
             Text = "Nama perangkat (label)",
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.FromArgb(200, 215, 230),
-            Location = new Point(40, 278),
+            Location = new Point(40, 258),
             AutoSize = true,
         };
 
         _labelInput = new TextBox
         {
-            Location = new Point(40, 302),
+            Location = new Point(40, 280),
             Width = ClientSize.Width - 80,
             Height = 32,
             Font = new Font("Segoe UI", 12F),
@@ -110,22 +117,55 @@ public sealed class EnrollForm : Form
 
         var locationCaption = new Label
         {
-            Text = "Lokasi perangkat (ruang/lab)",
+            Text = "Ruangan / lokasi perangkat",
             Font = new Font("Segoe UI", 9F, FontStyle.Bold),
             ForeColor = Color.FromArgb(200, 215, 230),
-            Location = new Point(40, 344),
+            Location = new Point(40, 324),
             AutoSize = true,
         };
 
-        _locationInput = new TextBox
+        _locationCombo = new ComboBox
         {
-            Location = new Point(40, 368),
-            Width = ClientSize.Width - 80,
+            Location = new Point(40, 346),
+            Width = ClientSize.Width - 180,
             Height = 32,
-            Font = new Font("Segoe UI", 12F),
+            Font = new Font("Segoe UI", 11F),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+        };
+
+        var addLocationButton = new Button
+        {
+            Text = "+ Baru",
+            Location = new Point(ClientSize.Width - 132, 344),
+            Size = new Size(92, 32),
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            BackColor = Color.FromArgb(35, 60, 88),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+        };
+        addLocationButton.FlatAppearance.BorderColor = Color.FromArgb(80, 110, 140);
+        addLocationButton.Click += (_, _) => ShowNewLocationInput();
+
+        _newLocationInput = new TextBox
+        {
+            Location = new Point(40, 386),
+            Width = ClientSize.Width - 80,
+            Height = 30,
+            Font = new Font("Segoe UI", 11F),
             MaxLength = 60,
-            Text = _services.Config.DeviceLocation ?? string.Empty,
+            PlaceholderText = "Nama ruangan baru, mis. Lab RPL 2",
             BorderStyle = BorderStyle.FixedSingle,
+            Visible = false,
+        };
+
+        _locationHint = new Label
+        {
+            Text = "Memuat daftar ruangan…",
+            Font = new Font("Segoe UI", 8F),
+            ForeColor = Color.FromArgb(160, 185, 210),
+            Location = new Point(40, 418),
+            AutoSize = false,
+            Size = new Size(ClientSize.Width - 80, 18),
         };
 
         _statusLabel = new Label
@@ -133,7 +173,7 @@ public sealed class EnrollForm : Form
             AutoSize = false,
             TextAlign = ContentAlignment.MiddleCenter,
             Size = new Size(ClientSize.Width - 80, 24),
-            Location = new Point(40, 410),
+            Location = new Point(40, 448),
             Font = new Font("Segoe UI", 9F),
             ForeColor = Color.FromArgb(255, 210, 120),
             Text = "Laptop: " + Environment.MachineName,
@@ -142,7 +182,7 @@ public sealed class EnrollForm : Form
         _enrollButton = new Button
         {
             Text = "D A F T A R K A N",
-            Location = new Point(40, 446),
+            Location = new Point(40, 484),
             Size = new Size(ClientSize.Width - 80, 48),
             Font = new Font("Segoe UI", 11F, FontStyle.Bold),
             BackColor = Color.FromArgb(201, 162, 39),
@@ -156,11 +196,14 @@ public sealed class EnrollForm : Form
 
         Controls.AddRange([
             logo, title, subtitle, codeLabel, _codeInput, labelCaption, _labelInput,
-            locationCaption, _locationInput, _statusLabel, _enrollButton,
+            locationCaption, _locationCombo, addLocationButton, _newLocationInput,
+            _locationHint, _statusLabel, _enrollButton,
         ]);
 
         AcceptButton = _enrollButton;
         ActiveControl = _codeInput;
+
+        Shown += async (_, _) => await LoadLocationsAsync();
     }
 
     private static Image? LoadLogo()
@@ -177,6 +220,68 @@ public sealed class EnrollForm : Form
         return null;
     }
 
+    private async Task LoadLocationsAsync()
+    {
+        if (_locationsLoaded)
+        {
+            return;
+        }
+
+        _locationsLoaded = true;
+        _locationCombo.Items.Clear();
+        _locationCombo.Items.Add(new LocationChoice(0, "Memuat…"));
+        _locationCombo.SelectedIndex = 0;
+        _locationCombo.Enabled = false;
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+        var result = await _services.Api.GetLocationsAsync(timeout.Token);
+
+        _locationCombo.Items.Clear();
+        _locationCombo.Enabled = true;
+
+        if (result.Ok && result.Data is not null)
+        {
+            foreach (var location in result.Data.Locations.OrderBy(item => item.Name))
+            {
+                _locationCombo.Items.Add(new LocationChoice(location.Id, location.Name));
+            }
+        }
+
+        _locationCombo.Items.Add(new LocationChoice(0, "+ Tambah ruangan baru…"));
+
+        var preferred = _services.Config.DeviceLocation;
+        var selected = _locationCombo.Items
+            .OfType<LocationChoice>()
+            .FirstOrDefault(item => item.Id > 0 && string.Equals(item.Name, preferred, StringComparison.OrdinalIgnoreCase));
+
+        _locationCombo.SelectedItem = selected ?? _locationCombo.Items.OfType<LocationChoice>().FirstOrDefault();
+
+        if (!result.Ok)
+        {
+            _locationHint.Text = "Daftar ruangan tidak dapat dimuat. Pilih “+ Tambah ruangan baru…” untuk mengetik nama.";
+        }
+        else if (result.Data?.Locations.Count == 0)
+        {
+            _locationHint.Text = "Belum ada ruangan. Tambahkan ruangan pertama.";
+            ShowNewLocationInput();
+        }
+        else
+        {
+            _locationHint.Text = "Pilih ruangan yang sudah ada agar lokasi perangkat konsisten.";
+        }
+    }
+
+    private void ShowNewLocationInput()
+    {
+        _locationCombo.SelectedItem = _locationCombo.Items
+            .OfType<LocationChoice>()
+            .LastOrDefault(item => item.Id == 0);
+
+        _newLocationInput.Visible = true;
+        _newLocationInput.Focus();
+        _locationHint.Text = "Ketik nama ruangan baru. Nama yang mirip dengan ruangan lama akan memakai ruangan tersebut.";
+    }
+
     private async Task EnrollAsync()
     {
         var code = _codeInput.Text.Trim();
@@ -184,6 +289,17 @@ public sealed class EnrollForm : Form
         if (code.Length < 4)
         {
             _statusLabel.Text = "Kode enrollment tidak valid.";
+            _statusLabel.ForeColor = Color.FromArgb(240, 150, 140);
+
+            return;
+        }
+
+        var selected = _locationCombo.SelectedItem as LocationChoice;
+        var newLocation = _newLocationInput.Visible ? _newLocationInput.Text.Trim() : string.Empty;
+
+        if (selected is null || (selected.Id == 0 && newLocation.Length == 0))
+        {
+            _statusLabel.Text = "Pilih ruangan atau isi nama ruangan baru.";
             _statusLabel.ForeColor = Color.FromArgb(240, 150, 140);
 
             return;
@@ -201,7 +317,8 @@ public sealed class EnrollForm : Form
                 DeviceUuid = _services.GetOrCreateDeviceUuid(),
                 Hostname = Environment.MachineName,
                 Label = _labelInput.Text.Trim(),
-                Location = _locationInput.Text.Trim(),
+                LocationId = selected.Id > 0 ? selected.Id : null,
+                NewLocation = selected.Id == 0 ? newLocation : null,
                 MacList = GetMacAddresses(),
                 DeviceType = "laptop",
                 AgentVersion = AppInfo.Version,
@@ -222,6 +339,9 @@ public sealed class EnrollForm : Form
 
             _services.SaveDeviceToken(result.Data.DeviceToken);
             _services.Config.EnrollmentCode = code;
+            _services.Config.DeviceLocation = result.Data.Device?.Location?.Name
+                ?? (selected.Id > 0 ? selected.Name : newLocation);
+            _services.Config.DeviceLabel = result.Data.Device?.Label ?? _labelInput.Text.Trim();
             _services.Config.Save(Path.Combine(Path.GetDirectoryName(_services.DataDirectory)!, "pelog.json"));
 
             _statusLabel.ForeColor = Color.FromArgb(150, 220, 170);
@@ -277,5 +397,10 @@ public sealed class EnrollForm : Form
         {
             return null;
         }
+    }
+
+    private sealed record LocationChoice(long Id, string Name)
+    {
+        public override string ToString() => Name;
     }
 }

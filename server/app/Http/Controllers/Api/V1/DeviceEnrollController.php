@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Device;
+use App\Models\Location;
 use App\Models\Setting;
 use App\Support\ApiResponse;
 use App\Support\Audit;
@@ -21,6 +22,8 @@ class DeviceEnrollController extends Controller
             'hostname' => ['required', 'string', 'max:100'],
             'label' => ['nullable', 'string', 'max:40'],
             'location' => ['nullable', 'string', 'max:60'],
+            'location_id' => ['nullable', 'integer', 'exists:locations,id'],
+            'new_location' => ['nullable', 'string', 'max:60'],
             'mac_list' => ['nullable', 'array', 'max:32'],
             'mac_list.*' => ['string', 'max:32'],
             'device_type' => ['nullable', 'in:pc,laptop'],
@@ -121,12 +124,34 @@ class DeviceEnrollController extends Controller
         $isNew = ! $device->exists;
 
         $label = trim((string) ($data['label'] ?? ''));
-        $location = trim((string) ($data['location'] ?? ''));
+        $location = null;
+        $locationName = trim((string) ($data['new_location'] ?? ($data['location'] ?? '')));
+
+        if (! empty($data['location_id'])) {
+            $location = Location::query()->find((int) $data['location_id']);
+        } elseif ($locationName !== '') {
+            $normalized = Location::normalizeName($locationName);
+
+            if ($normalized !== '') {
+                $location = Location::findSimilar($locationName);
+
+                if ($location === null) {
+                    $location = Location::query()->create([
+                        'name' => $locationName,
+                        'normalized_name' => $normalized,
+                        'is_active' => true,
+                    ]);
+                } elseif (! $location->is_active) {
+                    $location->forceFill(['is_active' => true])->save();
+                }
+            }
+        }
 
         $device->fill([
             'hostname' => $data['hostname'],
             'label' => $label !== '' ? $label : $device->label,
-            'location_label' => $location !== '' ? $location : $device->location_label,
+            'location_id' => $location?->id ?? $device->location_id,
+            'location_label' => $location?->name ?? $device->location_label,
             'device_token_hash' => hash('sha256', $token),
             'mac_list' => $data['mac_list'] ?? null,
             'device_type' => $data['device_type'] ?? 'laptop',
@@ -144,6 +169,7 @@ class DeviceEnrollController extends Controller
         }
 
         $device->save();
+        $device->loadMissing('location');
 
         Audit::log(
             action: match (true) {
@@ -164,6 +190,10 @@ class DeviceEnrollController extends Controller
                 'uuid' => $device->uuid,
                 'hostname' => $device->hostname,
                 'label' => $device->label,
+                'location' => $device->location === null ? null : [
+                    'id' => $device->location->id,
+                    'name' => $device->location->name,
+                ],
             ],
             'device_token' => $token,
             'config' => DeviceConfig::forClient(),

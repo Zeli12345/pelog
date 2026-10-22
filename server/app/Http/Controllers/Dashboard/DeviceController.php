@@ -4,7 +4,11 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Enums\CloseReason;
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Device;
+use App\Models\DeviceNote;
+use App\Models\Location;
+use App\Models\LocationLayoutObject;
 use App\Models\Setting;
 use App\Support\Audit;
 use App\Support\DeviceStatusResolver;
@@ -20,17 +24,24 @@ class DeviceController extends Controller
         $onlineWindow = (int) Setting::getValue('device_online_window_seconds', 300);
         $search = trim((string) $request->query('q', ''));
         $statusFilter = (string) $request->query('status', '');
+        $locationFilter = (int) $request->query('location_id', 0);
         $trashed = $request->boolean('trashed');
 
         $devices = ($trashed ? Device::onlyTrashed() : Device::query())
-            ->with(['sessions' => fn ($query) => $query->active()->with(['student', 'staff', 'subject'])])
+            ->with([
+                'location',
+                'sessions' => fn ($query) => $query->active()->with(['student', 'staff', 'subject']),
+            ])
+            ->withCount(['notes as open_notes_count' => fn ($query) => $query->open()])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('hostname', 'like', "%{$search}%")
                         ->orWhere('label', 'like', "%{$search}%")
-                        ->orWhere('location_label', 'like', "%{$search}%");
+                        ->orWhere('location_label', 'like', "%{$search}%")
+                        ->orWhereHas('location', fn ($location) => $location->where('name', 'like', "%{$search}%"));
                 });
             })
+            ->when($locationFilter > 0, fn ($query) => $query->where('location_id', $locationFilter))
             ->orderByRaw('label IS NULL, label')
             ->orderBy('hostname')
             ->get();
@@ -40,7 +51,7 @@ class DeviceController extends Controller
         );
 
         if ($statusFilter !== '') {
-            $devices = $devices->filter(function (Device $device) use ($statusFilter, $statuses, $onlineWindow) {
+            $devices = $devices->filter(function (Device $device) use ($statusFilter, $statuses) {
                 if ($statusFilter === 'offline') {
                     return DeviceStatusResolver::isOffline($device, $onlineWindow);
                 }
@@ -54,17 +65,22 @@ class DeviceController extends Controller
             'statuses' => $statuses,
             'search' => $search,
             'statusFilter' => $statusFilter,
+            'locationFilter' => $locationFilter,
+            'locations' => Location::query()->orderBy('sort_order')->orderBy('name')->get(),
             'onlineWindow' => $onlineWindow,
             'trashed' => $trashed,
             'latestVersion' => (string) Setting::getValue('app_version', config('pelog.version')),
         ]);
     }
 
-    public function show(Device $device): View
+    public function show(Request $request, Device $device): View
     {
         $onlineWindow = (int) Setting::getValue('device_online_window_seconds', 300);
 
-        $device->load(['sessions' => fn ($query) => $query->active()->with(['student', 'staff', 'subject'])]);
+        $device->load([
+            'location',
+            'sessions' => fn ($query) => $query->active()->with(['student', 'staff', 'subject']),
+        ]);
 
         $status = DeviceStatusResolver::resolve($device, $onlineWindow);
 
@@ -76,11 +92,63 @@ class DeviceController extends Controller
             ->limit(50)
             ->get();
 
+        $tab = (string) $request->query('tab', 'sessions');
+        if (! in_array($tab, ['sessions', 'notes', 'activity'], true)) {
+            $tab = 'sessions';
+        }
+
+        if ($tab === 'activity' && ! $request->user()->isAdmin()) {
+            $tab = 'sessions';
+        }
+
+        $noteStatus = (string) $request->query('note_status', '');
+        $noteCategory = (string) $request->query('note_category', '');
+        $noteSearch = trim((string) $request->query('note_q', ''));
+
+        $notes = $device->notes()
+            ->with(['creator', 'attachments'])
+            ->when($noteStatus !== '', fn ($query) => $query->where('status', $noteStatus))
+            ->when($noteCategory !== '', fn ($query) => $query->where('category', $noteCategory))
+            ->when($noteSearch !== '', function ($query) use ($noteSearch) {
+                $query->where(function ($inner) use ($noteSearch) {
+                    $inner->where('title', 'like', "%{$noteSearch}%")
+                        ->orWhere('body', 'like', "%{$noteSearch}%")
+                        ->orWhere('vendor', 'like', "%{$noteSearch}%");
+                });
+            })
+            ->orderByDesc('pinned')
+            ->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        $activity = collect();
+        if ($tab === 'activity') {
+            $activity = AuditLog::query()
+                ->where('entity_type', Device::class)
+                ->where('entity_id', $device->id)
+                ->orderByDesc('id')
+                ->limit(50)
+                ->get();
+        }
+
+        $openNotes = $device->notes()->open()->get();
+        $pinnedNote = $device->notes()->where('pinned', true)->latest('id')->first();
+
         return view('dashboard.devices.show', [
             'device' => $device,
             'status' => $status,
             'activeSession' => $device->sessions->first(),
             'history' => $history,
+            'notes' => $notes,
+            'activity' => $activity,
+            'tab' => $tab,
+            'noteStatus' => $noteStatus,
+            'noteCategory' => $noteCategory,
+            'noteSearch' => $noteSearch,
+            'openNotes' => $openNotes,
+            'pinnedNote' => $pinnedNote,
+            'locations' => Location::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
+            'noteCategories' => DeviceNote::query()->distinct()->orderBy('category')->pluck('category'),
             'idleShutdownMinutes' => (int) Setting::getValue('idle_shutdown_minutes', 90),
         ]);
     }
@@ -89,24 +157,63 @@ class DeviceController extends Controller
     {
         $data = $request->validate([
             'label' => ['nullable', 'string', 'max:40'],
-            'location_label' => ['nullable', 'string', 'max:60'],
+            'location_id' => ['nullable', 'integer', 'exists:locations,id'],
+            'new_location' => ['nullable', 'string', 'max:80'],
+            'location_label' => ['nullable', 'string', 'max:80'],
             'status' => ['required', 'in:available,maintenance'],
         ]);
 
         $before = [
             'label' => $device->label,
+            'location_id' => $device->location_id,
             'location_label' => $device->location_label,
             'status' => $device->status->value,
         ];
 
         $label = trim((string) ($data['label'] ?? ''));
-        $location = trim((string) ($data['location_label'] ?? ''));
+        $locationProvided = array_key_exists('location_id', $data)
+            || array_key_exists('new_location', $data)
+            || array_key_exists('location_label', $data);
+        $locationId = $data['location_id'] ?? null;
+        $newLocation = trim((string) ($data['new_location'] ?? ($data['location_label'] ?? '')));
+
+        if ($newLocation !== '') {
+            $normalized = Location::normalizeName($newLocation);
+
+            if ($normalized === '') {
+                return back()->withErrors(['new_location' => 'Nama ruangan tidak valid.'])->withInput();
+            }
+
+            $location = Location::findSimilar($newLocation);
+
+            if ($location === null) {
+                $location = Location::query()->create([
+                    'name' => $newLocation,
+                    'normalized_name' => $normalized,
+                    'is_active' => true,
+                ]);
+            } elseif (! $location->is_active) {
+                $location->forceFill(['is_active' => true])->save();
+            }
+
+            $locationId = $location->id;
+        }
+
+        $location = $locationId !== null ? Location::query()->find($locationId) : null;
 
         $device->forceFill([
             'label' => $label !== '' ? $label : null,
-            'location_label' => $location !== '' ? $location : null,
+            'location_id' => $locationProvided ? $location?->id : $device->location_id,
+            'location_label' => $locationProvided ? $location?->name : $device->location_label,
             'status' => $data['status'],
         ])->save();
+
+        if ($before['location_id'] !== $device->location_id) {
+            LocationLayoutObject::query()
+                ->where('device_id', $device->id)
+                ->where('location_id', '!=', $device->location_id)
+                ->delete();
+        }
 
         Audit::log(
             action: 'device_updated',
@@ -116,6 +223,7 @@ class DeviceController extends Controller
                 'before' => $before,
                 'after' => [
                     'label' => $device->label,
+                    'location_id' => $device->location_id,
                     'location_label' => $device->location_label,
                     'status' => $device->status->value,
                 ],
@@ -146,6 +254,7 @@ class DeviceController extends Controller
             request: $request,
         );
 
+        LocationLayoutObject::query()->where('device_id', $device->id)->delete();
         $device->delete();
 
         return redirect()->route('devices.index')->with(
@@ -169,6 +278,7 @@ class DeviceController extends Controller
 
             foreach ($devices as $device) {
                 $closedSessions += $this->forceCloseActiveSessions($device);
+                LocationLayoutObject::query()->where('device_id', $device->id)->delete();
                 $device->delete();
             }
 
@@ -243,10 +353,6 @@ class DeviceController extends Controller
             ->with('status', "{$devices->count()} perangkat dipulihkan.");
     }
 
-    /**
-     * Minta screenshot langsung: kiosk mengambil & mengunggahnya pada heartbeat
-     * berikutnya (maks ±1 menit), tanpa menunggu jadwal menit ke-30.
-     */
     public function requestScreenshot(Request $request, Device $device): RedirectResponse
     {
         $device->forceFill(['screenshot_requested_at' => now()])->save();
@@ -267,11 +373,6 @@ class DeviceController extends Controller
         );
     }
 
-    /**
-     * Menutup paksa sesi aktif saat perangkat dihapus agar dashboard tidak
-     * menampilkan sesi hantu. Alasan penutupan memakai CloseReason::Admin,
-     * sama seperti penutupan paksa dari halaman Sesi.
-     */
     private function forceCloseActiveSessions(Device $device): int
     {
         $closed = 0;

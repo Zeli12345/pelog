@@ -31,6 +31,14 @@ class SettingsSeeder extends Seeder
             'idle_shutdown_minutes' => 90,  // matikan otomatis bila tidak ada input; 0 = nonaktif
             'single_active_session' => false,
 
+            // Kamera (default aktif untuk guru & siswa)
+            'webcam_enabled' => true,
+            'webcam_interval_minutes' => 15,
+            'webcam_max_width' => 640,
+            'webcam_quality' => 60,
+            'webcam_students_only' => false,
+            'webcam_retention_days' => 30,
+
             // Enrollment (hash diisi dari dashboard saat kode dibuat)
             'enrollment_code_hash' => null,
 
@@ -43,6 +51,7 @@ class SettingsSeeder extends Seeder
             'app_update_notes' => null,
             'app_update_mandatory' => false,
             'app_update_check_hours' => 6,
+            'min_supported_version' => '1.0.0',
         ];
 
         foreach ($defaults as $key => $value) {

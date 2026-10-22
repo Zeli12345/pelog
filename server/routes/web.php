@@ -4,6 +4,9 @@ use App\Http\Controllers\ClientDownloadController;
 use App\Http\Controllers\Dashboard\AuditController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\DeviceController;
+use App\Http\Controllers\Dashboard\DeviceNoteController;
+use App\Http\Controllers\Dashboard\InventoryController;
+use App\Http\Controllers\Dashboard\LocationController;
 use App\Http\Controllers\Dashboard\ReportController;
 use App\Http\Controllers\Dashboard\ScreenshotController;
 use App\Http\Controllers\Dashboard\SessionController;
@@ -49,6 +52,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
     Route::get('/subjects', [SubjectController::class, 'index'])->name('subjects.index');
 
+    // Aset & lokasi: baca untuk semua (Viewer read-only).
+    Route::get('/locations', [LocationController::class, 'index'])->name('locations.index');
+    Route::get('/locations/{location}', [LocationController::class, 'show'])->whereNumber('location')->name('locations.show');
+    Route::get('/locations/{location}/background', [LocationController::class, 'background'])->whereNumber('location')->name('locations.background');
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/{item}', [InventoryController::class, 'show'])->whereNumber('item')->name('inventory.show');
+    Route::get('/inventory/{item}/photo', [InventoryController::class, 'photo'])->whereNumber('item')->name('inventory.photo');
+    Route::get('/note-attachments/{attachment}', [DeviceNoteController::class, 'attachment'])->name('note-attachments.show');
+
     Route::middleware('admin')->group(function () {
         Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
 
@@ -67,6 +79,30 @@ Route::middleware('auth')->group(function () {
 
         // Perangkat: minta screenshot langsung (diproses kiosk saat heartbeat berikutnya)
         Route::post('/devices/{device}/request-screenshot', [DeviceController::class, 'requestScreenshot'])->name('devices.request-screenshot');
+
+        // Catatan perangkat
+        Route::post('/devices/{device}/notes', [DeviceNoteController::class, 'store'])->name('devices.notes.store');
+        Route::put('/devices/{device}/notes/{note}', [DeviceNoteController::class, 'update'])->name('devices.notes.update');
+        Route::delete('/devices/{device}/notes/{note}', [DeviceNoteController::class, 'destroy'])->name('devices.notes.destroy');
+        Route::delete('/devices/{device}/notes-attachments/{attachment}', [DeviceNoteController::class, 'destroyAttachment'])->name('devices.notes.attachments.destroy');
+
+        // Lokasi & denah (tulis khusus Admin)
+        Route::post('/locations', [LocationController::class, 'store'])->name('locations.store');
+        Route::put('/locations/{location}', [LocationController::class, 'update'])->whereNumber('location')->name('locations.update');
+        Route::delete('/locations/{location}', [LocationController::class, 'destroy'])->whereNumber('location')->name('locations.destroy');
+        Route::post('/locations/{location}/merge', [LocationController::class, 'merge'])->whereNumber('location')->name('locations.merge');
+        Route::put('/locations/{location}/layout', [LocationController::class, 'saveLayout'])->whereNumber('location')->name('locations.layout');
+        Route::post('/locations/{location}/background', [LocationController::class, 'uploadBackground'])->whereNumber('location')->name('locations.background.upload');
+
+        // Inventaris (tulis khusus Admin)
+        Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
+        Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::get('/inventory/{item}/edit', [InventoryController::class, 'edit'])->whereNumber('item')->name('inventory.edit');
+        Route::put('/inventory/{item}', [InventoryController::class, 'update'])->whereNumber('item')->name('inventory.update');
+        Route::post('/inventory/{item}/movements', [InventoryController::class, 'recordMovement'])->whereNumber('item')->name('inventory.movements.store');
+        Route::post('/inventory/{item}/archive', [InventoryController::class, 'archive'])->whereNumber('item')->name('inventory.archive');
+        Route::post('/inventory/{item}/restore', [InventoryController::class, 'restore'])->whereNumber('item')->name('inventory.restore');
+        Route::post('/inventory/categories', [InventoryController::class, 'storeCategory'])->name('inventory.categories.store');
 
         // Siswa
         Route::get('/students/import', [StudentImportController::class, 'form'])->name('students.import.form');

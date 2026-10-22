@@ -99,6 +99,21 @@
         @case('wifi-off')
             <path d="M2 8.5a16 16 0 0 1 8-4.3M14.5 4.6A16 16 0 0 1 22 8.5M5 12a11 11 0 0 1 5-2.7M17.5 10.4A11 11 0 0 1 19 12M8.5 15.5a6 6 0 0 1 7 0M12 19h.01"/><path d="M3 3l18 18"/>
             @break
+        @case('box')
+            <path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>
+            @break
+        @case('map')
+            <path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/>
+            @break
+        @case('note')
+            <path d="M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 8h8M8 12h8M8 16h5"/>
+            @break
+        @case('history')
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>
+            @break
+        @case('table')
+            <rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 10h18M9 10v9M15 10v9"/>
+            @break
         @default
             <circle cx="12" cy="12" r="9"/>
     @endswitch

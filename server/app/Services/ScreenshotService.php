@@ -17,6 +17,20 @@ class ScreenshotService
 
     public function store(UploadedFile $file, UsageSession $session, ?string $screenshotUuid = null): Screenshot
     {
+        return $this->persist($file, $session, $screenshotUuid, 'screen');
+    }
+
+    public function storeWithKind(UploadedFile $file, UsageSession $session, ?string $screenshotUuid = null, string $kind = 'screen'): Screenshot
+    {
+        if ($kind === 'screen') {
+            return $this->store($file, $session, $screenshotUuid);
+        }
+
+        return $this->persist($file, $session, $screenshotUuid, $kind);
+    }
+
+    private function persist(UploadedFile $file, UsageSession $session, ?string $screenshotUuid, string $kind): Screenshot
+    {
         $mime = (string) $file->getMimeType();
         $format = $mime === 'image/webp' ? ScreenshotFormat::Webp : ScreenshotFormat::Jpeg;
         $extension = $format === ScreenshotFormat::Webp ? 'webp' : 'jpg';
@@ -31,7 +45,7 @@ class ScreenshotService
             : (string) str()->uuid();
         $base = $session->session_uuid.'-'.$suffix;
 
-        $directory = 'screenshots/'.now()->format('Y/m');
+        $directory = ($kind === 'webcam' ? 'webcam' : 'screenshots').'/'.now()->format('Y/m');
         $filename = $base.'.'.$extension;
 
         $path = $file->storeAs($directory, $filename, 'local');
@@ -44,6 +58,7 @@ class ScreenshotService
                 ? $screenshotUuid
                 : (string) str()->uuid(),
             'content_hash' => $contentHash,
+            'kind' => $kind === 'webcam' ? 'webcam' : 'screen',
             'usage_session_id' => $session->id,
             'format' => $format,
             'path' => $path,

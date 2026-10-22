@@ -424,6 +424,38 @@ public class LocalStoreTests : IDisposable
         Assert.Empty(_store.GetPendingSessions());
     }
 
+    [Fact]
+    public void Webcam_Queue_Roundtrip()
+    {
+        var uuid = Guid.NewGuid().ToString();
+        var capturedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+
+        _store.SaveSession(new LocalSessionRecord
+        {
+            SessionUuid = uuid,
+            UserType = "student",
+            Nisn = "0051234567",
+            UsagePurpose = "Praktikum kamera",
+            StartedAtClient = DateTimeOffset.UtcNow.AddMinutes(-30),
+            LastHeartbeatAt = DateTimeOffset.UtcNow,
+            State = "open",
+            WebcamPath = "C:\\temp\\webcam.webp",
+            WebcamState = "pending",
+            WebcamCapturedAt = capturedAt,
+        });
+
+        var queued = _store.GetPendingWebcams()[0];
+
+        Assert.Equal(uuid, queued.SessionUuid);
+        Assert.Equal("pending", queued.WebcamState);
+        Assert.Equal(capturedAt.ToUnixTimeSeconds(), queued.WebcamCapturedAt!.Value.ToUnixTimeSeconds());
+
+        _store.MarkWebcamSynced(uuid);
+
+        Assert.Empty(_store.GetPendingWebcams());
+        Assert.Equal("synced", _store.GetSession(uuid)!.WebcamState);
+    }
+
     private string? ReadRawSessionNisn(string sessionUuid)
     {
         using var connection = new SqliteConnection($"Data Source={Path.Combine(_directory, "local.db")}");

@@ -68,7 +68,7 @@ class UsageSession extends Model
 
     public function screenshot(): HasOne
     {
-        return $this->hasOne(Screenshot::class)->latestOfMany('id');
+        return $this->hasOne(Screenshot::class)->where('kind', 'screen')->latestOfMany('id');
     }
 
     public function screenshots(): HasMany

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ScreenshotFormat;
+use App\Enums\ScreenshotKind;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ class Screenshot extends Model
     protected $fillable = [
         'screenshot_uuid',
         'content_hash',
+        'kind',
         'usage_session_id',
         'format',
         'path',
@@ -27,6 +29,7 @@ class Screenshot extends Model
     {
         return [
             'format' => ScreenshotFormat::class,
+            'kind' => ScreenshotKind::class,
             'size_bytes' => 'integer',
             'captured_at' => 'datetime',
             'captured_at_client' => 'datetime',

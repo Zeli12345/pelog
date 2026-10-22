@@ -42,6 +42,13 @@ public sealed class LocalSessionRecord
     /// <summary>Waktu nyata saat screenshot diambil (null untuk data lama).</summary>
     public DateTimeOffset? ScreenshotCapturedAt { get; set; }
 
+    public string? WebcamPath { get; set; }
+
+    /// <summary>none | pending | synced</summary>
+    public string WebcamState { get; set; } = "none";
+
+    public DateTimeOffset? WebcamCapturedAt { get; set; }
+
     /// <summary>Jumlah percobaan sinkronisasi yang gagal (membatasi retry antrean).</summary>
     public int SyncFailedAttempts { get; set; }
 
@@ -121,12 +128,18 @@ public sealed class LocalStore : IDisposable
                 screenshot_path TEXT,
                 screenshot_state TEXT NOT NULL DEFAULT 'none',
                 screenshot_captured_at TEXT,
+                webcam_path TEXT,
+                webcam_state TEXT NOT NULL DEFAULT 'none',
+                webcam_captured_at TEXT,
                 sync_failed_attempts INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL
             );");
 
         // Upgrade idempoten untuk basis data lama yang belum memiliki kolom di atas.
         EnsureColumn("sessions", "screenshot_captured_at", "TEXT");
+        EnsureColumn("sessions", "webcam_path", "TEXT");
+        EnsureColumn("sessions", "webcam_state", "TEXT NOT NULL DEFAULT 'none'");
+        EnsureColumn("sessions", "webcam_captured_at", "TEXT");
         EnsureColumn("sessions", "sync_failed_attempts", "INTEGER NOT NULL DEFAULT 0");
 
         // Tambahkan kolom baru untuk basis data lama, lalu buang kolom PIN
@@ -435,12 +448,14 @@ public sealed class LocalStore : IDisposable
                 session_uuid, user_type, nisn, nip_id, subject_id, purpose,
                 started_at_client, last_heartbeat_at, ended_at_client,
                 feedback, comprehension, close_reason, state,
-                screenshot_path, screenshot_state, screenshot_captured_at, created_at
+                screenshot_path, screenshot_state, screenshot_captured_at,
+                webcam_path, webcam_state, webcam_captured_at, created_at
             ) VALUES (
                 $uuid, $userType, $nisn, $nip, $subjectId, $purpose,
                 $started, $heartbeat, $ended,
                 $feedback, $comprehension, $reason, $state,
-                $shotPath, $shotState, $shotCaptured, $created
+                $shotPath, $shotState, $shotCaptured,
+                $webcamPath, $webcamState, $webcamCaptured, $created
             )
             ON CONFLICT(session_uuid) DO UPDATE SET
                 last_heartbeat_at = excluded.last_heartbeat_at,
@@ -451,7 +466,10 @@ public sealed class LocalStore : IDisposable
                 state = excluded.state,
                 screenshot_path = excluded.screenshot_path,
                 screenshot_state = excluded.screenshot_state,
-                screenshot_captured_at = excluded.screenshot_captured_at";
+                screenshot_captured_at = excluded.screenshot_captured_at,
+                webcam_path = excluded.webcam_path,
+                webcam_state = excluded.webcam_state,
+                webcam_captured_at = excluded.webcam_captured_at";
         command.Parameters.AddWithValue("$uuid", record.SessionUuid);
         command.Parameters.AddWithValue("$userType", record.UserType);
         // NISN sesi juga disimpan terenkripsi agar local.db tidak membocorkan NISN.
@@ -469,6 +487,9 @@ public sealed class LocalStore : IDisposable
         command.Parameters.AddWithValue("$shotPath", (object?)record.ScreenshotPath ?? DBNull.Value);
         command.Parameters.AddWithValue("$shotState", record.ScreenshotState);
         command.Parameters.AddWithValue("$shotCaptured", (object?)Iso(record.ScreenshotCapturedAt) ?? DBNull.Value);
+        command.Parameters.AddWithValue("$webcamPath", (object?)record.WebcamPath ?? DBNull.Value);
+        command.Parameters.AddWithValue("$webcamState", record.WebcamState);
+        command.Parameters.AddWithValue("$webcamCaptured", (object?)Iso(record.WebcamCapturedAt) ?? DBNull.Value);
         command.Parameters.AddWithValue("$created", Iso(record.CreatedAt) ?? string.Empty);
         command.ExecuteNonQuery();
     }
@@ -531,10 +552,35 @@ public sealed class LocalStore : IDisposable
         command.ExecuteNonQuery();
     }
 
+    public List<LocalSessionRecord> GetPendingWebcams(int limit = 50)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "SELECT * FROM sessions WHERE webcam_state = 'pending' AND webcam_path IS NOT NULL ORDER BY created_at LIMIT $limit";
+        command.Parameters.AddWithValue("$limit", limit);
+
+        using var reader = command.ExecuteReader();
+        var result = new List<LocalSessionRecord>();
+
+        while (reader.Read())
+        {
+            result.Add(MapSession(reader));
+        }
+
+        return result;
+    }
+
     public void MarkScreenshotSynced(string sessionUuid)
     {
         using var command = _connection.CreateCommand();
         command.CommandText = "UPDATE sessions SET screenshot_state = 'synced' WHERE session_uuid = $uuid";
+        command.Parameters.AddWithValue("$uuid", sessionUuid);
+        command.ExecuteNonQuery();
+    }
+
+    public void MarkWebcamSynced(string sessionUuid)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "UPDATE sessions SET webcam_state = 'synced' WHERE session_uuid = $uuid";
         command.Parameters.AddWithValue("$uuid", sessionUuid);
         command.ExecuteNonQuery();
     }
@@ -610,6 +656,9 @@ public sealed class LocalStore : IDisposable
             ScreenshotPath = GetNullable("screenshot_path"),
             ScreenshotState = reader.GetString(reader.GetOrdinal("screenshot_state")),
             ScreenshotCapturedAt = ParseIso(GetNullable("screenshot_captured_at")),
+            WebcamPath = GetNullable("webcam_path"),
+            WebcamState = reader.GetString(reader.GetOrdinal("webcam_state")),
+            WebcamCapturedAt = ParseIso(GetNullable("webcam_captured_at")),
             SyncFailedAttempts = reader.GetInt32(reader.GetOrdinal("sync_failed_attempts")),
             CreatedAt = ParseIso(GetNullable("created_at")) ?? DateTimeOffset.UtcNow,
         };

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DeviceStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -19,6 +20,7 @@ class Device extends Model
         'device_token_hash',
         'mac_list',
         'device_type',
+        'location_id',
         'location_label',
         'status',
         'storage_total_gb',
@@ -60,6 +62,16 @@ class Device extends Model
     public function sessions(): HasMany
     {
         return $this->hasMany(UsageSession::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(DeviceNote::class);
     }
 
     public function activeSession(): ?UsageSession

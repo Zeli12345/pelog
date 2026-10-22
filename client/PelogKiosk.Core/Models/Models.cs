@@ -46,6 +46,32 @@ public sealed class ClientConfig
 
     /// <summary>Matikan Windows otomatis bila tidak ada input mouse/keyboard selama X menit (0 = nonaktif).</summary>
     public int IdleShutdownMinutes { get; set; } = 90;
+
+    public int AppUpdateCheckHours { get; set; } = 6;
+
+    public string MinSupportedVersion { get; set; } = "1.0.0";
+
+    public bool WebcamEnabled { get; set; } = true;
+
+    public int WebcamIntervalMinutes { get; set; } = 15;
+
+    public int WebcamMaxWidth { get; set; } = 640;
+
+    public int WebcamQuality { get; set; } = 60;
+
+    public bool WebcamStudentsOnly { get; set; }
+}
+
+public sealed class LocationRef
+{
+    public long Id { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+}
+
+public sealed class LocationListData
+{
+    public List<LocationRef> Locations { get; set; } = [];
 }
 
 public sealed class EnrollRequest
@@ -59,6 +85,10 @@ public sealed class EnrollRequest
     public string? Label { get; set; }
 
     public string? Location { get; set; }
+
+    public long? LocationId { get; set; }
+
+    public string? NewLocation { get; set; }
 
     public List<string>? MacList { get; set; }
 
@@ -89,6 +119,8 @@ public sealed class DeviceProfile
     public string Hostname { get; set; } = string.Empty;
 
     public string? Label { get; set; }
+
+    public LocationRef? Location { get; set; }
 }
 
 public sealed class BootstrapData
@@ -98,6 +130,8 @@ public sealed class BootstrapData
     public List<CachedStaff> Staff { get; set; } = [];
 
     public List<CachedSubject> Subjects { get; set; } = [];
+
+    public List<LocationRef> Locations { get; set; } = [];
 
     public DeviceInfo? Device { get; set; }
 
@@ -111,6 +145,8 @@ public sealed class DeviceInfo
     public string? Label { get; set; }
 
     public bool Maintenance { get; set; }
+
+    public LocationRef? Location { get; set; }
 }
 
 public sealed class CachedStudent
@@ -227,6 +263,8 @@ public sealed class ScreenshotData
     public long SizeBytes { get; set; }
 
     public bool ThumbAvailable { get; set; }
+
+    public string Kind { get; set; } = "screen";
 }
 
 public sealed class SyncSessionItem
@@ -279,4 +317,50 @@ public sealed class AppReleaseInfo
     public string? Notes { get; set; }
 
     public string? Url { get; set; }
+
+    public string? MinSupportedVersion { get; set; }
+
+    public int CheckHours { get; set; } = 6;
+}
+
+public sealed class VersionInfo
+{
+    public string? LatestVersion { get; set; }
+
+    public string? AppVersion { get; set; }
+
+    public string? MinSupportedVersion { get; set; }
+
+    public bool Mandatory { get; set; }
+
+    public string? Sha256 { get; set; }
+
+    public long? Size { get; set; }
+
+    public string? InstallerUrl { get; set; }
+
+    public string? Notes { get; set; }
+
+    public int CheckHours { get; set; } = 6;
+}
+
+public sealed class UpdateStateInfo
+{
+    public string State { get; set; } = "idle";
+
+    public string? TargetVersion { get; set; }
+
+    public string? Sha256 { get; set; }
+
+    public string? InstallerPath { get; set; }
+
+    public int Attempts { get; set; }
+
+    public string? LastError { get; set; }
+
+    public DateTimeOffset? CheckedAt { get; set; }
+
+    public DateTimeOffset? VerifiedAt { get; set; }
+
+    public DateTimeOffset? InstalledAt { get; set; }
 }

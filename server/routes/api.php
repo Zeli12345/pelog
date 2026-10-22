@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AppUpdateController;
 use App\Http\Controllers\Api\V1\BootstrapController;
 use App\Http\Controllers\Api\V1\DeviceEnrollController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\ScreenshotController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\StudentController;
@@ -15,6 +16,7 @@ Route::prefix('v1')->group(function () {
     // Publik (rate limit ketat untuk enroll)
     Route::get('/health', [HealthController::class, 'index']);
     Route::get('/version', [HealthController::class, 'version']);
+    Route::get('/locations', [LocationController::class, 'index'])->middleware('throttle:60,1');
     Route::post('/devices/enroll', [DeviceEnrollController::class, 'store'])->middleware('throttle:10,1');
 
     // Perangkat terautentikasi

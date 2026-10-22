@@ -58,6 +58,21 @@ if (-not $versionMatch.Success) {
 
 $appVersion = $versionMatch.Groups[1].Value
 
+# Cegah rilis dengan versi client/installer yang tidak sinkron.
+$csproj = [xml](Get-Content -Path "$root\client\PelogKiosk\PelogKiosk.csproj" -Raw)
+$csprojVersion = [string]$csproj.Project.PropertyGroup.Version
+
+if ([version]$csprojVersion -ne [version]$appVersion) {
+    throw "Versi tidak sinkron: AppInfo=$appVersion, csproj=$csprojVersion"
+}
+
+$issText = Get-Content -Path "$root\installer\pelog-setup.iss" -Raw
+$issVersionMatch = [regex]::Match($issText, 'AppVersion\s*=\s*([0-9.]+)')
+
+if (-not $issVersionMatch.Success -or [version]$issVersionMatch.Groups[1].Value -ne [version]$appVersion) {
+    throw "Versi tidak sinkron: AppInfo=$appVersion, installer=$($issVersionMatch.Groups[1].Value)"
+}
+
 Write-Host "[build] Versi aplikasi (AppInfo.Version): $appVersion" -ForegroundColor Cyan
 
 $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)

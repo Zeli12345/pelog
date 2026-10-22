@@ -46,6 +46,8 @@ public sealed class ActiveSessionRuntime : Form
 
     private readonly Timer? _screenshotTimer;
 
+    private readonly Timer? _webcamTimer;
+
     private readonly Timer _idleCheckTimer = new() { Interval = 60_000 };
 
     private readonly Timer _sessionEndingFallback = new() { Interval = 2_000 };
@@ -53,6 +55,8 @@ public sealed class ActiveSessionRuntime : Form
     private bool _idleTriggered;
 
     private bool _manualScreenshotBusy;
+
+    private bool _webcamBusy;
 
     private bool _allowClose;
 
@@ -84,6 +88,15 @@ public sealed class ActiveSessionRuntime : Form
             _screenshotTimer = new Timer { Interval = Math.Max(1, minute) * 60_000 };
             _screenshotTimer.Tick += OnScreenshotTick;
             _screenshotTimer.Start();
+        }
+
+        var webcamEnabled = config.WebcamEnabled && (!config.WebcamStudentsOnly || _isStudent);
+
+        if (webcamEnabled)
+        {
+            _webcamTimer = new Timer { Interval = 5_000 };
+            _webcamTimer.Tick += OnWebcamTick;
+            _webcamTimer.Start();
         }
 
         _heartbeatTimer.Tick += OnHeartbeatTick;
@@ -258,6 +271,7 @@ public sealed class ActiveSessionRuntime : Form
 
         await _services.Sync.PushSessionsAsync();
         await _services.Sync.PushScreenshotsAsync();
+        await _services.Sync.PushWebcamAsync();
 
         var config = _services.Sync.LoadCachedConfig();
         var lastBootstrap = _services.Store.GetKv("bootstrap_at");
@@ -269,7 +283,68 @@ public sealed class ActiveSessionRuntime : Form
         }
 
         // Auto-update: periksa & unduh rilis baru (di-throttle oleh UpdateService).
-        await _services.Updates.CheckAndStageAsync(_services.Config.UpdateCheckHours);
+        // Pembaruan ditangani agen SYSTEM saat boot (updates\state.json).
+    }
+
+    private async void OnWebcamTick(object? sender, EventArgs e)
+    {
+        if (_webcamBusy || !_record.IsOpen)
+        {
+            return;
+        }
+
+        var config = _services.Sync.LoadCachedConfig();
+
+        if (!config.WebcamEnabled || (config.WebcamStudentsOnly && !_isStudent))
+        {
+            return;
+        }
+
+        if (!WebcamActivityDetector.IsCameraInUse())
+        {
+            return;
+        }
+
+        _webcamBusy = true;
+
+        try
+        {
+            if (_services.Store.GetPendingWebcams().Any(item => item.SessionUuid == _record.SessionUuid))
+            {
+                await _services.Sync.PushWebcamAsync();
+
+                if (_services.Store.GetPendingWebcams().Any(item => item.SessionUuid == _record.SessionUuid))
+                {
+                    return;
+                }
+            }
+
+            var interval = TimeSpan.FromMinutes(Math.Max(1, config.WebcamIntervalMinutes));
+
+            if (!WebcamCapturePolicy.ShouldCapture(_record.WebcamCapturedAt, false, _services.Clock.Now, interval))
+            {
+                return;
+            }
+
+            var capturedAt = _services.Clock.Now;
+            var path = await WebcamCaptureService.CaptureAsync(
+                _services.ScreenshotDirectory,
+                $"{_record.SessionUuid}-webcam-{capturedAt:yyyyMMddHHmmss}",
+                Math.Max(320, config.WebcamMaxWidth),
+                Math.Clamp(config.WebcamQuality, 10, 100));
+
+            if (path is null)
+            {
+                return;
+            }
+
+            _services.Sessions.AttachWebcamCapture(_record, path, capturedAt);
+            await _services.Sync.PushWebcamAsync();
+        }
+        finally
+        {
+            _webcamBusy = false;
+        }
     }
 
     private async void OnScreenshotTick(object? sender, EventArgs e)
@@ -364,6 +439,7 @@ public sealed class ActiveSessionRuntime : Form
         await _services.Sessions.TryRemoteEndAsync(_record);
         await _services.Sync.PushSessionsAsync();
         await _services.Sync.PushScreenshotsAsync();
+        await _services.Sync.PushWebcamAsync();
 
         ShutdownRuntime();
     }
@@ -374,6 +450,7 @@ public sealed class ActiveSessionRuntime : Form
         _syncTimer.Start();
         _idleCheckTimer.Start();
         _screenshotTimer?.Start();
+        _webcamTimer?.Start();
     }
 
     private void StopTimers()
@@ -382,6 +459,7 @@ public sealed class ActiveSessionRuntime : Form
         _syncTimer.Stop();
         _idleCheckTimer.Stop();
         _screenshotTimer?.Stop();
+        _webcamTimer?.Stop();
     }
 
     /// <summary>

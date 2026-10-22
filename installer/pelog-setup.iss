@@ -5,7 +5,9 @@
 [Setup]
 AppId={{8F1A2C64-3B7E-4F3A-9C21-BALI0G000001}
 AppName=PELOG Kiosk
-AppVersion=1.0.2
+AppVersion=1.0.3
+VersionInfoVersion=1.0.3.0
+VersionInfoProductVersion=1.0.3.0
 AppPublisher=SMK Negeri 1 Mas Ubud
 AppPublisherURL=https://pelog.smkn1mas.sch.id
 DefaultDirName={autopf}\PELOG Kiosk
@@ -48,6 +50,10 @@ Source: "hardening.ps1"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 Source: "apply-update.ps1"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 Source: "README-OPS.txt"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 
+[Dirs]
+; Folder update hanya boleh ditulis SYSTEM/Administrator; kiosk hanya membaca state.
+Name: "{commonappdata}\PELOG\updates"
+
 [Icons]
 Name: "{autoprograms}\PELOG Kiosk"; Filename: "{app}\PelogKiosk.exe"
 Name: "{autodesktop}\PELOG Kiosk"; Filename: "{app}\PelogKiosk.exe"; Tasks: desktopicon
@@ -55,10 +61,15 @@ Name: "{autodesktop}\PELOG Kiosk"; Filename: "{app}\PelogKiosk.exe"; Tasks: desk
 [Registry]
 ; Autostart untuk semua pengguna Windows (kiosk langsung tampil setelah login)
 Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "PelogKiosk"; ValueData: """{app}\PelogKiosk.exe"""; Flags: uninsdeletevalue
+; URL server dikunci di HKLM agar agen SYSTEM tidak membaca URL dari file user.
+Root: HKLM; Subkey: "SOFTWARE\PELOG"; ValueType: string; ValueName: "BaseUrl"; ValueData: "https://pelog.smkn1mas.sch.id"; Flags: uninsdeletekey
 
 [Run]
-; Izin akses data untuk semua akun (kiosk berjalan sebagai akun siswa, installer sebagai Admin)
-Filename: "icacls.exe"; Parameters: """{commonappdata}\PELOG"" /grant *S-1-5-32-545:(OI)(CI)M /T /C"; Flags: runhidden; StatusMsg: "Menyiapkan izin folder data..."
+; Izin akses data untuk semua akun (kiosk berjalan sebagai akun siswa, installer sebagai Admin).
+; Tanpa /T: folder updates di bawah ini dilindungi khusus setelah baris berikutnya.
+Filename: "icacls.exe"; Parameters: """{commonappdata}\PELOG"" /grant *S-1-5-32-545:(OI)(CI)M /C"; Flags: runhidden; StatusMsg: "Menyiapkan izin folder data..."
+; Folder updates: SYSTEM/Administrators full, user hanya read/execute.
+Filename: "icacls.exe"; Parameters: """{commonappdata}\PELOG\updates"" /inheritance:r /grant:r *S-1-5-18:(OI)(CI)F *S-1-5-32-544:(OI)(CI)F *S-1-5-32-545:(OI)(CI)RX /C"; Flags: runhidden; StatusMsg: "Mengunci folder pembaruan..."
 ; CATATAN: kebijakan HKCU TIDAK lagi diterapkan saat instalasi — dahulu ini
 ; menyebabkan laptop "terkunci" bila PC dimatikan di tahap pendaftaran lalu
 ; di-boot ulang. Sekarang: layar kunci menerapkan kebijakan setelah perangkat
@@ -91,6 +102,8 @@ Type: files; Name: "{app}\is-*.tmp"
 ; Buang file debug (.pdb) dari instalasi lama - rilis 1.0.3+ tidak lagi
 ; menyertakan .pdb sehingga sisa lama (~130 MB) harus dibersihkan saat upgrade.
 Type: files; Name: "{app}\*.pdb"
+; Manifest lama (ditulis user) tidak boleh dipakai lagi oleh agen 1.0.3+.
+Type: files; Name: "{commonappdata}\PELOG\update.json"
 
 [Code]
 // Tugas elevated untuk MODE ADMIN (suspend/apply kebijakan) TANPA prompt UAC.
@@ -232,7 +245,7 @@ begin
     '  <Triggers>' + #13#10 +
     '    <BootTrigger>' + #13#10 +
     '      <Enabled>true</Enabled>' + #13#10 +
-    '      <Delay>PT2M</Delay>' + #13#10 +
+    '      <Delay>PT20S</Delay>' + #13#10 +
     '    </BootTrigger>' + #13#10 +
     '  </Triggers>' + #13#10,
     '  <Principals>' + #13#10 +

@@ -49,14 +49,28 @@ class BootstrapController extends Controller
             ])
             ->values();
 
+        $device->loadMissing('location');
+        $locations = \App\Models\Location::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($location) => ['id' => $location->id, 'name' => $location->name])
+            ->values();
+
         return ApiResponse::ok([
             'students' => $students,
             'staff' => $staff,
             'subjects' => $subjects,
+            'locations' => $locations,
             'device' => [
                 'hostname' => $device->hostname,
                 'label' => $device->label,
                 'maintenance' => $device->status === DeviceStatus::Maintenance,
+                'location' => $device->location === null ? null : [
+                    'id' => $device->location->id,
+                    'name' => $device->location->name,
+                ],
             ],
             'config' => DeviceConfig::forClient(),
         ]);

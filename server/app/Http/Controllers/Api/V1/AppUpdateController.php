@@ -34,11 +34,16 @@ class AppUpdateController extends Controller
         return ApiResponse::ok([
             'available' => true,
             'version' => Setting::getValue('app_version', config('pelog.version')),
+            'latest_version' => Setting::getValue('app_version', config('pelog.version')),
+            'min_supported_version' => (string) Setting::getValue('min_supported_version', config('pelog.min_client_version', '1.0.0')),
             'sha256' => Setting::getValue('app_installer_sha256'),
             'size_bytes' => (int) Setting::getValue('app_installer_size', 0),
             'mandatory' => (bool) Setting::getValue('app_update_mandatory', false),
+            'check_hours' => (int) Setting::getValue('app_update_check_hours', 6),
+            'published_at' => Setting::getValue('client_installer_uploaded_at'),
             'notes' => Setting::getValue('app_update_notes', ''),
             'url' => url('/api/v1/app/installer'),
+            'installer_url' => url('/api/v1/app/installer'),
         ]);
     }
 

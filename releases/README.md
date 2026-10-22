@@ -2,6 +2,33 @@
 
 Installer siap pakai untuk mesin baru.
 
+## PELOG 1.0.3 (22 Okt 2026)
+
+- Berkas   : `PELOG_Setup_1.0.3.exe` (55.4 MB, Inno Setup, **tanpa kode enrollment**)
+- SHA-256  : `737011b0885772f32b5486c4204265a5a4f1df1061d02f5ce76930a5ec57851c`
+- Build produksi (berkode `BLG-XMQS-TB3C`, untuk auto-update & dashboard):
+  SHA-256 `ff1ee22329d5279fc1604384ef63558a1a634002a0805dd2f508fdee816f708c`
+- Fitur/Perbaikan:
+  - **Galeri Media** (pengganti halaman Screenshot): lihat layar, webcam, atau
+    keduanya; filter jenis/perangkat/tanggal (WITA)/pencarian perangkat; lightbox.
+  - **Lokasi/ruangan**: dropdown di detail perangkat & enrollment client,
+    tambah ruangan dari client (tanpa hapus), pencegahan duplikat, merge/arsip,
+    dan penghapusan berlapis pengaman.
+  - **Denah ruangan**: kartu ruangan → editor drag-and-drop, meja kotak/bulat,
+    susun otomatis, optimistic locking.
+  - **Catatan perangkat**: tab riwayat sesi/catatan/aktivitas, kategori, status,
+    prioritas, biaya, vendor, tag, lampiran, pinned.
+  - **Inventaris generik**: kategori bebas, atribut JSON, stok minimum, mutasi
+    masuk/keluar/adjust/transfer/repair/return/write-off, posisi rak/laci.
+  - **Webcam default aktif** untuk guru & siswa: capture langsung saat kamera
+    dipakai, berikutnya sesuai interval (default 15 menit), antrean offline.
+  - **Auto-update v2**: agen SYSTEM mengunduh & memverifikasi SHA-256 sendiri,
+    state `updates/state.json`, layar pembaruan yang memblokir login sebelum
+    versi terpasang, ACL folder updates, verifikasi versi setelah install,
+    retry maksimal 3, dan server menolak sesi di bawah versi minimum.
+- Perangkat 1.0.2 akan mengunduh 1.0.3 lewat updater lama, lalu memasangnya saat
+  boot berikutnya. Setelah 1.0.3 terpasang, gate baru aktif untuk rilis berikutnya.
+
 ## PELOG 1.0.2 (build 2, replublished 15 Okt 2026)
 
 - Berkas   : `PELOG_Setup_1.0.2.exe` (51.9 MB, Inno Setup)

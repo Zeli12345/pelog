@@ -72,6 +72,62 @@
                     </div>
                 </section>
 
+                {{-- Kamera --}}
+                <section class="card p-5">
+                    <h2 class="text-sm font-semibold text-ink">Kamera (Webcam)</h2>
+                    <p class="text-xs text-ink-faint">Ambil foto saat kamera digunakan selama sesi. Capture pertama langsung, berikutnya sesuai interval.</p>
+                    <div class="mt-4 space-y-4">
+                        <label class="flex items-center gap-2 text-sm text-ink-soft">
+                            <input type="hidden" name="webcam_enabled" value="0">
+                            <input type="checkbox" name="webcam_enabled" value="1" @checked(old('webcam_enabled', $settings['webcam_enabled'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
+                            Aktifkan capture kamera
+                        </label>
+                        <div class="grid gap-3 lg:grid-cols-4">
+                            <div>
+                                <label class="label" for="webcam_interval_minutes">Interval (menit)</label>
+                                <input type="number" id="webcam_interval_minutes" name="webcam_interval_minutes" min="1" max="240" value="{{ old('webcam_interval_minutes', $settings['webcam_interval_minutes']) }}" class="input text-sm">
+                            </div>
+                            <div>
+                                <label class="label" for="webcam_max_width">Lebar maks (px)</label>
+                                <input type="number" id="webcam_max_width" name="webcam_max_width" min="320" max="1920" value="{{ old('webcam_max_width', $settings['webcam_max_width']) }}" class="input text-sm">
+                            </div>
+                            <div>
+                                <label class="label" for="webcam_quality">Kualitas</label>
+                                <input type="number" id="webcam_quality" name="webcam_quality" min="10" max="100" value="{{ old('webcam_quality', $settings['webcam_quality']) }}" class="input text-sm">
+                            </div>
+                            <div>
+                                <label class="label" for="webcam_retention_days">Retensi (hari)</label>
+                                <input type="number" id="webcam_retention_days" name="webcam_retention_days" min="0" max="3650" value="{{ old('webcam_retention_days', $settings['webcam_retention_days']) }}" class="input text-sm">
+                            </div>
+                        </div>
+                        <label class="flex items-center gap-2 text-sm text-ink-soft">
+                            <input type="hidden" name="webcam_students_only" value="0">
+                            <input type="checkbox" name="webcam_students_only" value="1" @checked(old('webcam_students_only', $settings['webcam_students_only'])) class="rounded border-line text-navy-700 focus:ring-navy-500">
+                            Hanya sesi siswa (jika tidak dicentang: guru dan siswa)
+                        </label>
+                        <p class="rounded-md border border-gold-300 bg-gold-50 px-3 py-2 text-[11px] leading-relaxed text-gold-900">
+                            Kamera aktif secara default. Layar kunci menampilkan pemberitahuan bahwa gambar dapat diambil saat kamera digunakan. Sampaikan kebijakan ini kepada siswa/orang tua.
+                        </p>
+                    </div>
+                </section>
+
+                {{-- Pembaruan client --}}
+                <section class="card p-5">
+                    <h2 class="text-sm font-semibold text-ink">Pembaruan Client</h2>
+                    <p class="text-xs text-ink-faint">Versi minimum mencegah sesi dari aplikasi yang terlalu lama. Instalasi wajib tetap menunggu update terpasang.</p>
+                    <div class="mt-4 grid gap-3 lg:grid-cols-2">
+                        <div>
+                            <label class="label" for="app_update_check_hours">Cek pembaruan setiap (jam)</label>
+                            <input type="number" id="app_update_check_hours" name="app_update_check_hours" min="1" max="24" value="{{ old('app_update_check_hours', $settings['app_update_check_hours']) }}" class="input text-sm">
+                        </div>
+                        <div>
+                            <label class="label" for="min_supported_version">Versi minimum didukung</label>
+                            <input type="text" id="min_supported_version" name="min_supported_version" value="{{ old('min_supported_version', $settings['min_supported_version']) }}" class="input text-sm font-mono" placeholder="1.0.0">
+                            <p class="mt-1 text-[11px] text-ink-faint">Perangkat di bawah versi ini tidak bisa memulai sesi baru.</p>
+                        </div>
+                    </div>
+                </section>
+
                 {{-- Sesi & Sinkronisasi --}}
                 <section class="card p-5">
                     <h2 class="text-sm font-semibold text-ink">Sesi &amp; Sinkronisasi</h2>
@@ -163,6 +219,16 @@
                     <div>
                         <label class="label" for="client_update_notes">Catatan rilis (opsional)</label>
                         <input type="text" id="client_update_notes" name="client_update_notes" value="{{ old('client_update_notes', $clientUpdate['notes']) }}" maxlength="200" class="input text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 text-xs text-ink-soft">
+                            <input type="checkbox" name="client_update_mandatory" value="1" class="rounded border-line text-navy-700">
+                            Wajib
+                        </label>
+                        <div>
+                            <label class="label" for="upload_min_supported_version">Versi minimum</label>
+                            <input type="text" id="upload_min_supported_version" name="min_supported_version" value="{{ $settings['min_supported_version'] }}" class="input text-xs font-mono">
+                        </div>
                     </div>
                     <button type="submit" class="btn-secondary w-full">
                         <x-icon name="upload" size="h-4 w-4" />

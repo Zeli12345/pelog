@@ -18,13 +18,18 @@
         ['route' => 'devices.index', 'label' => 'Perangkat', 'icon' => 'monitor'],
         ['route' => 'sessions.index', 'label' => 'Sesi Penggunaan', 'icon' => 'clock'],
         ['route' => 'reports.index', 'label' => 'Laporan', 'icon' => 'file-text'],
-        ['route' => 'screenshots.index', 'label' => 'Screenshot', 'icon' => 'camera'],
+        ['route' => 'screenshots.index', 'label' => 'Galeri Media', 'icon' => 'image'],
     ];
 
     $master = [
         ['route' => 'students.index', 'label' => 'Siswa', 'icon' => 'users'],
         ['route' => 'staff.index', 'label' => 'Guru & Pegawai', 'icon' => 'user-check'],
         ['route' => 'subjects.index', 'label' => 'Mata Pelajaran', 'icon' => 'book-open'],
+    ];
+
+    $assets = [
+        ['route' => 'inventory.index', 'label' => 'Inventaris', 'icon' => 'box'],
+        ['route' => 'locations.index', 'label' => 'Lokasi & Denah', 'icon' => 'map'],
     ];
 
     $system = $isAdmin ? [
@@ -36,6 +41,7 @@
     $groups = array_values(array_filter([
         ['title' => 'Pemantauan', 'items' => $monitoring],
         ['title' => 'Master Data', 'items' => $master],
+        ['title' => 'Aset & Lokasi', 'items' => $assets],
         ['title' => 'Sistem', 'items' => $system],
     ], fn ($group) => count($group['items']) > 0));
 @endphp

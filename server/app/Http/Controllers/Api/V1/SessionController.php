@@ -7,6 +7,7 @@ use App\Enums\DeviceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\StaffMember;
+use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\UsageSession;
@@ -40,6 +41,23 @@ class SessionController extends Controller
 
         /** @var Device $device */
         $device = $request->attributes->get('pelog_device');
+
+        $minimum = (string) Setting::getValue('min_supported_version', config('pelog.min_client_version', '1.0.0'));
+
+        if ($device->agent_version !== null
+            && $minimum !== ''
+            && version_compare($device->agent_version, $minimum, '<')) {
+            return ApiResponse::error(
+                'update_required',
+                'Versi aplikasi PELOG di laptop ini sudah tidak didukung. Perbarui aplikasi sebelum memulai sesi.',
+                409,
+                [
+                    'current_version' => $device->agent_version,
+                    'min_supported_version' => $minimum,
+                    'latest_version' => (string) Setting::getValue('app_version', config('pelog.version')),
+                ],
+            );
+        }
 
         if ($device->status === DeviceStatus::Maintenance) {
             Audit::log(

@@ -30,15 +30,39 @@ class SettingsController extends Controller
         'device_online_window_seconds' => 'int',
         'idle_shutdown_minutes' => 'int',
         'single_active_session' => 'bool',
+        'webcam_enabled' => 'bool',
+        'webcam_interval_minutes' => 'int',
+        'webcam_max_width' => 'int',
+        'webcam_quality' => 'int',
+        'webcam_students_only' => 'bool',
+        'webcam_retention_days' => 'int',
+        'app_update_check_hours' => 'int',
+        'min_supported_version' => 'string',
         'school_name' => 'string',
         'school_motto' => 'string',
+    ];
+
+    /**
+     * @var array<string, mixed>
+     */
+    private const SETTING_DEFAULTS = [
+        'webcam_enabled' => true,
+        'webcam_interval_minutes' => 15,
+        'webcam_max_width' => 640,
+        'webcam_quality' => 60,
+        'webcam_students_only' => false,
+        'webcam_retention_days' => 30,
+        'app_update_check_hours' => 6,
+        'min_supported_version' => '1.0.0',
     ];
 
     public function index(): View
     {
         return view('dashboard.settings.index', [
             'settings' => collect(self::SETTING_TYPES)
-                ->mapWithKeys(fn (string $type, string $key) => [$key => Setting::getValue($key)])
+                ->mapWithKeys(fn (string $type, string $key) => [
+                    $key => Setting::getValue($key, self::SETTING_DEFAULTS[$key] ?? null),
+                ])
                 ->all(),
             'enrollmentEnabled' => is_string(Setting::getValue('enrollment_code_hash')),
             'enrollmentCode' => Setting::getValue('enrollment_code'),
@@ -69,12 +93,28 @@ class SettingsController extends Controller
             'device_online_window_seconds' => ['required', 'integer', 'min:60', 'max:3600'],
             'idle_shutdown_minutes' => ['required', 'integer', 'min:0', 'max:1440'],
             'single_active_session' => ['nullable', 'boolean'],
+            'webcam_enabled' => ['nullable', 'boolean'],
+            'webcam_interval_minutes' => ['nullable', 'integer', 'min:1', 'max:240'],
+            'webcam_max_width' => ['nullable', 'integer', 'min:320', 'max:1920'],
+            'webcam_quality' => ['nullable', 'integer', 'min:10', 'max:100'],
+            'webcam_students_only' => ['nullable', 'boolean'],
+            'webcam_retention_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
+            'app_update_check_hours' => ['nullable', 'integer', 'min:1', 'max:24'],
+            'min_supported_version' => ['nullable', 'string', 'max:20', 'regex:/^\d+(\.\d+){1,3}$/'],
             'school_name' => ['required', 'string', 'max:100'],
             'school_motto' => ['nullable', 'string', 'max:100'],
         ]);
 
         $validated['screenshot_enabled'] = $request->boolean('screenshot_enabled');
         $validated['single_active_session'] = $request->boolean('single_active_session');
+
+        if ($request->has('webcam_enabled')) {
+            $validated['webcam_enabled'] = $request->boolean('webcam_enabled');
+        }
+
+        if ($request->has('webcam_students_only')) {
+            $validated['webcam_students_only'] = $request->boolean('webcam_students_only');
+        }
 
         foreach ($validated as $key => $value) {
             Setting::setValue($key, $value);
@@ -123,10 +163,19 @@ class SettingsController extends Controller
     public function uploadClientInstaller(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'client_latest_version' => ['required', 'string', 'max:20', 'regex:/^\d+\.\d+\.\d+$/'],
+            'client_latest_version' => ['required', 'string', 'max:20', 'regex:/^\d+(\.\d+){1,3}$/'],
             'client_installer' => ['required', 'file', 'max:204800'], // maks 200 MB
             'client_update_notes' => ['nullable', 'string', 'max:200'],
+            'client_update_mandatory' => ['nullable', 'boolean'],
+            'min_supported_version' => ['nullable', 'string', 'max:20', 'regex:/^\d+(\.\d+){1,3}$/'],
         ]);
+
+        $current = (string) Setting::getValue('app_version', '0.0.0');
+        if (version_compare($data['client_latest_version'], $current, '<=')) {
+            return back()->withErrors([
+                'client_latest_version' => "Versi harus lebih baru dari versi aktif ({$current}) agar perangkat mau memperbarui.",
+            ]);
+        }
 
         $file = $request->file('client_installer');
 
@@ -163,7 +212,12 @@ class SettingsController extends Controller
         Setting::setValue('app_installer_sha256', hash_file('sha256', $releasePath));
         Setting::setValue('app_installer_size', filesize($releasePath));
         Setting::setValue('app_update_notes', $data['client_update_notes'] ?? null);
+        Setting::setValue('app_update_mandatory', $request->boolean('client_update_mandatory'));
         Setting::setValue('app_updater_enabled', true);
+
+        if (! empty($data['min_supported_version'])) {
+            Setting::setValue('min_supported_version', $data['min_supported_version']);
+        }
 
         Audit::log(
             action: 'client_installer_uploaded',
