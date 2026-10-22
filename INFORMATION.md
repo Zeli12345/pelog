@@ -321,7 +321,7 @@ cd server; npm run build                    # aset Vite (wajib bila view/klass T
 
 ## 16. Status produksi (snapshot 15 Okt 2026)
 
-- Rilis server: **1.0.3**; installer produksi (berkode `BLG-XMQS-TB3C`) sha `a3d946f2…`; publik sha `7e6f37d9…`;
+- Rilis server: **1.0.3**; installer produksi (berkode `BLG-XMQS-TB3C`) sha `a550974e…`; publik sha `676a7770…`;
   `PELOG-Revert.exe` sha `a50924c4…` (di server & dashboard).
 - Data (per 07 Okt 2026): 1.242 siswa · 105 guru/pegawai · 19 mapel · 3 perangkat · 4 sesi · 2 screenshot.
 - Enrollment aktif: `BLG-XMQS-TB3C` (tampil di Pengaturan + tombol Salin).

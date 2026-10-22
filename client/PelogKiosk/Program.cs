@@ -34,6 +34,10 @@ internal static class Program
 
                 if (gate.Block)
                 {
+                    // Jangan biarkan update gate bisa ditembus lewat Task Manager
+                    // pada perangkat yang belum pernah menerapkan hardening.
+                    KioskHardening.Apply();
+
                     Application.Run(new UpdateForm(services, gate));
 
                     return;
