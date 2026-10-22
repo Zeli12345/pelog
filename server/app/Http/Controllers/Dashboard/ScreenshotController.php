@@ -83,7 +83,7 @@ class ScreenshotController extends Controller
 
         $screenshots = (clone $base)
             ->select('screenshots.*')
-            ->with(['usageSession.device', 'usageSession.student', 'usageSession.staff'])
+            ->with(['usageSession.device.location', 'usageSession.student', 'usageSession.staff'])
             ->when($filters['kind'] !== '', fn ($query) => $query->where('kind', $filters['kind']));
 
         match ($filters['sort']) {
@@ -97,6 +97,12 @@ class ScreenshotController extends Controller
                 ->leftJoin('usage_sessions as filter_session', 'filter_session.id', '=', 'screenshots.usage_session_id')
                 ->leftJoin('students as filter_student', 'filter_student.id', '=', 'filter_session.student_id')
                 ->orderByRaw("COALESCE(filter_student.name, 'zzz') asc")
+                ->orderByDesc('screenshots.captured_at'),
+            'location' => $screenshots
+                ->leftJoin('usage_sessions as filter_session', 'filter_session.id', '=', 'screenshots.usage_session_id')
+                ->leftJoin('devices as filter_device', 'filter_device.id', '=', 'filter_session.device_id')
+                ->leftJoin('locations as filter_location', 'filter_location.id', '=', 'filter_device.location_id')
+                ->orderByRaw("COALESCE(filter_location.name, 'zzz') asc")
                 ->orderByDesc('screenshots.captured_at'),
             default => $screenshots->orderByDesc('screenshots.captured_at'),
         };

@@ -91,6 +91,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/locations/{location}', [LocationController::class, 'update'])->whereNumber('location')->name('locations.update');
         Route::delete('/locations/{location}', [LocationController::class, 'destroy'])->whereNumber('location')->name('locations.destroy');
         Route::post('/locations/{location}/merge', [LocationController::class, 'merge'])->whereNumber('location')->name('locations.merge');
+        Route::post('/locations/{location}/toggle', [LocationController::class, 'toggleVisibility'])->whereNumber('location')->name('locations.toggle');
         Route::put('/locations/{location}/layout', [LocationController::class, 'saveLayout'])->whereNumber('location')->name('locations.layout');
         Route::post('/locations/{location}/background', [LocationController::class, 'uploadBackground'])->whereNumber('location')->name('locations.background.upload');
 

@@ -19,7 +19,6 @@ class LocationLayoutObject extends Model
         'rotation',
         'color',
         'z_index',
-        'is_visible',
     ];
 
     protected function casts(): array
@@ -31,7 +30,6 @@ class LocationLayoutObject extends Model
             'h' => 'float',
             'rotation' => 'integer',
             'z_index' => 'integer',
-            'is_visible' => 'boolean',
         ];
     }
 

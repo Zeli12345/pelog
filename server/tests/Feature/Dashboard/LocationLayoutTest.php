@@ -37,11 +37,11 @@ class LocationLayoutTest extends TestCase
         $this->actingAs($admin)->putJson("/locations/{$location->id}/layout", [
             'version' => 2,
             'objects' => [
-                ['type' => 'device', 'device_id' => $device->id, 'x' => 10, 'y' => 10, 'w' => 12, 'h' => 8, 'rotation' => 0, 'is_visible' => false],
+                ['type' => 'device', 'device_id' => $device->id, 'x' => 10, 'y' => 10, 'w' => 12, 'h' => 8, 'rotation' => 0],
             ],
         ])->assertOk();
 
-        $this->assertDatabaseHas('location_layout_objects', ['device_id' => $device->id, 'is_visible' => false]);
+        $this->assertDatabaseHas('location_layout_objects', ['device_id' => $device->id, 'type' => 'device']);
     }
 
     public function test_versi_lama_menghasilkan_konflik(): void

@@ -172,7 +172,9 @@
                         <select id="location_id" name="location_id" class="input text-xs" x-show="!newLocation">
                             <option value="">Belum ditentukan</option>
                             @foreach ($locations as $location)
-                                <option value="{{ $location->id }}" @selected((string) old('location_id', $device->location_id) === (string) $location->id)>{{ $location->name }}</option>
+                                <option value="{{ $location->id }}" @selected((string) old('location_id', $device->location_id) === (string) $location->id)>
+                                    {{ $location->name }}{{ $location->is_active ? '' : ' (disembunyikan)' }}
+                                </option>
                             @endforeach
                         </select>
                         <input name="new_location" x-show="newLocation" x-cloak class="input text-xs" placeholder="Nama ruangan baru" maxlength="80" value="{{ old('new_location') }}">

@@ -96,4 +96,29 @@ class LocationManagementTest extends TestCase
         $this->actingAs($viewer)->get("/locations/{$location->id}")->assertOk();
         $this->actingAs($viewer)->post('/locations', ['name' => 'Baru'])->assertForbidden();
     }
+
+    public function test_ruangan_bisa_disembunyikan_dan_ditampilkan_lagi(): void
+    {
+        $admin = User::factory()->adminUtama()->create();
+        $viewer = User::factory()->viewer()->create();
+        $location = Location::query()->create(['name' => 'Ruang Servis', 'normalized_name' => 'ruang servis']);
+
+        $this->actingAs($admin)->post("/locations/{$location->id}/toggle")->assertRedirect();
+
+        $this->assertFalse($location->refresh()->is_active);
+
+        $default = $this->actingAs($admin)->get('/locations')->assertOk();
+        $this->assertFalse($default->viewData('showHidden'));
+        $this->assertNotContains('Ruang Servis', $default->viewData('locations')->pluck('name')->all());
+
+        $hidden = $this->actingAs($admin)->get('/locations?hidden=1')->assertOk();
+        $this->assertTrue($hidden->viewData('showHidden'));
+        $this->assertContains('Ruang Servis', $hidden->viewData('locations')->pluck('name')->all());
+
+        $this->actingAs($viewer)->get('/locations?hidden=1')->assertOk()->assertDontSee('Ruang Servis');
+        $this->actingAs($viewer)->get("/locations/{$location->id}")->assertNotFound();
+
+        $this->actingAs($admin)->post("/locations/{$location->id}/toggle")->assertRedirect();
+        $this->assertTrue($location->refresh()->is_active);
+    }
 }

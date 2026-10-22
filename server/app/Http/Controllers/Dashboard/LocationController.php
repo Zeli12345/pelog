@@ -19,11 +19,13 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LocationController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         $onlineWindow = (int) Setting::getValue('device_online_window_seconds', 300);
+        $showHidden = $request->boolean('hidden') && $request->user()?->isAdmin();
 
         $locations = Location::query()
+            ->when(! $showHidden, fn ($query) => $query->where('is_active', true))
             ->withCount([
                 'devices',
                 'inventoryItems',
@@ -38,11 +40,14 @@ class LocationController extends Controller
         return view('dashboard.locations.index', [
             'locations' => $locations,
             'onlineWindow' => $onlineWindow,
+            'showHidden' => $showHidden,
         ]);
     }
 
     public function show(Location $location): View
     {
+        abort_if(! $location->is_active && ! auth()->user()?->isAdmin(), 404);
+
         $location->load([
             'devices' => fn ($query) => $query->with(['sessions' => fn ($session) => $session->active()->with(['student', 'staff'])]),
             'layoutObjects' => fn ($query) => $query->orderBy('z_index')->orderBy('id'),
@@ -147,6 +152,28 @@ class LocationController extends Controller
         return back()->with('status', 'Ruangan diperbarui.');
     }
 
+    public function toggleVisibility(Request $request, Location $location): RedirectResponse
+    {
+        $location->forceFill(['is_active' => ! $location->is_active])->save();
+
+        Audit::log(
+            action: 'location_visibility_changed',
+            entityType: Location::class,
+            entityId: $location->id,
+            metadata: ['name' => $location->name, 'is_active' => $location->is_active],
+            actorType: 'user',
+            actorId: $request->user()->id,
+            request: $request,
+        );
+
+        return back()->with(
+            'status',
+            $location->is_active
+                ? "Ruangan {$location->name} ditampilkan kembali."
+                : "Ruangan {$location->name} disembunyikan. Perangkat yang sudah terdaftar tetap menyimpan lokasi ini."
+        );
+    }
+
     public function destroy(Request $request, Location $location): RedirectResponse
     {
         $data = $request->validate([
@@ -241,7 +268,6 @@ class LocationController extends Controller
             'objects.*.rotation' => ['required', 'integer', 'in:0,90,180,270'],
             'objects.*.color' => ['nullable', 'string', 'max:20'],
             'objects.*.z_index' => ['nullable', 'integer', 'min:0', 'max:999'],
-            'objects.*.is_visible' => ['nullable', 'boolean'],
         ]);
 
         $objects = collect($data['objects'])->map(function (array $object) {
@@ -264,7 +290,6 @@ class LocationController extends Controller
                 'rotation' => (int) $object['rotation'],
                 'color' => $object['color'] ?? null,
                 'z_index' => (int) ($object['z_index'] ?? ($type === 'device' ? 20 : 5)),
-                'is_visible' => (bool) ($object['is_visible'] ?? true),
             ];
         });
 

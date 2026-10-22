@@ -3,6 +3,10 @@
 
     <x-slot:actions>
         @if ($isAdmin)
+            <a href="{{ $showHidden ? route('locations.index') : route('locations.index', ['hidden' => 1]) }}"
+               class="btn-secondary !py-1.5 text-xs">
+                {{ $showHidden ? 'Sembunyikan yang nonaktif' : 'Tampilkan yang disembunyikan' }}
+            </a>
             <button type="button" class="btn-primary !py-1.5 text-xs" x-data x-on:click="$dispatch('open-add-location')">
                 <x-icon name="plus" size="h-3.5 w-3.5" />
                 Tambah Ruangan
@@ -34,7 +38,7 @@
                                     </p>
                                 </div>
                                 @if (! $location->is_active)
-                                    <span class="badge-muted">Arsip</span>
+                                    <span class="badge-warn">Disembunyikan</span>
                                 @endif
                             </div>
                         </div>
@@ -56,24 +60,33 @@
                             </div>
                         </a>
 
-                        <div class="flex items-center justify-between gap-2 border-t border-line px-4 py-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5">
                             <a href="{{ route('locations.show', $location) }}" class="text-xs font-semibold text-navy-800 hover:underline">
                                 Buka Denah →
                             </a>
                             @if ($isAdmin)
-                                <button type="button"
-                                        class="btn-secondary !px-2 !py-1 text-[11px]"
-                                        x-on:click="manage = {{ \Illuminate\Support\Js::from([
-                                            'id' => $location->id,
-                                            'name' => $location->name,
-                                            'is_active' => $location->is_active,
-                                            'sort_order' => $location->sort_order,
-                                            'devices' => $location->devices_count,
-                                            'items' => $location->inventory_items_count,
-                                            'objects' => $location->layout_objects_count,
-                                        ]) }}">
-                                    Kelola
-                                </button>
+                                <div class="flex items-center gap-1.5">
+                                    <form method="POST" action="{{ route('locations.toggle', $location) }}"
+                                          onsubmit="return confirm('{{ $location->is_active ? 'Sembunyikan ruangan ini dari daftar dan pilihan lokasi?' : 'Tampilkan kembali ruangan ini?' }}')">
+                                        @csrf
+                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-[11px] {{ $location->is_active ? 'text-brick-600' : 'text-moss-700' }}">
+                                            {{ $location->is_active ? 'Sembunyikan' : 'Tampilkan' }}
+                                        </button>
+                                    </form>
+                                    <button type="button"
+                                            class="btn-secondary !px-2 !py-1 text-[11px]"
+                                            x-on:click="manage = {{ \Illuminate\Support\Js::from([
+                                                'id' => $location->id,
+                                                'name' => $location->name,
+                                                'is_active' => $location->is_active,
+                                                'sort_order' => $location->sort_order,
+                                                'devices' => $location->devices_count,
+                                                'items' => $location->inventory_items_count,
+                                                'objects' => $location->layout_objects_count,
+                                            ]) }}">
+                                        Kelola
+                                    </button>
+                                </div>
                             @endif
                         </div>
                     </article>
@@ -133,7 +146,7 @@
                                     <label class="flex items-end gap-2 pb-2 text-sm text-ink-soft">
                                         <input type="hidden" name="is_active" value="0">
                                         <input type="checkbox" name="is_active" value="1" :checked="manage.is_active" class="rounded border-line text-navy-700">
-                                        Aktif
+                                        Tampilkan
                                     </label>
                                 </div>
                                 <button type="submit" class="btn-primary !py-1.5 text-xs">Simpan Perubahan</button>

@@ -195,44 +195,59 @@
                 </div>
             </div>
 
-            <div x-show="categoryOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4" x-on:keydown.escape.window="categoryOpen = false">
-                <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl" x-on:click.outside="categoryOpen = false">
-                    <h2 class="text-sm font-semibold text-ink">Kelola Kategori</h2>
-                    <div class="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+            <div x-show="categoryOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 p-4" x-on:keydown.escape.window="categoryOpen = false">
+                <div class="max-h-[88vh] w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl" x-on:click.outside="categoryOpen = false">
+                    <header class="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+                        <div>
+                            <h2 class="text-base font-semibold text-ink">Kelola Kategori</h2>
+                            <p class="mt-0.5 text-xs text-ink-faint">Kategori bebas untuk barang apa pun — elektronik, sparepart, ATK, kabel, bahan praktik.</p>
+                        </div>
+                        <button type="button" class="btn-secondary !p-2" x-on:click="categoryOpen = false" title="Tutup">
+                            <x-icon name="x" size="h-4 w-4" />
+                        </button>
+                    </header>
+
+                    <div class="max-h-[58vh] space-y-2 overflow-y-auto px-5 py-4">
                         @forelse ($categories as $category)
-                            <div class="rounded-md border border-line px-2.5 py-2">
+                            <div class="rounded-lg border border-line px-3 py-2.5">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <form method="POST" action="{{ route('inventory.categories.update', $category) }}" class="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <form method="POST" action="{{ route('inventory.categories.update', $category) }}" class="flex min-w-0 flex-1 items-center gap-2">
                                         @csrf
                                         @method('PUT')
-                                        <input name="name" value="{{ $category->name }}" class="input !py-1 text-xs" maxlength="60" required>
-                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-[10px]">Simpan</button>
+                                        <input name="name" value="{{ $category->name }}" class="input !py-1.5 text-xs" maxlength="60" required>
+                                        <button type="submit" class="btn-secondary !px-2.5 !py-1.5 text-[11px]">Simpan</button>
                                     </form>
                                     <form method="POST" action="{{ route('inventory.categories.destroy', $category) }}"
                                           onsubmit="return confirm('{{ $category->items_count > 0 ? 'Kategori masih dipakai. Arsipkan kategori ini?' : 'Hapus kategori ini?' }}')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn-secondary !px-2 !py-1 text-[10px] text-brick-600">
+                                        <button type="submit" class="btn-secondary !px-2.5 !py-1.5 text-[11px] text-brick-600">
                                             {{ $category->items_count > 0 ? 'Arsipkan' : 'Hapus' }}
                                         </button>
                                     </form>
                                 </div>
-                                <p class="mt-1 text-[10px] text-ink-faint">
-                                    {{ $category->items_count }} barang · {{ $category->is_active ? 'aktif' : 'arsip — klik Simpan untuk mengaktifkan' }}
-                                </p>
+                                <div class="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-ink-faint">
+                                    <span>{{ $category->items_count }} barang</span>
+                                    <span>·</span>
+                                    <span>{{ $category->is_active ? 'Aktif' : 'Arsip — tekan Simpan untuk mengaktifkan' }}</span>
+                                </div>
                             </div>
                         @empty
-                            <p class="rounded-md border border-dashed border-line px-3 py-4 text-center text-[11px] text-ink-faint">
-                                Belum ada kategori. Tambahkan kategori pertama di bawah.
-                            </p>
+                            <div class="rounded-lg border border-dashed border-line px-4 py-10 text-center">
+                                <p class="text-sm font-medium text-ink-soft">Belum ada kategori.</p>
+                                <p class="mt-1 text-xs text-ink-faint">Tambahkan kategori pertama di bawah.</p>
+                            </div>
                         @endforelse
                     </div>
-                    <form method="POST" action="{{ route('inventory.categories.store') }}" class="mt-4 flex gap-2">
-                        @csrf
-                        <input type="text" name="name" class="input text-sm" placeholder="Nama kategori baru" required maxlength="60">
-                        <button type="submit" class="btn-primary !py-1.5 text-xs">Tambah</button>
-                    </form>
-                    <p class="mt-2 text-[11px] text-ink-faint">Kategori bisa untuk apa saja: elektronik, ATK, kabel, bahan praktik, dan lainnya.</p>
+
+                    <footer class="border-t border-line bg-paper/40 px-5 py-4">
+                        <label class="label" for="new-category-name">Tambah kategori</label>
+                        <form method="POST" action="{{ route('inventory.categories.store') }}" class="mt-1.5 flex gap-2">
+                            @csrf
+                            <input id="new-category-name" type="text" name="name" class="input text-sm" placeholder="mis. Sparepart, ATK, Kabel" required maxlength="60">
+                            <button type="submit" class="btn-primary !py-2 text-xs">Tambah</button>
+                        </form>
+                    </footer>
                 </div>
             </div>
         @endif

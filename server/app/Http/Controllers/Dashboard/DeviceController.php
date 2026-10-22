@@ -134,6 +134,12 @@ class DeviceController extends Controller
         $openNotes = $device->notes()->open()->get();
         $pinnedNote = $device->notes()->where('pinned', true)->latest('id')->first();
 
+        $locations = Location::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
+
+        if ($device->location !== null && ! $locations->contains('id', $device->location->id)) {
+            $locations->prepend($device->location);
+        }
+
         return view('dashboard.devices.show', [
             'device' => $device,
             'status' => $status,
@@ -147,7 +153,7 @@ class DeviceController extends Controller
             'noteSearch' => $noteSearch,
             'openNotes' => $openNotes,
             'pinnedNote' => $pinnedNote,
-            'locations' => Location::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
+            'locations' => $locations,
             'noteCategories' => DeviceNote::query()->distinct()->orderBy('category')->pluck('category'),
             'idleShutdownMinutes' => (int) Setting::getValue('idle_shutdown_minutes', 90),
         ]);

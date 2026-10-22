@@ -7,7 +7,17 @@
         ];
     @endphp
 
-    <div class="space-y-4" x-data="{ open: false, src: '', label: '', meta: '', link: '', close() { this.open = false; } }">
+    <div class="space-y-4"
+         x-data="{
+            open: false, src: '', label: '', meta: '', link: '', zoom: 1,
+            showMedia(data) {
+                this.src = data.src; this.label = data.label; this.meta = data.meta; this.link = data.link; this.zoom = 1; this.open = true;
+            },
+            closeMedia() { this.open = false; },
+            zoomIn() { this.zoom = Math.min(4, Math.round((this.zoom + 0.25) * 100) / 100); },
+            zoomOut() { this.zoom = Math.max(0.25, Math.round((this.zoom - 0.25) * 100) / 100); },
+            resetZoom() { this.zoom = 1; }
+         }">
         <section class="card p-4">
             <div class="mb-4 flex flex-wrap items-center gap-2">
                 @foreach ($kindLabels as $kindValue => $kindLabel)
@@ -53,6 +63,7 @@
                         <option value="latest" @selected($filters['sort'] === 'latest')>Terbaru dulu</option>
                         <option value="oldest" @selected($filters['sort'] === 'oldest')>Terlama dulu</option>
                         <option value="device" @selected($filters['sort'] === 'device')>Perangkat (A-Z)</option>
+                        <option value="location" @selected($filters['sort'] === 'location')>Lokasi (A-Z)</option>
                         <option value="student" @selected($filters['sort'] === 'student')>Nama siswa (A-Z)</option>
                     </select>
                 </div>
@@ -79,13 +90,19 @@
                         $session = $screenshot->usageSession;
                         $person = $session?->student?->name ?? $session?->staff?->name ?? 'Tidak diketahui';
                         $deviceName = $session?->device?->label ?? $session?->device?->hostname ?? 'Perangkat';
+                        $locationName = $session?->device?->location?->name;
                         $captured = $screenshot->captured_at?->timezone('Asia/Makassar')->format('d/m H:i:s') ?? '—';
                         $badge = $screenshot->kind->value === 'webcam' ? 'Webcam' : 'Layar';
                     @endphp
                     <figure class="card group overflow-hidden">
                         <button type="button"
                                 class="block w-full bg-navy-950 text-left"
-                                x-on:click="open = true; src = '{{ route('screenshots.file', $screenshot) }}'; label = '{{ $badge }} · {{ addslashes($person) }}'; meta = '{{ addslashes($deviceName) }} · {{ $captured }} WITA · {{ number_format($screenshot->size_bytes / 1024, 1) }} KB'; link = '{{ route('screenshots.file', $screenshot) }}'">
+                                x-on:click="showMedia({{ \Illuminate\Support\Js::from([
+                                    'src' => route('screenshots.file', $screenshot),
+                                    'label' => $badge.' · '.$person,
+                                    'meta' => $deviceName.($locationName ? ' · '.$locationName : '').' · '.$captured.' WITA · '.number_format($screenshot->size_bytes / 1024, 1).' KB',
+                                    'link' => route('screenshots.file', $screenshot),
+                                ]) }})">
                             <div class="relative">
                                 <img
                                     src="{{ route('screenshots.thumb', $screenshot) }}"
@@ -101,7 +118,9 @@
                         </button>
                         <figcaption class="space-y-1 p-3">
                             <p class="truncate text-xs font-semibold text-ink">{{ $person }}</p>
-                            <p class="truncate text-[11px] text-ink-faint">{{ $deviceName }} · {{ $captured }} WITA</p>
+                            <p class="truncate text-[11px] text-ink-faint">
+                                {{ $deviceName }}@if ($locationName) · {{ $locationName }}@endif · {{ $captured }} WITA
+                            </p>
                             <p class="font-mono text-[10px] uppercase text-ink-faint">{{ $screenshot->format->value }} · {{ number_format($screenshot->size_bytes / 1024, 1) }} KB</p>
                         </figcaption>
                     </figure>
@@ -125,22 +144,40 @@
             </div>
         @endif
 
-        {{-- Lightbox --}}
-        <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-ink/80 p-4" @keydown.escape.window="open = false">
-            <div class="max-h-full w-full max-w-4xl overflow-auto rounded-xl bg-white p-4 shadow-2xl" x-on:click.outside="open = false">
-                <div class="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-sm font-semibold text-ink" x-text="label"></p>
-                        <p class="mt-0.5 text-xs text-ink-faint" x-text="meta"></p>
+        {{-- Lightbox: fixed ke viewport, bukan ke container halaman --}}
+        <div x-show="open" x-cloak x-transition.opacity
+             class="fixed inset-0 z-[60] flex items-center justify-center bg-ink/85 p-2 sm:p-5"
+             @keydown.escape.window="closeMedia()"
+             @click.self="closeMedia()">
+            <div class="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+                <header class="flex items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-ink" x-text="label"></p>
+                        <p class="mt-0.5 truncate text-xs text-ink-faint" x-text="meta"></p>
                     </div>
-                    <button type="button" class="btn-secondary !p-2" x-on:click="open = false" title="Tutup">
+                    <button type="button" class="btn-secondary !p-2" x-on:click="closeMedia()" title="Tutup">
                         <x-icon name="x" size="h-4 w-4" />
                     </button>
+                </header>
+
+                <div class="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-navy-950 p-2 sm:p-4">
+                    <img :src="src"
+                         alt=""
+                         class="h-auto max-w-full object-contain"
+                         :style="zoom <= 1
+                            ? { width: (zoom * 100) + '%', maxWidth: '100%', maxHeight: '68vh' }
+                            : { width: (zoom * 100) + '%', maxWidth: 'none', maxHeight: 'none' }">
                 </div>
-                <img :src="src" alt="" class="max-h-[70vh] w-full rounded-lg bg-navy-950 object-contain">
-                <div class="mt-3 flex justify-end">
+
+                <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 sm:px-5">
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" class="btn-secondary !px-2.5 !py-1.5 text-xs" x-on:click="zoomOut()" :disabled="zoom <= 0.25" title="Perkecil">−</button>
+                        <button type="button" class="btn-secondary !px-2.5 !py-1.5 text-xs font-mono" x-on:click="resetZoom()" x-text="Math.round(zoom * 100) + '%'"></button>
+                        <button type="button" class="btn-secondary !px-2.5 !py-1.5 text-xs" x-on:click="zoomIn()" :disabled="zoom >= 4" title="Perbesar">+</button>
+                        <button type="button" class="btn-secondary !px-2.5 !py-1.5 text-xs" x-on:click="resetZoom()">Fit</button>
+                    </div>
                     <a :href="link" target="_blank" rel="noopener" class="btn-secondary !py-1.5 text-xs">Buka file asli</a>
-                </div>
+                </footer>
             </div>
         </div>
     </div>

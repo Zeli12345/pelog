@@ -60,6 +60,23 @@ class MediaGalleryTest extends TestCase
             ->assertDontSee("/screenshots/{$media->id}/thumb");
     }
 
+    public function test_bisa_urutkan_berdasarkan_lokasi(): void
+    {
+        $admin = User::factory()->adminUtama()->create();
+        $student = Student::factory()->create();
+        $labB = \App\Models\Location::query()->create(['name' => 'Lab B', 'normalized_name' => 'lab b']);
+        $labA = \App\Models\Location::query()->create(['name' => 'Lab A', 'normalized_name' => 'lab a']);
+        $deviceB = Device::factory()->create(['location_id' => $labB->id]);
+        $deviceA = Device::factory()->create(['location_id' => $labA->id]);
+        $mediaB = $this->makeMedia($deviceB, $student, 'screen', now());
+        $mediaA = $this->makeMedia($deviceA, $student, 'screen', now()->subMinute());
+
+        $this->actingAs($admin)->get('/screenshots?sort=location')
+            ->assertOk()
+            ->assertSee('Lokasi (A-Z)')
+            ->assertSeeInOrder(["/screenshots/{$mediaA->id}/thumb", "/screenshots/{$mediaB->id}/thumb"]);
+    }
+
     public function test_viewer_bisa_melihat_galeri(): void
     {
         $viewer = User::factory()->viewer()->create();

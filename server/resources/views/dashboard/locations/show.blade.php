@@ -14,7 +14,6 @@
                 'rotation' => (int) $object->rotation,
                 'color' => $object->color,
                 'z_index' => (int) $object->z_index,
-                'is_visible' => (bool) $object->is_visible,
                 'device' => $object->device === null ? null : [
                     'name' => $object->device->label ?? $object->device->hostname,
                     'hostname' => $object->device->hostname,
